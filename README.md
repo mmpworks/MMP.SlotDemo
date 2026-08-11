@@ -90,3 +90,4 @@ framework noise, plain levels carry application signal. The HttpJson sink posts 
 `/api/logs/ingest` and fans out over SSE to the always-mounted viewer. Set
 `SLOTDEMO_LOG_INGEST_URL=` (empty) to drop the relay sink; the test host does this
 so the file-sink drain never waits on a port nothing bound.
+# smoke
