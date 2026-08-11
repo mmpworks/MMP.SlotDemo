@@ -37,18 +37,25 @@ export function bandHalfWidth(sigma: number, spins: number, z = TWO_SIDED_99): n
 }
 
 /**
- * The Y range tracks the widest thing on screen — the band at the first curve point or
- * the farthest measured excursion — so the funnel always fits and shrinking width reads
- * as growing certainty.
+ * The Y range is set by the band at two percent of the run, plus any measured
+ * excursion past that mark. The opening moments of a run carry bands tens of points
+ * wide; scaling to them flattens the whole convergence into a hairline. Anchoring the
+ * range further in lets the early funnel run off the top and bottom of the frame —
+ * which reads as the funnel entering from off-screen — while the part of the walk a
+ * viewer judges fills the plot.
  */
 export function verticalHalfRange(input: ChartInput): number {
-  const first = input.curve[0]
-  const halfAtFirst = bandHalfWidth(input.sigma, first.spins)
+  const last = input.curve[input.curve.length - 1]
+  const maxSpins = Math.max(input.targetSpins, last.spins)
+  const referenceSpins = Math.max(input.curve[0].spins, maxSpins / 50)
+  const halfAtReference = bandHalfWidth(input.sigma, referenceSpins)
   const excursion = Math.max(
-    ...input.curve.map((p) => Math.abs(p.measuredRtp - input.analyticRtp)),
+    ...input.curve
+      .filter((p) => p.spins >= referenceSpins)
+      .map((p) => Math.abs(p.measuredRtp - input.analyticRtp)),
     0,
   )
-  return Math.max(halfAtFirst, excursion) * 1.15
+  return Math.max(halfAtReference, excursion) * 1.3
 }
 
 export function xScale(frame: ChartFrame, maxSpins: number): (spins: number) => number {
@@ -75,6 +82,12 @@ export function buildGeometry(frame: ChartFrame, input: ChartInput): ChartGeomet
   const x = xScale(frame, maxSpins)
   const y = yScale(frame, input.analyticRtp, halfRange)
 
+  // Early bands are wider than the anchored Y range on purpose; clamping the funnel
+  // to the plot edges draws it entering from off-screen instead of stretching the frame.
+  const yTop = frame.pad.top
+  const yBottom = frame.height - frame.pad.bottom
+  const clamp = (v: number) => Math.min(yBottom, Math.max(yTop, v))
+
   const firstSpins = input.curve[0].spins
   const samples = 160
   const upper: string[] = []
@@ -82,8 +95,8 @@ export function buildGeometry(frame: ChartFrame, input: ChartInput): ChartGeomet
   for (let i = 0; i <= samples; i++) {
     const spins = firstSpins + ((maxSpins - firstSpins) * i) / samples
     const half = bandHalfWidth(input.sigma, spins)
-    upper.push(`${x(spins).toFixed(1)},${y(input.analyticRtp + half).toFixed(1)}`)
-    lower.unshift(`${x(spins).toFixed(1)},${y(input.analyticRtp - half).toFixed(1)}`)
+    upper.push(`${x(spins).toFixed(1)},${clamp(y(input.analyticRtp + half)).toFixed(1)}`)
+    lower.unshift(`${x(spins).toFixed(1)},${clamp(y(input.analyticRtp - half)).toFixed(1)}`)
   }
 
   const measured = input.curve

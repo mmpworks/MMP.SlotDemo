@@ -47,15 +47,29 @@ describe('scales', () => {
 })
 
 describe('verticalHalfRange', () => {
-  it('is set by the band when the walk stays inside it', () => {
-    const c = [point(50_000, 0.9801), point(100_000, 0.9799)]
-    const expected = bandHalfWidth(8.6, 50_000) * 1.15
+  it('anchors to the band at two percent of the run, ignoring the opening blowout', () => {
+    // First point at 4k spins carries a band tens of points wide; the range reads
+    // from the 2% mark (200k of a 10M run) so convergence fills the plot.
+    const c = [point(4_000, 0.9801), point(200_000, 0.9799), point(10_000_000, 0.98)]
+    const expected = bandHalfWidth(8.6, 200_000) * 1.3
     expect(verticalHalfRange(input(c))).toBeCloseTo(expected, 12)
   })
 
-  it('grows to hold a measured excursion outside the band', () => {
-    const c = [point(1_000_000, 1.2)] // wildly out
-    expect(verticalHalfRange(input(c))).toBeCloseTo((1.2 - 0.98) * 1.15, 12)
+  it('uses the first point when the whole run starts past the two-percent mark', () => {
+    const c = [point(500_000, 0.9801), point(10_000_000, 0.98)]
+    const expected = bandHalfWidth(8.6, 500_000) * 1.3
+    expect(verticalHalfRange(input(c))).toBeCloseTo(expected, 12)
+  })
+
+  it('grows to hold a measured excursion past the anchor point', () => {
+    const c = [point(1_000_000, 1.2), point(10_000_000, 1.19)] // wildly out
+    expect(verticalHalfRange(input(c))).toBeCloseTo((1.2 - 0.98) * 1.3, 12)
+  })
+
+  it('ignores excursions in the opening blowout region', () => {
+    const c = [point(4_000, 1.5), point(200_000, 0.9799), point(10_000_000, 0.98)]
+    const expected = bandHalfWidth(8.6, 200_000) * 1.3
+    expect(verticalHalfRange(input(c))).toBeCloseTo(expected, 12)
   })
 })
 
