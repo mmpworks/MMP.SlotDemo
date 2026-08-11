@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { postJson } from '../api/labs'
+import { getJson, postJson } from '../api/labs'
 import PaylinePattern from '../components/PaylinePattern.vue'
 
 defineProps<{ title: string; blurb: string }>()
@@ -71,13 +71,32 @@ interface ParSheet {
   verification: { scatterReels: { reel: number; positions: number[]; separated: boolean }[] }
 }
 
+interface SummaryRow {
+  file: string
+  name: string
+  reels: number
+  lines: number
+  hasScatter: boolean
+  wagerCredits: number
+  symbolsPerReel: string
+  cycle: number
+  paybackPercent: number
+  hitFrequencyPercent: number
+  playsPerJackpot: number
+  jackpotCredits: number
+  playsPerBonus: number | null
+  volatilityIndex90: number
+}
+
 const sheet = ref<ParSheet | null>(null)
+const summary = ref<SummaryRow[]>([])
 const error = ref('')
 const explainKey = ref('sheet')
 
 onMounted(async () => {
   try {
     sheet.value = await postJson<ParSheet>('/api/par/sheet', { gameFile: 'orca-dive.json' })
+    summary.value = await getJson<SummaryRow[]>('/api/par/summary')
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load the PAR sheet.'
   }
@@ -100,6 +119,18 @@ const explanations: Record<string, { title: string; body: string }> = {
   geometry: {
     title: 'Geometry',
     body: 'Five reels, each its own strip with its own length, showing three rows in the window. Ragged strip lengths (26/29/26/29/26) are normal on real machines. This game reads one payline across the centre row; more paylines would change the feel but, for regular line pays, RTP stays the same because bet and wins scale together.',
+  },
+  summary: {
+    title: 'The summary table',
+    body: 'This is the table researchers actually found on real PAR sheets. In 2009, Kevin Harrigan and Mike Dixon obtained 23 PAR sheets for Ontario slot machines through freedom-of-information requests and published a summary in this column layout (their Table 1): game and geometry, wager, symbols per reel, payback percentage, hit frequency, plays per jackpot, jackpot size, plays per bonus, and volatility index. Our games appear here in the same columns, so you can read this row against their published rows for Double Diamond Deluxe (92.6% payback, VI 10.5) or Lobstermania (85 to 96.2% across versions).',
+  },
+  playsPerJackpot: {
+    title: 'Plays per jackpot',
+    body: 'The average number of spins before the top prize lands: cycle divided by the hit count of the jackpot rule. The 5000× Red 7 line has 4 hits in a 14.8-million cycle, so about one jackpot per 3.7 million spins. The paper reports 46,656 for Double Diamond and 8.1 million for Lobstermania — rarity on this scale is normal, and it is why the jackpot contributes so little RTP.',
+  },
+  versions: {
+    title: 'Approved versions',
+    body: 'The sharpest finding in the paper: casinos order the same cabinet in several approved payback versions — Lobstermania ran from 85% to 96.2% — and the versions look identical to the player because hit frequency barely changes between them. Payback is the version knob; feel is not. Our preset picker on the proving-ground page works the same way: same reels, different solved paytable.',
   },
   census: {
     title: 'Reel census',
@@ -221,6 +252,49 @@ const symbolName = computed(() => {
               </div>
             </div>
           </div>
+        </section>
+
+        <!-- Harrigan Table-1 summary -->
+        <section class="par-block">
+          <button class="par-term par-block__title" @click="explainKey = 'summary'">
+            Summary — after Harrigan &amp; Dixon (2009), Table 1
+          </button>
+          <div class="par-scroll">
+            <table class="lab-table">
+              <thead>
+                <tr>
+                  <th>Game / reels / lines / scatter</th>
+                  <th>Wager</th>
+                  <th>Symbols per reel</th>
+                  <th>Payback %</th>
+                  <th>Hit freq %</th>
+                  <th><button class="par-term" @click="explainKey = 'playsPerJackpot'">Plays per jackpot</button></th>
+                  <th>Jackpot (× bet)</th>
+                  <th>Plays per bonus</th>
+                  <th>VI (90%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in summary" :key="row.file" :class="{ 'par-row--current': row.file === 'orca-dive.json' }">
+                  <td>{{ row.name }} / {{ row.reels }} / {{ row.lines }}{{ row.hasScatter ? ' / S' : '' }}</td>
+                  <td>{{ row.wagerCredits }}</td>
+                  <td>{{ row.symbolsPerReel }}</td>
+                  <td>{{ row.paybackPercent.toFixed(2) }}</td>
+                  <td>{{ row.hitFrequencyPercent.toFixed(1) }}</td>
+                  <td>{{ Math.round(row.playsPerJackpot).toLocaleString() }}</td>
+                  <td>{{ row.jackpotCredits.toLocaleString() }}</td>
+                  <td>{{ row.playsPerBonus === null ? 'n/a' : Math.round(row.playsPerBonus).toLocaleString() }}</td>
+                  <td>{{ row.volatilityIndex90.toFixed(1) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="lab-note">
+            Column set from the published study of 23 real Ontario PAR sheets
+            (<button class="par-term" @click="explainKey = 'versions'">multiple approved versions</button>
+            of one game differ mainly in this table's payback column). Their mechanical
+            games reported VI at the 90% confidence level; we compute ours the same way.
+          </p>
         </section>
 
         <!-- reel census -->
@@ -521,6 +595,14 @@ const symbolName = computed(() => {
 
 .par-fail {
   color: var(--color-status-error);
+}
+
+.par-scroll {
+  overflow-x: auto;
+}
+
+.par-row--current td {
+  color: var(--color-accent-bright);
 }
 
 .par-lines {

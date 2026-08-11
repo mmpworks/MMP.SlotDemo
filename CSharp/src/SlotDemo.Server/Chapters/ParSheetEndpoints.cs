@@ -22,6 +22,61 @@ public static class ParSheetEndpoints
     public static void MapParSheet(this WebApplication app, StructuredLogger log)
     {
         app.MapPost("/api/par/sheet", (SheetRequest request) => Sheet(request, log));
+        app.MapGet("/api/par/summary", () => Summary(log));
+    }
+
+    /// <summary>
+    /// The Harrigan &amp; Dixon Table-1 view: one summary row per shipped game, in the
+    /// column set their published study of 23 real PAR sheets used. Their table is the
+    /// only peer-reviewed look at what manufacturers actually summarize; ours adds
+    /// nothing and hides nothing, so the two read side by side.
+    /// </summary>
+    private static IResult Summary(StructuredLogger log)
+    {
+        var rows = new List<object>();
+        foreach (var file in ReelSources.GameFiles())
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "games", file!);
+            if (!GameDefinitionLoader.TryLoad(File.ReadAllText(path), out var definition, out _)) continue;
+            var game = definition!;
+
+            GameAnalysis analysis;
+            try { analysis = GameAnalyzer.Analyse(game); }
+            catch (NotSupportedException) { continue; }
+
+            // Jackpot = the single highest-paying rule; plays per jackpot = cycle over
+            // that rule's hit count, the paper's headline rarity figure.
+            var top = analysis.CombinationCounts
+                .Select(c => new
+                {
+                    pay = game.Categories[c.Key.CategoryIndex].PayFor(c.Key.Count) / 100.0,
+                    hits = c.Value,
+                })
+                .OrderByDescending(x => x.pay)
+                .First();
+
+            rows.Add(new
+            {
+                file,
+                name = game.Name,
+                reels = game.ReelCount,
+                lines = game.Paylines.Count,
+                hasScatter = game.Bonus is not null,
+                wagerCredits = 1,
+                symbolsPerReel = string.Join("/", Enumerable.Range(0, game.ReelCount).Select(game.Reels.StopCount)),
+                cycle = analysis.StopCombinations,
+                paybackPercent = analysis.TotalRtp * 100,
+                hitFrequencyPercent = analysis.HitFrequency * 100,
+                playsPerJackpot = top.hits > 0 ? (double)analysis.StopCombinations / top.hits : 0,
+                jackpotCredits = top.pay,
+                playsPerBonus = analysis.TriggerProbability > 0 ? 1.0 / analysis.TriggerProbability : (double?)null,
+                volatilityIndex90 = 1.6449 * analysis.SigmaPerUnitWagered,
+            });
+        }
+
+        log.Information(Category, "PAR summary served for {Count} games",
+            new LogProperty("Count", rows.Count));
+        return Results.Ok(rows);
     }
 
     public sealed record SheetRequest(string GameFile);
