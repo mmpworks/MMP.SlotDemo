@@ -22,6 +22,7 @@ public static class ChapterFourEndpoints
     {
         app.MapPost("/api/ch4/solve", (SolveRequest request) => Solve(request, log));
         app.MapPost("/api/ch4/band", (BandRequest request) => Band(request, log));
+        app.MapPost("/api/ch4/published", (PublishedRequest request) => Published(request, log));
     }
 
     public sealed record SolveRequest(string PresetName, int TargetBaseRtpBasisPoints);
@@ -139,6 +140,75 @@ public static class ChapterFourEndpoints
                 sigma = breakdown.SigmaPerUnitWagered,
             },
             bands,
+        });
+    }
+
+    public sealed record PublishedRequest(string GameFile);
+
+    /// <summary>
+    /// The other way a paytable comes to exist: published and fixed, the way Orca Dive
+    /// ships. No solver runs — the enumeration prices each category exactly, and the sum
+    /// of pay × probability per row is the same arithmetic the solver lab teaches, read
+    /// in the other direction.
+    /// </summary>
+    private static IResult Published(PublishedRequest request, StructuredLogger log)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "games", Path.GetFileName(request.GameFile ?? ""));
+        if (!File.Exists(path))
+            return Results.BadRequest(new { error = $"No shipped game named '{request.GameFile}'." });
+        if (!MMP.SlotGame.Core.Games.Definition.GameDefinitionLoader.TryLoad(
+                File.ReadAllText(path), out var definition, out var loadErrors))
+            return Results.BadRequest(new { error = "Definition failed to load.", errors = loadErrors });
+
+        var game = definition!;
+        MMP.SlotGame.Core.Games.GameAnalysis analysis;
+        try
+        {
+            analysis = MMP.SlotGame.Core.Games.GameAnalyzer.Analyse(game);
+        }
+        catch (NotSupportedException ex)
+        {
+            return Results.Ok(new { supported = false, reason = ex.Message });
+        }
+
+        var rows = analysis.CombinationCounts
+            .OrderByDescending(c =>
+                game.Categories[c.Key.CategoryIndex].PayFor(c.Key.Count) / 100.0
+                * c.Value / analysis.StopCombinations)
+            .Select(c =>
+            {
+                var category = game.Categories[c.Key.CategoryIndex];
+                var payMultiplier = category.PayFor(c.Key.Count) / 100.0;
+                var probability = (double)c.Value / analysis.StopCombinations;
+                return new
+                {
+                    category = category.Name,
+                    count = c.Key.Count,
+                    payMultiplier,
+                    combinations = c.Value,
+                    probability,
+                    // pay × probability: this row's slice of the line RTP.
+                    rtpContribution = payMultiplier * probability,
+                };
+            });
+
+        log.Information(Category,
+            "Published paytable priced for {Game}: line {LineRtp}, bonus {BonusRtp}, total {TotalRtp}",
+            new LogProperty("Game", game.Name),
+            new LogProperty("LineRtp", analysis.LineRtp),
+            new LogProperty("BonusRtp", analysis.BonusRtp),
+            new LogProperty("TotalRtp", analysis.TotalRtp));
+
+        return Results.Ok(new
+        {
+            supported = true,
+            game = game.Name,
+            stopCombinations = analysis.StopCombinations,
+            lineRtp = analysis.LineRtp,
+            bonusRtp = analysis.BonusRtp,
+            totalRtp = analysis.TotalRtp,
+            sigma = analysis.SigmaPerUnitWagered,
+            rows,
         });
     }
 }

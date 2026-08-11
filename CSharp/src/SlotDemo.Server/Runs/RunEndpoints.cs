@@ -25,6 +25,7 @@ public static class RunEndpoints
                 stride = ConvergenceRecorder.DefaultStride,
             },
             workerCeiling = 64,
+            games = SlotDemo.Server.Chapters.ReelSources.GameFiles(),
             presets = ReelPreset.All.Values.Select(p => new
             {
                 name = p.Name,

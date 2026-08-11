@@ -5,7 +5,8 @@ import { runRngLab, type RngResponse } from '../../api/chapters'
 const seed = ref(20260810)
 const workerCount = ref(4)
 const draws = ref(6)
-const bound = ref(32)
+// 26: the strip length of Orca Dive's reel 1, so the stops here are that reel's stops.
+const bound = ref(26)
 const mixed = ref(true)
 
 const result = ref<RngResponse | null>(null)
@@ -95,7 +96,7 @@ async function compare(useMixing: boolean): Promise<void> {
 
       <p class="note">
         The reduced column is what a reel actually consumes: a stop index inside a strip of
-        {{ bound }} positions. Replay matching means the same seed and worker id rebuilt the
+        {{ bound }} positions — at 26, these are stop numbers on Orca Dive's first reel. Replay matching means the same seed and worker id rebuilt the
         identical stream — that property is what turns a ten-million-spin run into something
         you can hand to somebody else and have them reproduce.
       </p>

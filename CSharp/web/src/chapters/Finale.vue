@@ -8,7 +8,10 @@ defineProps<{ title: string; blurb: string }>()
 
 const limits = ref<RunLimits | null>(null)
 
-const presetName = ref('Video5x64')
+// The subject: a shipped game by default — Orca Dive is the game the series builds, so
+// the proof people watch is the proof of the game they know. 'preset:' ids switch to the
+// configurable solved game.
+const subject = ref('game:orca-dive.json')
 const baseBp = ref(7500)
 const freeSpinsBp = ref(1300)
 const pickBonusBp = ref(1000)
@@ -78,7 +81,7 @@ async function start(): Promise<void> {
   try {
     curve.value = []
     await postJson('/api/run', {
-      presetName: presetName.value,
+      presetName: isGameSubject.value ? '' : subject.value,
       baseRtpBasisPoints: baseBp.value,
       freeSpinsRtpBasisPoints: freeSpinsBp.value,
       pickBonusRtpBasisPoints: pickBonusBp.value,
@@ -86,6 +89,7 @@ async function start(): Promise<void> {
       workerCount: workers.value,
       targetSpins: targetSpins.value,
       stride: stride.value,
+      gameFile: isGameSubject.value ? subject.value.slice('game:'.length) : '',
     })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Run failed to start.'
@@ -98,9 +102,12 @@ async function cancel(): Promise<void> {
   await fetch('/api/run/cancel', { method: 'POST' }).catch(() => undefined)
 }
 
+const isGameSubject = computed(() => subject.value.startsWith('game:'))
 const aggregateBp = computed(() => baseBp.value + freeSpinsBp.value + pickBonusBp.value)
 const overCap = computed(() =>
-  limits.value !== null && aggregateBp.value > limits.value.maxAggregateBasisPoints)
+  !isGameSubject.value &&
+  limits.value !== null &&
+  aggregateBp.value > limits.value.maxAggregateBasisPoints)
 
 // ---- the chart ----
 // Pure geometry lives in chart/convergence.ts (tested); this file only feeds it.
@@ -145,25 +152,34 @@ const verdict = computed(() => {
       <h3>Configure the run</h3>
       <div class="controls">
         <label>
-          Preset
-          <select v-model="presetName">
-            <option v-for="p in limits?.presets" :key="p.name" :value="p.name">
-              {{ p.name }} ({{ p.reels }} reels, {{ p.paylines }} lines)
-            </option>
+          Subject
+          <select v-model="subject">
+            <optgroup label="Shipped games — published paytable, enumerated reference">
+              <option v-for="g in limits?.games" :key="g" :value="`game:${g}`">
+                {{ g.replace('.json', '') }}
+              </option>
+            </optgroup>
+            <optgroup label="Solved presets — pick the RTP, the solver builds the paytable">
+              <option v-for="p in limits?.presets" :key="p.name" :value="p.name">
+                {{ p.name }} ({{ p.reels }} reels, {{ p.paylines }} lines)
+              </option>
+            </optgroup>
           </select>
         </label>
-        <label>
-          Base RTP (bp)
-          <input v-model.number="baseBp" type="number" min="1" max="9900" step="100" />
-        </label>
-        <label>
-          Free spins (bp)
-          <input v-model.number="freeSpinsBp" type="number" min="0" step="100" />
-        </label>
-        <label>
-          Pick bonus (bp)
-          <input v-model.number="pickBonusBp" type="number" min="0" step="100" />
-        </label>
+        <template v-if="!isGameSubject">
+          <label>
+            Base RTP (bp)
+            <input v-model.number="baseBp" type="number" min="1" max="9900" step="100" />
+          </label>
+          <label>
+            Free spins (bp)
+            <input v-model.number="freeSpinsBp" type="number" min="0" step="100" />
+          </label>
+          <label>
+            Pick bonus (bp)
+            <input v-model.number="pickBonusBp" type="number" min="0" step="100" />
+          </label>
+        </template>
         <label>
           Seed
           <input v-model.number="seed" type="number" min="0" />
@@ -187,6 +203,11 @@ const verdict = computed(() => {
         <button type="button" class="ghost" @click="cancel">Stop</button>
       </div>
 
+      <p v-if="isGameSubject" class="lab-note">
+        A shipped game brings its paytable with it, so there is no RTP to choose — the
+        enumerated reference for Orca Dive is 86.11%, and the run has to walk into that
+        band or the machine is wrong.
+      </p>
       <p v-if="overCap" class="lab__error">
         Aggregate {{ aggregateBp }} bp is over the {{ limits?.maxAggregateBasisPoints }} bp cap.
         The server refuses this rather than clamping it — try it and read the error.

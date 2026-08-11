@@ -102,6 +102,58 @@ public sealed class RunEndpointTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
+    public async Task A_shipped_game_runs_against_its_enumerated_reference()
+    {
+        using var client = _factory.CreateClient();
+
+        var started = await client.PostAsJsonAsync("/api/run", new
+        {
+            presetName = "",
+            baseRtpBasisPoints = 0,
+            freeSpinsRtpBasisPoints = 0,
+            pickBonusRtpBasisPoints = 0,
+            seed = 20260811UL,
+            workerCount = 4,
+            targetSpins = 500_000L,
+            stride = 25_000L,
+            gameFile = "orca-dive.json",
+        });
+        Assert.Equal(HttpStatusCode.Created, started.StatusCode);
+        var body = await started.Content.ReadFromJsonAsync<JsonElement>(Json);
+
+        Assert.Equal("Orca Dive", body.GetProperty("config").GetProperty("preset").GetString());
+        Assert.True(body.GetProperty("config").GetProperty("isGame").GetBoolean());
+        Assert.Equal("26/29/26/29/26", body.GetProperty("config").GetProperty("stopsPerReel").GetString());
+        // The analytic reference comes from exhaustive enumeration of the document.
+        Assert.Equal(0.8611, body.GetProperty("analytic").GetProperty("totalRtp").GetDouble(), precision: 3);
+
+        var final = await WaitForCompletionAsync(client);
+        Assert.Equal(500_000, final.GetProperty("latest").GetProperty("spins").GetInt64());
+    }
+
+    [Fact]
+    public async Task An_unknown_game_file_is_rejected()
+    {
+        using var client = _factory.CreateClient();
+        await WaitForIdleAsync(client);
+
+        var response = await client.PostAsJsonAsync("/api/run", new
+        {
+            presetName = "",
+            baseRtpBasisPoints = 0,
+            freeSpinsRtpBasisPoints = 0,
+            pickBonusRtpBasisPoints = 0,
+            seed = 1UL,
+            workerCount = 1,
+            targetSpins = 1_000L,
+            stride = 100L,
+            gameFile = "../secrets.json",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task A_cancelled_run_reports_cancelled_not_completed()
     {
         // REGRESSION - workers notice cancellation at a batch boundary and return

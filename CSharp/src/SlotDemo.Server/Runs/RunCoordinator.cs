@@ -4,7 +4,7 @@ using MMP.Herald.Events;
 using MMP.Herald.Pipeline;
 using MMP.Herald.Templating;
 using MMP.SlotGame.Core.Games;
-using MMP.SlotGame.Core.Rtp;
+using MMP.SlotGame.Core.Games.Definition;
 using MMP.SlotGame.Core.Simulation;
 
 namespace SlotDemo.Server.Runs;
@@ -12,8 +12,13 @@ namespace SlotDemo.Server.Runs;
 /// <summary>
 /// Owns the one active simulation run behind the finale page.
 ///
-/// Three separations carry this class, all of them inherited from the engine's own
-/// design rather than invented here:
+/// Two kinds of subject run here: a solved preset (the series' configurable game) and a
+/// shipped game document (Orca Dive), both on the same engine, the same recorder, and
+/// the same stream. The subject decides where the analytic reference comes from — the
+/// solver-plus-closed-form pipeline for presets, exhaustive enumeration for games — and
+/// nothing downstream can tell the difference.
+///
+/// Three separations carry this class, all inherited from the engine's own design:
 ///
 /// 1. The exact path and the lossy path never touch. Totals are integer counters inside
 ///    the engine; everything this class publishes is a copy for display.
@@ -33,6 +38,29 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
     private readonly Lock _gate = new();
     private ActiveRun? _current;
 
+    /// <summary>What the page shows about the subject, independent of which kind it is.</summary>
+    private sealed record RunFacts(
+        string Subject,
+        bool IsGame,
+        int Reels,
+        int Rows,
+        string StopsPerReel,
+        int Paylines,
+        double TargetRtp,
+        int Workers,
+        long TargetSpins,
+        ulong Seed);
+
+    private sealed record AnalyticView(
+        double BaseRtp,
+        IReadOnlyList<(string Name, double Rtp)> Features,
+        double TotalRtp,
+        double Sigma);
+
+    /// <summary>Runs the subject's spins; both kinds return the quiesced final snapshot.</summary>
+    private delegate Task<RunSnapshot> SubjectRunner(
+        ChannelWriter<TelemetrySample> telemetry, CancellationToken ct);
+
     /// <summary>
     /// A class rather than a record: the run task and the status change after the object
     /// exists, and a record copy would leave the coordinator holding a snapshot of a run
@@ -40,14 +68,14 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
     /// </summary>
     private sealed class ActiveRun(
         string runId,
-        SimulationConfig config,
-        RtpBreakdown analytic,
+        RunFacts facts,
+        AnalyticView analytic,
         ConvergenceRecorder recorder,
         CancellationTokenSource cancellation)
     {
         public string RunId { get; } = runId;
-        public SimulationConfig Config { get; } = config;
-        public RtpBreakdown Analytic { get; } = analytic;
+        public RunFacts Facts { get; } = facts;
+        public AnalyticView Analytic { get; } = analytic;
         public ConvergenceRecorder Recorder { get; } = recorder;
         public CancellationTokenSource Cancellation { get; } = cancellation;
         public Task Completion { get; set; } = Task.CompletedTask;
@@ -60,10 +88,63 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
     }
 
     /// <summary>
-    /// Validate, solve, check the realized game against the cap, then start. Returns the
-    /// HTTP status and the body the endpoint should send back.
+    /// Validate the subject, derive its analytic reference, then start. Returns the HTTP
+    /// status and the body the endpoint should send back.
     /// </summary>
     public (int Status, object Body) Start(RunRequest request)
+    {
+        RunFacts facts;
+        AnalyticView analytic;
+        SubjectRunner runner;
+        string runId;
+
+        if (!string.IsNullOrWhiteSpace(request.GameFile))
+        {
+            var loaded = PrepareGame(request);
+            if (loaded.Error is not null) return loaded.Error.Value;
+            (facts, analytic, runner, runId) = loaded.Prepared!.Value;
+        }
+        else
+        {
+            var built = PreparePreset(request);
+            if (built.Error is not null) return built.Error.Value;
+            (facts, analytic, runner, runId) = built.Prepared!.Value;
+        }
+
+        lock (_gate)
+        {
+            if (_current is { Completion.IsCompleted: false })
+                return (409, new { title = "A run is already active", status = 409 });
+
+            var recorder = new ConvergenceRecorder(
+                analytic.TotalRtp,
+                analytic.Sigma,
+                request.Stride > 0 ? request.Stride : ConvergenceRecorder.DefaultStride);
+
+            var cancellation = new CancellationTokenSource();
+            var active = new ActiveRun(runId, facts, analytic, recorder, cancellation);
+            _current = active;
+            // Assigned inside the lock so IsRunning never observes a run without its task.
+            active.Completion = ExecuteAsync(runner, active, cancellation.Token);
+        }
+
+        log.Information(Category,
+            "Run {RunId} started: subject {Subject}, analytic {AnalyticRtp}, sigma {Sigma}, {Spins} spins across {Workers} workers, seed {Seed}",
+            new LogProperty("RunId", runId),
+            new LogProperty("Subject", facts.Subject),
+            new LogProperty("AnalyticRtp", analytic.TotalRtp),
+            new LogProperty("Sigma", analytic.Sigma),
+            new LogProperty("Spins", facts.TargetSpins),
+            new LogProperty("Workers", facts.Workers),
+            new LogProperty("Seed", facts.Seed));
+
+        var described = Describe()!;   // non-null: the run was just installed
+        Publish("started", described);
+        return (201, described);
+    }
+
+    private ((RunFacts, AnalyticView, SubjectRunner, string)? Prepared, (int, object)? Error)
+        PreparePreset(RunRequest request)
     {
         var draft = new ConfigDraft(
             request.PresetName,
@@ -78,50 +159,79 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         {
             log.Warning(Category, "Run rejected: {Errors}",
                 new LogProperty("Errors", string.Join(" | ", errors)));
-            return (400, new { title = "Invalid configuration", status = 400, errors });
+            return (null, (400, new { title = "Invalid configuration", status = 400, errors }));
         }
 
         var valid = config!;
         var game = PresetGame.Build(valid);
-        var analytic = game.Analysis;
+        var breakdown = game.Analysis;
 
         // The requested split passed the cap as integers. The REALIZED game is what the
         // solver actually produced after rounding, so it gets checked too — a paytable
         // that rounds its way over 99% is a bug the page must never render as success.
-        if (analytic.TotalRtp > SimulationConfig.MaxAggregateBasisPoints / 10_000.0)
-            return (500, new { title = "Solver produced a realized RTP above the cap", status = 500, analytic.TotalRtp });
+        if (breakdown.TotalRtp > SimulationConfig.MaxAggregateBasisPoints / 10_000.0)
+            return (null, (500, new { title = "Solver produced a realized RTP above the cap", status = 500, breakdown.TotalRtp }));
 
-        lock (_gate)
+        var facts = new RunFacts(
+            valid.Preset.Name, IsGame: false,
+            valid.Preset.ReelCount, MMP.SlotGame.Core.Reels.StripReelSet.DefaultRows,
+            valid.Preset.StopsPerReel.ToString(), valid.Preset.Paylines.Count,
+            valid.TargetTotalRtp, valid.WorkerCount, valid.TargetSpins, valid.MasterSeed);
+
+        var analytic = new AnalyticView(
+            breakdown.BaseRtp, breakdown.Features, breakdown.TotalRtp, breakdown.SigmaPerUnitWagered);
+
+        return ((facts, analytic,
+            (telemetry, ct) => game.Engine().RunAsync(telemetry, observer: null, ct),
+            valid.RunId), null);
+    }
+
+    private ((RunFacts, AnalyticView, SubjectRunner, string)? Prepared, (int, object)? Error)
+        PrepareGame(RunRequest request)
+    {
+        if (request.WorkerCount is < 1 or > 64)
+            return (null, (400, new { title = "WorkerCount must be 1..64", status = 400 }));
+        if (request.TargetSpins < 1)
+            return (null, (400, new { title = "TargetSpins must be at least 1", status = 400 }));
+
+        var path = Path.Combine(AppContext.BaseDirectory, "games", Path.GetFileName(request.GameFile));
+        if (!File.Exists(path))
+            return (null, (400, new { title = $"No shipped game named '{request.GameFile}'", status = 400 }));
+        if (!GameDefinitionLoader.TryLoad(File.ReadAllText(path), out var definition, out var errors))
+            return (null, (400, new { title = "Game definition failed to load", status = 400, errors }));
+
+        var game = definition!;
+        GameAnalysis analysis;
+        try
         {
-            if (_current is { Completion.IsCompleted: false })
-                return (409, new { title = "A run is already active", status = 409 });
-
-            var recorder = new ConvergenceRecorder(
-                analytic.TotalRtp,
-                analytic.SigmaPerUnitWagered,
-                request.Stride > 0 ? request.Stride : ConvergenceRecorder.DefaultStride);
-
-            var cancellation = new CancellationTokenSource();
-            var active = new ActiveRun(valid.RunId, valid, analytic, recorder, cancellation);
-            _current = active;
-            // Assigned inside the lock so IsRunning never observes a run without its task.
-            active.Completion = ExecuteAsync(game, active, cancellation.Token);
+            // Enumeration is the analytic twin for a published game: exact RTP and sigma
+            // from the document alone, before a single spin.
+            analysis = GameAnalyzer.Analyse(game);
+        }
+        catch (NotSupportedException ex)
+        {
+            return (null, (400, new { title = ex.Message, status = 400 }));
         }
 
-        log.Information(Category,
-            "Run {RunId} started: preset {Preset}, target {TargetRtp}, realized {RealizedRtp}, sigma {Sigma}, {Spins} spins across {Workers} workers, seed {Seed}",
-            new LogProperty("RunId", valid.RunId),
-            new LogProperty("Preset", valid.Preset.Name),
-            new LogProperty("TargetRtp", valid.TargetTotalRtp),
-            new LogProperty("RealizedRtp", analytic.TotalRtp),
-            new LogProperty("Sigma", analytic.SigmaPerUnitWagered),
-            new LogProperty("Spins", valid.TargetSpins),
-            new LogProperty("Workers", valid.WorkerCount),
-            new LogProperty("Seed", valid.MasterSeed));
+        var runId = Guid.CreateVersion7().ToString("n");
+        var plan = new RunPlan(runId, request.Seed, request.WorkerCount, request.TargetSpins);
+        var runner = new GameRunner(game, plan);
 
-        var described = Describe()!;   // non-null: the run was just installed
-        Publish("started", described);
-        return (201, described);
+        var facts = new RunFacts(
+            game.Name, IsGame: true,
+            game.ReelCount, game.Reels.Rows,
+            string.Join("/", Enumerable.Range(0, game.ReelCount).Select(game.Reels.StopCount)),
+            game.Paylines.Count,
+            analysis.TotalRtp, request.WorkerCount, request.TargetSpins, request.Seed);
+
+        var features = game.Bonus is null
+            ? (IReadOnlyList<(string, double)>)[]
+            : [(game.Bonus.Name, analysis.BonusRtp)];
+        var analytic = new AnalyticView(analysis.LineRtp, features, analysis.TotalRtp, analysis.SigmaPerUnitWagered);
+
+        return ((facts, analytic,
+            async (telemetry, ct) => (await runner.RunAsync(telemetry, ct).ConfigureAwait(false)).Totals,
+            runId), null);
     }
 
     public bool Cancel()
@@ -135,7 +245,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
     }
 
     /// <summary>
-    /// The whole run as one object: config echo, analytic prediction, newest totals, and
+    /// The whole run as one object: subject echo, analytic prediction, newest totals, and
     /// the consolidated curve. A page that connects mid-run reads this once and then
     /// follows the event stream, so a late arrival sees the same chart as an early one.
     /// </summary>
@@ -153,22 +263,23 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
             stride = run.Recorder.Stride,
             config = new
             {
-                preset = run.Config.Preset.Name,
-                reels = run.Config.Preset.ReelCount,
-                rows = MMP.SlotGame.Core.Reels.StripReelSet.DefaultRows,
-                stopsPerReel = run.Config.Preset.StopsPerReel,
-                paylines = run.Config.Preset.Paylines.Count,
-                targetRtp = run.Config.TargetTotalRtp,
-                workers = run.Config.WorkerCount,
-                targetSpins = run.Config.TargetSpins,
-                seed = run.Config.MasterSeed,
+                preset = run.Facts.Subject,
+                isGame = run.Facts.IsGame,
+                reels = run.Facts.Reels,
+                rows = run.Facts.Rows,
+                stopsPerReel = run.Facts.StopsPerReel,
+                paylines = run.Facts.Paylines,
+                targetRtp = run.Facts.TargetRtp,
+                workers = run.Facts.Workers,
+                targetSpins = run.Facts.TargetSpins,
+                seed = run.Facts.Seed,
             },
             analytic = new
             {
                 baseRtp = run.Analytic.BaseRtp,
                 features = run.Analytic.Features.Select(f => new { name = f.Name, rtp = f.Rtp }),
                 totalRtp = run.Analytic.TotalRtp,
-                sigma = run.Analytic.SigmaPerUnitWagered,
+                sigma = run.Analytic.Sigma,
             },
             latest = new
             {
@@ -182,7 +293,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         };
     }
 
-    private async Task ExecuteAsync(PresetGame game, ActiveRun run, CancellationToken ct)
+    private async Task ExecuteAsync(SubjectRunner runner, ActiveRun run, CancellationToken ct)
     {
         // Bounded and drop-oldest: the workers publish into this and never look back.
         var channel = Channel.CreateBounded<TelemetrySample>(new BoundedChannelOptions(1024)
@@ -191,22 +302,23 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
             SingleReader = true,
         });
 
-        var engine = game.Engine();
         var pump = PumpAsync(run, channel.Reader);
 
         RunSnapshot final;
         string terminal;
         try
         {
-            final = await engine.RunAsync(channel.Writer, observer: null, ct).ConfigureAwait(false);
+            final = await runner(channel.Writer, ct).ConfigureAwait(false);
             // Workers notice cancellation at a batch boundary and return normally, so a
-            // cancelled run usually completes RunAsync without throwing. The token, not
-            // the exception, is the truth about why the run stopped.
+            // cancelled run usually completes without throwing. The token, not the
+            // exception, is the truth about why the run stopped.
             terminal = ct.IsCancellationRequested ? "cancelled" : "completed";
         }
         catch (OperationCanceledException)
         {
-            final = engine.Totals.Snapshot();
+            // Cancelled before the workers drew a spin; the recorder's latest reading is
+            // whatever the run managed, which may be nothing.
+            final = run.Recorder.Latest;
             terminal = "cancelled";
             channel.Writer.TryComplete();
             log.Warning(Category, "Run {RunId} cancelled at {Spins} spins",
@@ -220,6 +332,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         // Terminal status lands only after the final snapshot is in the recorder, so a
         // poller that sees "completed" always sees the finished totals with it.
         run.Status = terminal;
+
         log.Information(Category,
             "Run {RunId} {Status}: {Spins} spins, measured {Measured}, analytic {Analytic}, band {Band}, verdict {Verdict}",
             new LogProperty("RunId", run.RunId),
@@ -234,19 +347,15 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
     }
 
     /// <summary>
-    /// Drains everything waiting, keeps only the newest snapshot, and hands it to the
-    /// recorder. Two rates meet here: workers produce snapshots per 4,096-spin batch,
-    /// and the browser gets a point only when the run crosses a stride boundary. Between
-    /// those, a 100 ms pace keeps the live counters moving without flooding the socket.
+    /// Drains everything waiting and hands every sample to the recorder — a fast run
+    /// crosses several stride boundaries inside one 100 ms drain, and skipping to the
+    /// newest sample would skip those curve points. Publishing stays consolidated.
     /// </summary>
     private async Task PumpAsync(ActiveRun run, ChannelReader<TelemetrySample> reader)
     {
         var ticks = 0;
         while (await reader.WaitToReadAsync(CancellationToken.None).ConfigureAwait(false))
         {
-            // Every drained sample reaches the recorder — a fast run crosses several
-            // stride boundaries inside one 100 ms drain, and feeding only the newest
-            // sample would skip those curve points. Publishing stays consolidated.
             var got = false;
             while (reader.TryRead(out var sample))
             {
@@ -256,22 +365,18 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
                     Publish("point", new { runId = run.RunId, point });
             }
 
-            if (got)
+            if (got && ++ticks % 2 == 0)
             {
-
-                // A live readout that updates faster than the curve, at a rate a person can
-                // actually watch.
-                if (++ticks % 2 == 0)
+                // A live readout that updates faster than the curve, at a rate a person
+                // can actually watch.
+                var latest = run.Recorder.Latest;
+                Publish("progress", new
                 {
-                    var latest = run.Recorder.Latest;
-                    Publish("progress", new
-                    {
-                        runId = run.RunId,
-                        spins = latest.Spins,
-                        measuredRtp = latest.MeasuredRtp,
-                        hitFrequency = latest.HitFrequency,
-                    });
-                }
+                    runId = run.RunId,
+                    spins = latest.Spins,
+                    measuredRtp = latest.MeasuredRtp,
+                    hitFrequency = latest.HitFrequency,
+                });
             }
 
             await Task.Delay(100, CancellationToken.None).ConfigureAwait(false);
@@ -282,7 +387,12 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         stream.Publish(JsonSerializer.Serialize(new { type, data = payload }, Json));
 }
 
-/// <summary>What the SPA sends to start a run. Untrusted; every field is validated downstream.</summary>
+/// <summary>
+/// What the SPA sends to start a run. Untrusted; every field is validated downstream.
+/// A non-empty <see cref="GameFile"/> runs a shipped game document (Orca Dive) through
+/// GameRunner instead of a solved preset; the RTP fields are ignored then, because a
+/// published paytable already decided them.
+/// </summary>
 public sealed record RunRequest(
     string PresetName,
     int BaseRtpBasisPoints,
@@ -291,4 +401,5 @@ public sealed record RunRequest(
     ulong Seed,
     int WorkerCount,
     long TargetSpins,
-    long Stride);
+    long Stride,
+    string GameFile = "");

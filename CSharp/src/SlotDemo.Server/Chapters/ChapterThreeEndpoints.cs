@@ -8,8 +8,9 @@ namespace SlotDemo.Server.Chapters;
 
 /// <summary>
 /// Episode 3's lab — reels and paylines. A strip is an ordered cycle, a window is a
-/// contiguous slice of it, and a payline is a row path across the window. Everything
-/// here runs the engine's own StripReelSet and Payline.
+/// contiguous slice of it, and a payline is a row path across the window. Sources are
+/// the stock presets plus the shipped games; Orca Dive is the one viewers relate to,
+/// and its ragged strips (26/29/26/29/26) show a shape the presets cannot.
 /// </summary>
 public static class ChapterThreeEndpoints
 {
@@ -17,64 +18,76 @@ public static class ChapterThreeEndpoints
 
     public static void MapChapterThree(this WebApplication app, StructuredLogger log)
     {
-        app.MapGet("/api/ch3/presets", Presets);
+        app.MapGet("/api/ch3/sources", Sources);
         app.MapPost("/api/ch3/spin", (SpinRequest request) => Spin(request, log));
         app.MapPost("/api/ch3/census", (CensusRequest request) => Census(request, log));
     }
 
-    /// <summary>Strip geometry for every preset, so the page can draw the actual cycles.</summary>
-    private static IResult Presets()
+    /// <summary>Strip geometry for every source, so the page can draw the actual cycles.</summary>
+    private static IResult Sources()
     {
-        var presets = ReelPreset.All.Values.Select(preset =>
+        var ids = ReelPreset.All.Keys
+            .Concat(ReelSources.GameFiles().Select(f => $"{ReelSources.GamePrefix}{f}"));
+
+        var described = new List<object>();
+        foreach (var id in ids)
         {
-            var reels = preset.BuildReels();
-            return new
+            if (!ReelSources.TryResolve(id, out var resolved, out _)) continue;
+            var source = resolved!;
+            var reels = source.Reels;
+            described.Add(new
             {
-                name = preset.Name,
-                reelCount = preset.ReelCount,
+                id = source.Id,
+                name = source.DisplayName,
+                isGame = source.IsGame,
+                reelCount = reels.ReelCount,
                 rows = reels.Rows,
-                stopsPerReel = preset.StopsPerReel,
-                symbols = preset.SymbolWeights.Select(sw => new
+                stopsPerReel = Enumerable.Range(0, reels.ReelCount).Select(reels.StopCount),
+                symbols = source.Symbols.Select(s => new
                 {
-                    id = sw.Symbol.Id,
-                    name = sw.Symbol.Name,
-                    weight = sw.Weight,
-                    probability = (double)sw.Weight / preset.StopsPerReel,
+                    s.Id,
+                    s.Name,
+                    s.IsWild,
+                    s.IsScatter,
+                    // Per-reel occurrence counts: on Orca, Penguin's 2/0/2/0/2 row IS the
+                    // scatter rule made visible.
+                    perReel = Enumerable.Range(0, reels.ReelCount)
+                        .Select(reel => reels.Strip(reel).ToArray().Count(sym => sym.Id == s.Id)),
                 }),
-                // The strip itself: the ordered cycle the window slides over. Reel 0 is
-                // representative — stock presets build identical strips per reel.
-                strip = reels.Strip(0).ToArray().Select(s => s.Id),
-                paylines = preset.Paylines.Select(line => new { name = line.Name, rows = line.Rows }),
-            };
-        });
-        return Results.Ok(presets);
+                strips = Enumerable.Range(0, reels.ReelCount)
+                    .Select(reel => reels.Strip(reel).ToArray().Select(s => (int)s.Id)),
+                paylines = source.Paylines.Select(line => new { name = line.Name, rows = line.Rows }),
+            });
+        }
+        return Results.Ok(described);
     }
 
-    public sealed record SpinRequest(string PresetName, ulong Seed, int SpinIndex);
+    public sealed record SpinRequest(string SourceId, ulong Seed, int SpinIndex);
 
     /// <summary>
-    /// One spin, fully exploded: the stop each reel landed on, the window cells, and
-    /// every payline's read of that window. The page can replay indexes forward and
-    /// backward because the stream is deterministic - same seed, same spin, same window.
+    /// One spin, fully exploded: the window cells and every payline's read of them. The
+    /// page can replay indexes forward and backward because the stream is deterministic -
+    /// same seed, same spin, same window.
     /// </summary>
     private static IResult Spin(SpinRequest request, StructuredLogger log)
     {
-        if (!ReelPreset.All.TryGetValue(request.PresetName ?? "", out var preset))
-            return Results.BadRequest(new { error = $"Unknown preset '{request.PresetName}'." });
+        if (!ReelSources.TryResolve(request.SourceId, out var resolved, out var error))
+            return Results.BadRequest(new { error });
         if (request.SpinIndex is < 0 or > 10_000)
             return Results.BadRequest(new { error = "SpinIndex 0-10000." });
 
-        var reels = preset.BuildReels();
+        var source = resolved!;
+        var reels = source.Reels;
         var rng = SpinRng.ForWorker(request.Seed, 0);
 
         // Deterministic replay: advance the stream past the earlier spins. Each spin
-        // consumes exactly ReelCount draws, so the offset is a multiplication, not a log.
+        // consumes exactly ReelCount draws, so the offset is a walk, not a log.
         var window = new Symbol[reels.WindowSize];
         for (var skip = 0; skip < request.SpinIndex; skip++)
             reels.DrawWindow(ref rng, window);
         reels.DrawWindow(ref rng, window);
 
-        var lines = preset.Paylines.Select(line =>
+        var lines = source.Paylines.Select(line =>
         {
             var cells = new List<object>(reels.ReelCount);
             for (var reel = 0; reel < reels.ReelCount; reel++)
@@ -86,15 +99,15 @@ public static class ChapterThreeEndpoints
         });
 
         log.Information(Category,
-            "Spin {Index} on {Preset}: seed {Seed}, window drawn, {Lines} lines read",
+            "Spin {Index} on {Source}: seed {Seed}, window drawn, {Lines} lines read",
             new LogProperty("Index", request.SpinIndex),
-            new LogProperty("Preset", preset.Name),
+            new LogProperty("Source", source.DisplayName),
             new LogProperty("Seed", request.Seed),
-            new LogProperty("Lines", preset.Paylines.Count));
+            new LogProperty("Lines", source.Paylines.Count));
 
         return Results.Ok(new
         {
-            preset = preset.Name,
+            source = source.DisplayName,
             spinIndex = request.SpinIndex,
             window = window.Select((s, i) => new
             {
@@ -102,29 +115,32 @@ public static class ChapterThreeEndpoints
                 row = i % reels.Rows,
                 symbolId = s.Id,
                 symbol = s.Name,
+                isWild = s.IsWild,
+                isScatter = s.IsScatter,
             }),
             lines,
         });
     }
 
-    public sealed record CensusRequest(string PresetName, ulong Seed, int Spins, byte SymbolId);
+    public sealed record CensusRequest(string SourceId, ulong Seed, int Spins, byte SymbolId);
 
     /// <summary>
     /// The strip-versus-weighted-die argument, measured: draw N windows and count how
-    /// often the chosen symbol lands in the centre row per reel, next to the exact
-    /// strip probability. The counts converge on the strip's ratio because the strip IS
-    /// the distribution.
+    /// often the chosen symbol lands in the centre row per reel, next to the exact strip
+    /// probability. On Orca the per-reel expectations DIFFER - Wild Orca sits at 2/26 on
+    /// reel 0 and 1/29 on reel 1 - because each reel is its own strip.
     /// </summary>
     private static IResult Census(CensusRequest request, StructuredLogger log)
     {
-        if (!ReelPreset.All.TryGetValue(request.PresetName ?? "", out var preset))
-            return Results.BadRequest(new { error = $"Unknown preset '{request.PresetName}'." });
+        if (!ReelSources.TryResolve(request.SourceId, out var resolved, out var error))
+            return Results.BadRequest(new { error });
         if (request.Spins is < 100 or > 1_000_000)
             return Results.BadRequest(new { error = "Spins 100-1,000,000." });
 
-        var reels = preset.BuildReels();
-        if (!preset.SymbolWeights.Any(sw => sw.Symbol.Id == request.SymbolId))
-            return Results.BadRequest(new { error = $"Preset has no symbol id {request.SymbolId}." });
+        var source = resolved!;
+        var reels = source.Reels;
+        if (source.Symbols.All(s => s.Id != request.SymbolId))
+            return Results.BadRequest(new { error = $"Source has no symbol id {request.SymbolId}." });
 
         var rng = SpinRng.ForWorker(request.Seed, 0);
         var window = new Symbol[reels.WindowSize];
@@ -148,12 +164,12 @@ public static class ChapterThreeEndpoints
         }).ToArray();
 
         log.Information(Category,
-            "Census on {Preset}: symbol {Symbol} over {Spins} spins, worst gap {Gap}",
-            new LogProperty("Preset", preset.Name),
+            "Census on {Source}: symbol {Symbol} over {Spins} spins, worst gap {Gap}",
+            new LogProperty("Source", source.DisplayName),
             new LogProperty("Symbol", request.SymbolId),
             new LogProperty("Spins", request.Spins),
             new LogProperty("Gap", perReel.Max(r => Math.Abs(r.observed - r.expected))));
 
-        return Results.Ok(new { preset = preset.Name, spins = request.Spins, symbolId = request.SymbolId, perReel });
+        return Results.Ok(new { source = source.DisplayName, spins = request.Spins, symbolId = request.SymbolId, perReel });
     }
 }

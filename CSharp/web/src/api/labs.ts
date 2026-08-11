@@ -29,20 +29,37 @@ export function postJson<T>(url: string, body: unknown): Promise<T> {
 
 // ---- chapter 3 ----
 
-export interface PresetView {
+export interface SourceSymbol {
+  id: number
   name: string
+  isWild: boolean
+  isScatter: boolean
+  perReel: number[]
+}
+
+export interface SourceView {
+  id: string
+  name: string
+  isGame: boolean
   reelCount: number
   rows: number
-  stopsPerReel: number
-  symbols: { id: number; name: string; weight: number; probability: number }[]
-  strip: number[]
+  stopsPerReel: number[]
+  symbols: SourceSymbol[]
+  strips: number[][]
   paylines: { name: string; rows: number[] }[]
 }
 
 export interface SpinView {
-  preset: string
+  source: string
   spinIndex: number
-  window: { reel: number; row: number; symbolId: number; symbol: string }[]
+  window: {
+    reel: number
+    row: number
+    symbolId: number
+    symbol: string
+    isWild: boolean
+    isScatter: boolean
+  }[]
   lines: {
     name: string
     rows: number[]
@@ -51,7 +68,7 @@ export interface SpinView {
 }
 
 export interface CensusView {
-  preset: string
+  source: string
   spins: number
   symbolId: number
   perReel: { reel: number; observed: number; expected: number; count: number }[]
@@ -75,6 +92,27 @@ export interface SolveView {
     scaledMillicents: number
     scaledCredits: number
   }[]
+}
+
+export interface PublishedRow {
+  category: string
+  count: number
+  payMultiplier: number
+  combinations: number
+  probability: number
+  rtpContribution: number
+}
+
+export interface PublishedView {
+  supported: boolean
+  reason?: string
+  game?: string
+  stopCombinations?: number
+  lineRtp?: number
+  bonusRtp?: number
+  totalRtp?: number
+  sigma?: number
+  rows?: PublishedRow[]
 }
 
 export interface BandView {
@@ -201,6 +239,7 @@ export interface RefereeView {
 
 export interface RunLimits {
   maxAggregateBasisPoints: number
+  games: string[]
   defaults: {
     presetName: string
     baseRtpBasisPoints: number
@@ -226,9 +265,10 @@ export interface RunDescription {
   stride: number
   config: {
     preset: string
+    isGame: boolean
     reels: number
     rows: number
-    stopsPerReel: number
+    stopsPerReel: string
     paylines: number
     targetRtp: number
     workers: number

@@ -10,6 +10,7 @@ const seed = ref(42)
 const workerCount = ref(8)
 const spins = ref(1_000_000)
 const varySeed = ref(false)
+const useOrca = ref(true)
 const determinism = ref<DeterminismView | null>(null)
 
 const telemetrySpins = ref(2_000_000)
@@ -31,6 +32,7 @@ async function runDeterminism(vary: boolean): Promise<void> {
       spins: spins.value,
       repeats: 3,
       varySeed: vary,
+      gameFile: useOrca.value ? 'orca-dive.json' : '',
     })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Determinism run failed.'
@@ -81,13 +83,21 @@ async function runTelemetry(): Promise<void> {
     <section class="lab">
       <h3>Lab 1 — Same seed, same answer, any day</h3>
       <p class="lab__lede">
-        Three runs of the same configuration. Wall time varies with whatever else the
-        machine is doing; the totals come back identical to the last millicent. Vary the
-        seed instead to see what a real difference looks like.
+        Three runs of the same configuration — on Orca Dive by default, wilds, scatter
+        bonus and all. Wall time varies with whatever else the machine is doing; the
+        totals come back identical to the last millicent, because the bonus draws from the
+        same per-worker stream as the reels. Vary the seed to see a real difference.
       </p>
 
       <div class="controls">
         <label>
+          Subject
+          <select v-model="useOrca">
+            <option :value="true">Orca Dive (real game)</option>
+            <option :value="false">Preset below</option>
+          </select>
+        </label>
+        <label v-if="!useOrca">
           Preset
           <select v-model="presetName">
             <option>Classic3</option><option>Video3</option><option>Line4</option>

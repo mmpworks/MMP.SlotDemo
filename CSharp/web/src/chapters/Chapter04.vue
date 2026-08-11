@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { postJson } from '../api/labs'
-import type { BandView, SolveView } from '../api/labs'
+import type { BandView, PublishedView, SolveView } from '../api/labs'
 
 defineProps<{ title: string; blurb: string }>()
 
@@ -13,8 +13,24 @@ const freeSpinsBp = ref(1300)
 const pickBonusBp = ref(1000)
 const band = ref<BandView | null>(null)
 
+const published = ref<PublishedView | null>(null)
+
 const error = ref('')
 const busy = ref(false)
+
+async function runPublished(): Promise<void> {
+  busy.value = true
+  error.value = ''
+  try {
+    published.value = await postJson<PublishedView>('/api/ch4/published', {
+      gameFile: 'orca-dive.json',
+    })
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Pricing failed.'
+  } finally {
+    busy.value = false
+  }
+}
 
 async function runSolve(): Promise<void> {
   busy.value = true
@@ -192,6 +208,63 @@ async function runBand(): Promise<void> {
           Each factor of 100 in spins buys one decimal place of certainty — the square
           root in the denominator is why proving an RTP takes millions of spins, and why
           the simulation exists.
+        </p>
+      </div>
+    </section>
+
+    <section class="lab">
+      <h3>Lab 3 — Orca Dive: the paytable that arrived fixed</h3>
+      <p class="lab__lede">
+        Orca Dive ships its paytable published; no solver runs. The same arithmetic still
+        decides everything — each row's pay times its probability is that row's slice of
+        the RTP, and the exhaustive enumerator supplies the probabilities exactly. Rows
+        sort by contribution: the 2× Wild Orca single carries more of the game than the
+        5000× Red 7 jackpot.
+      </p>
+
+      <div class="controls">
+        <button type="button" :disabled="busy" @click="runPublished">Price Orca Dive</button>
+      </div>
+
+      <div v-if="published?.supported" class="results">
+        <div class="verdict verdict--info">
+          <div>
+            <span class="verdict__label">Line RTP</span>
+            <span class="mono">{{ ((published.lineRtp ?? 0) * 100).toFixed(4) }}%</span>
+          </div>
+          <div>
+            <span class="verdict__label">Bonus RTP</span>
+            <span class="mono">{{ ((published.bonusRtp ?? 0) * 100).toFixed(4) }}%</span>
+          </div>
+          <div>
+            <span class="verdict__label">Total RTP — exact</span>
+            <span class="mono">{{ ((published.totalRtp ?? 0) * 100).toFixed(4) }}%</span>
+          </div>
+          <div>
+            <span class="verdict__label">Outcome space</span>
+            <span class="mono">{{ published.stopCombinations?.toLocaleString() }}</span>
+          </div>
+        </div>
+
+        <table class="lab-table">
+          <thead>
+            <tr><th>Category</th><th>Count</th><th>Pays</th><th>Probability</th><th>RTP slice</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in published.rows" :key="`${row.category}-${row.count}`">
+              <td>{{ row.category }}</td>
+              <td>{{ row.count }}</td>
+              <td>{{ row.payMultiplier }}×</td>
+              <td>{{ row.probability.toExponential(3) }}</td>
+              <td>{{ (row.rtpContribution * 100).toFixed(3) }}%</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="lab-note">
+          Read this table against Lab 1: the solver walks from a target RTP to the pays;
+          a published game walks from the pays to the RTP. Same equation, opposite
+          direction — and the enumeration behind these probabilities is episode 7's
+          referee.
         </p>
       </div>
     </section>

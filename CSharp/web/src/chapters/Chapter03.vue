@@ -1,41 +1,48 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { getJson, postJson } from '../api/labs'
-import type { CensusView, PresetView, SpinView } from '../api/labs'
+import type { CensusView, SourceView, SpinView } from '../api/labs'
 
 defineProps<{ title: string; blurb: string }>()
 
-const presets = ref<PresetView[]>([])
-const presetName = ref('Classic3')
+const sources = ref<SourceView[]>([])
+const sourceId = ref('game:orca-dive.json')
 const seed = ref(20260811)
 const spinIndex = ref(0)
 const spin = ref<SpinView | null>(null)
 const activeLine = ref(0)
 
 const censusSpins = ref(200_000)
-const censusSymbolId = ref(0)
+const censusSymbolId = ref(4) // Wild Orca
 const census = ref<CensusView | null>(null)
 
 const error = ref('')
 const busy = ref(false)
 
-const preset = computed(() => presets.value.find((p) => p.name === presetName.value))
+const source = computed(() => sources.value.find((s) => s.id === sourceId.value))
 
 onMounted(async () => {
   try {
-    presets.value = await getJson<PresetView[]>('/api/ch3/presets')
+    sources.value = await getJson<SourceView[]>('/api/ch3/sources')
+    if (!source.value) sourceId.value = sources.value[0]?.id ?? ''
     await draw()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load presets.'
+    error.value = err instanceof Error ? err.message : 'Failed to load sources.'
   }
 })
+
+async function onSourceChange(): Promise<void> {
+  censusSymbolId.value = source.value?.symbols[0]?.id ?? 0
+  census.value = null
+  await draw()
+}
 
 async function draw(): Promise<void> {
   busy.value = true
   error.value = ''
   try {
     spin.value = await postJson<SpinView>('/api/ch3/spin', {
-      presetName: presetName.value,
+      sourceId: sourceId.value,
       seed: seed.value,
       spinIndex: spinIndex.value,
     })
@@ -57,7 +64,7 @@ async function runCensus(): Promise<void> {
   error.value = ''
   try {
     census.value = await postJson<CensusView>('/api/ch3/census', {
-      presetName: presetName.value,
+      sourceId: sourceId.value,
       seed: seed.value,
       spins: censusSpins.value,
       symbolId: censusSymbolId.value,
@@ -74,10 +81,15 @@ function onLineCell(reel: number, row: number): boolean {
   return line !== undefined && line.rows[reel] === row
 }
 
-const symbolName = computed(() => {
-  const p = preset.value
-  return (id: number) => p?.symbols.find((s) => s.id === id)?.name ?? String(id)
-})
+function symbolName(id: number): string {
+  return source.value?.symbols.find((s) => s.id === id)?.name ?? String(id)
+}
+
+function mark(cell: { isWild: boolean; isScatter: boolean }): string {
+  if (cell.isWild) return ' ★'
+  if (cell.isScatter) return ' ◆'
+  return ''
+}
 </script>
 
 <template>
@@ -92,31 +104,40 @@ const symbolName = computed(() => {
       <p>
         A reel is a strip: an ordered cycle of symbols the window slides over. That is a
         different object from a weighted die — adjacent stops travel together into the
-        window, so the strip's layout shapes what multi-row windows can show. A payline is
-        a row path across that window; the evaluator walks it left to right.
+        window, so the strip's layout shapes what multi-row windows can show. Orca Dive
+        makes the point concretely: its reels are 26/29/26/29/26 stops, every reel its own
+        strip, and the Penguin scatter exists only on reels 1, 3, and 5. A payline is a
+        row path across the window; the evaluator walks it left to right.
       </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Reels/StripReelSet.cs</code>,
-        <code>Reels/Payline.cs</code>, <code>Reels/ReelPreset.cs</code>. Both labs run those
-        types on the server.
+        <code>Reels/Payline.cs</code>, <code>Reels/ReelPreset.cs</code>, and the shipped
+        <code>games/orca-dive.json</code>. Both labs run those types on the server.
       </p>
     </section>
 
     <section class="lab">
       <h3>Lab 1 — The window over the strip</h3>
       <p class="lab__lede">
-        Pick a preset, draw a window, and step through the deterministic spin stream. The
-        same seed and index always produce the same window — that is invariant R3 doing
-        its job. Click a payline to see which cells it reads.
+        Pick a source, draw a window, and step through the deterministic spin stream. The
+        same seed and index always produce the same window — invariant R3 doing its job.
+        On Orca Dive, ★ marks the Wild Orca and ◆ the Penguin scatter.
       </p>
 
       <div class="controls">
         <label>
-          Preset
-          <select v-model="presetName" @change="draw">
-            <option v-for="p in presets" :key="p.name" :value="p.name">
-              {{ p.name }} ({{ p.reelCount }}×{{ p.rows }})
-            </option>
+          Source
+          <select v-model="sourceId" @change="onSourceChange">
+            <optgroup label="Games">
+              <option v-for="s in sources.filter((x) => x.isGame)" :key="s.id" :value="s.id">
+                {{ s.name }} ({{ s.stopsPerReel.join('/') }})
+              </option>
+            </optgroup>
+            <optgroup label="Presets">
+              <option v-for="s in sources.filter((x) => !x.isGame)" :key="s.id" :value="s.id">
+                {{ s.name }} ({{ s.reelCount }}×{{ s.rows }})
+              </option>
+            </optgroup>
           </select>
         </label>
         <label>
@@ -133,16 +154,18 @@ const symbolName = computed(() => {
 
       <p v-if="error" class="lab__error">{{ error }}</p>
 
-      <div v-if="spin && preset" class="results">
-        <div class="window-grid" :style="{ gridTemplateColumns: `repeat(${preset.reelCount}, 1fr)` }">
-          <template v-for="row in preset.rows" :key="row">
+      <div v-if="spin && source" class="results">
+        <div class="window-grid" :style="{ gridTemplateColumns: `repeat(${source.reelCount}, 1fr)` }">
+          <template v-for="row in source.rows" :key="row">
             <div
-              v-for="reel in preset.reelCount"
+              v-for="reel in source.reelCount"
               :key="`${reel}-${row}`"
               class="cell"
               :class="{ 'cell--line': onLineCell(reel - 1, row - 1) }"
             >
-              {{ spin.window.find((c) => c.reel === reel - 1 && c.row === row - 1)?.symbol }}
+              <template v-for="cell in [spin.window.find((c) => c.reel === reel - 1 && c.row === row - 1)]" :key="0">
+                {{ cell?.symbol }}{{ cell ? mark(cell) : '' }}
+              </template>
             </div>
           </template>
         </div>
@@ -164,7 +187,8 @@ const symbolName = computed(() => {
           {{ spin.lines[activeLine]?.name }} reads
           <span class="mono">{{ spin.lines[activeLine]?.cells.map((c) => c.symbol).join(' · ') }}</span>
           — row path <span class="mono">[{{ spin.lines[activeLine]?.rows.join(', ') }}]</span>.
-          The evaluator scores the leading run from reel 0; three or more of a kind pays.
+          The evaluator scores the leading run from reel 0; on Orca the Wild Orca extends
+          any run it joins.
         </p>
       </div>
     </section>
@@ -174,15 +198,18 @@ const symbolName = computed(() => {
       <p class="lab__lede">
         Count how often a symbol lands in the centre row over many spins and compare with
         the strip's exact ratio. No probability table exists anywhere in the engine — the
-        strip's layout is the only source of odds, and the census converges on it.
+        strip's layout is the only source of odds. On Orca Dive the expectation differs
+        per reel: Wild Orca sits at 2/26 on reel 1 and 1/29 on reel 2, and Penguin's
+        column reads zero on reels 2 and 4 because the symbol is absent from those strips.
       </p>
 
       <div class="controls">
         <label>
           Symbol
           <select v-model.number="censusSymbolId">
-            <option v-for="s in preset?.symbols" :key="s.id" :value="s.id">
-              {{ s.name }} ({{ s.weight }}/{{ preset?.stopsPerReel }})
+            <option v-for="s in source?.symbols" :key="s.id" :value="s.id">
+              {{ s.name }}{{ s.isWild ? ' ★' : s.isScatter ? ' ◆' : '' }}
+              ({{ s.perReel.join('/') }})
             </option>
           </select>
         </label>
@@ -200,7 +227,7 @@ const symbolName = computed(() => {
           </thead>
           <tbody>
             <tr v-for="r in census.perReel" :key="r.reel">
-              <td>{{ r.reel }}</td>
+              <td>{{ r.reel + 1 }}</td>
               <td>{{ (r.observed * 100).toFixed(3) }}%</td>
               <td>{{ (r.expected * 100).toFixed(3) }}%</td>
               <td>{{ ((r.observed - r.expected) * 100).toFixed(3) }}pp</td>
@@ -210,7 +237,7 @@ const symbolName = computed(() => {
         <p class="lab-note">
           {{ symbolName(census.symbolId) }} over {{ census.spins.toLocaleString() }} spins.
           Push the spin count up and the gap column shrinks — the same convergence the
-          finale page shows for the whole game.
+          proving ground shows for the whole game.
         </p>
       </div>
     </section>
@@ -219,9 +246,9 @@ const symbolName = computed(() => {
       <h3>Carried into episode 4</h3>
       <p>
         <code>ProbabilityOf</code> and <code>JointProbabilityOf</code> on the strip are the
-        seam the math chapter stands on: the paytable solver and the sigma calculation read
-        the strips directly, which is how the analytic twin prices the game without playing
-        a single spin.
+        seam the math chapter stands on: the paytable solver, the sigma calculation, and
+        Orca's exhaustive enumeration all read the strips directly, which is how the
+        analytic twin prices a game without playing a single spin.
       </p>
     </section>
   </article>
@@ -231,16 +258,19 @@ const symbolName = computed(() => {
 .window-grid {
   display: grid;
   gap: 4px;
-  max-width: 34rem;
+  max-width: 40rem;
 }
 
 .cell {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   text-align: center;
   padding: 0.7rem 0.3rem;
   background: var(--color-surface);
   border: var(--rule-hairline);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cell--line {
