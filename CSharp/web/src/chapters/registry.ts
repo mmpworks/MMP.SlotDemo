@@ -1,5 +1,6 @@
 import type { Component } from 'vue'
 import HarnessHome from './HarnessHome.vue'
+import Chapter02 from './Chapter02.vue'
 import ChapterPlaceholder from './ChapterPlaceholder.vue'
 
 export interface ChapterEntry {
@@ -38,8 +39,8 @@ export const chapters: ChapterEntry[] = [
     label: '02',
     title: 'Episode 2 — Money You Can Trust',
     blurb: 'Millicents and SpinRng: integer money down to the bit, seeded per-worker streams, and modulo bias you can see.',
-    component: ChapterPlaceholder,
-    ready: false,
+    component: Chapter02,
+    ready: true,
   },
   {
     id: 'ch03',

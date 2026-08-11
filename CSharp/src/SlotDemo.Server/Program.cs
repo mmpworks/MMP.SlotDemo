@@ -3,6 +3,7 @@ using MMP.Herald.Events;
 using MMP.Herald.Quick;
 using MMP.Herald.Templating;
 using SlotDemo.Server;
+using SlotDemo.Server.Chapters;
 
 // ---- Herald.OSS, native mode, with the harness's custom 10-level set. ------------
 // Rendered console sink for the terminal, rolling NDJSON file sink (one JSON object
@@ -76,6 +77,9 @@ app.MapGet("/api/stats", async (CancellationToken ct) =>
         new LogProperty("ProcessCount", snapshot.Systems.Sum(s => s.ProcessCount)));
     return Results.Ok(snapshot);
 });
+
+// ---- Chapter labs: one route group per episode, each running the episode's own code. ----
+app.MapChapterTwo(log);
 
 // ---- Log relay: Herald's HttpJson sink posts batches here; SSE fans them out. ----
 app.MapPost("/api/logs/ingest", async (HttpRequest request, LogStreamService stream) =>
