@@ -8,6 +8,7 @@ import Chapter06 from './Chapter06.vue'
 import Chapter07 from './Chapter07.vue'
 import Finale from './Finale.vue'
 import Library from './Library.vue'
+import ParSheet from './ParSheet.vue'
 import ChapterPlaceholder from './ChapterPlaceholder.vue'
 
 export interface ChapterEntry {
@@ -87,6 +88,14 @@ export const chapters: ChapterEntry[] = [
     title: 'Episode 7 — Proving the Machine',
     blurb: 'Exhaustive enumeration referees the simulation: three implementations sharing only the game data, agreeing.',
     component: Chapter07,
+    ready: true,
+  },
+  {
+    id: 'par',
+    label: 'PAR',
+    title: 'The PAR Sheet — Orca Dive',
+    blurb: 'The complete Probability and Accounting Report for Orca Dive, computed live by walking every stop combination. Click any underlined label for its explanation.',
+    component: ParSheet,
     ready: true,
   },
   {
