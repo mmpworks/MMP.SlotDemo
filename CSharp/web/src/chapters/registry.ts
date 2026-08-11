@@ -7,6 +7,7 @@ import Chapter05 from './Chapter05.vue'
 import Chapter06 from './Chapter06.vue'
 import Chapter07 from './Chapter07.vue'
 import Finale from './Finale.vue'
+import Library from './Library.vue'
 import ChapterPlaceholder from './ChapterPlaceholder.vue'
 
 export interface ChapterEntry {
@@ -86,6 +87,14 @@ export const chapters: ChapterEntry[] = [
     title: 'Episode 7 — Proving the Machine',
     blurb: 'Exhaustive enumeration referees the simulation: three implementations sharing only the game data, agreeing.',
     component: Chapter07,
+    ready: true,
+  },
+  {
+    id: 'library',
+    label: 'Books',
+    title: 'The Library',
+    blurb: 'The books, papers, standards, and articles behind the series — slot math, PAR sheets, PRNGs, regulation, and the human cost. Every claim in these episodes has a shelf it came from.',
+    component: Library,
     ready: true,
   },
   {
