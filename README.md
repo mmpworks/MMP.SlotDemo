@@ -1,28 +1,13 @@
 # MMP.SlotDemo
 
 The companion site for the *Building a Slot Machine RTP Simulator* series. Every
-episode gets a page here: a short written brief plus controls that run the
-episode's own code on the server and narrate each step through Herald, so the log
-stream at the bottom of the page shows the same computation from the inside.
+episode has a page: a short written brief plus labs that run the engine's own code
+on the server and narrate each step through Herald, so the log stream at the
+bottom of the page shows the same computation from the inside.
 
-Forked from [MMP.WorkHarnesses](../MMP.WorkHarnesses) — .NET 10 server, Vue 3 SPA,
-Herald.OSS logging with an SSE relay into a live viewer. The harness's STAT probe
-survives as the start page because it exercises the whole pipeline in one click,
-which is a useful pre-record smoke test.
-
-## Branch layout
-
-One branch per chapter. `main` carries the shell — chapter registry, hash routing,
-nav, the persistent log viewer — and nothing episode-specific.
-
-| Branch | Contents |
-|---|---|
-| `main` | Chapter shell, start page, log viewer |
-| `chapter-02` | Millicents / SpinRng labs: exact money, seeded streams, modulo bias |
-
-A chapter branch adds its page under `CSharp/web/src/chapters/`, its endpoints
-under `CSharp/src/SlotDemo.Server/Chapters/`, and flips its row in
-`CSharp/web/src/chapters/registry.ts` from placeholder to built.
+The full engine lives in this repo (`CSharp/src/MMP.SlotGame.Core/`, imported
+verbatim from MMP.SlotGame with its complete test suite), so the labs and the
+episodes walk the same source.
 
 ## Run it
 
@@ -31,7 +16,7 @@ under `CSharp/src/SlotDemo.Server/Chapters/`, and flips its row in
 cd CSharp/web && npm install && npm run build && cd ../..
 
 # 2. Start the server
-dotnet run --project CSharp/src/SlotDemo.Server
+dotnet run -c Release --project CSharp/src/SlotDemo.Server
 
 # 3. Open http://localhost:5090
 ```
@@ -39,25 +24,69 @@ dotnet run --project CSharp/src/SlotDemo.Server
 Dev loop for the SPA: `npm run dev` in `CSharp/web` (Vite on `:5173`, proxies
 `/api` to `:5090`).
 
-## Why the labs run server-side
+## The pages
 
-A JavaScript reimplementation of `Millicents` would prove nothing about
-`Millicents` — and JavaScript cannot even hold a 64-bit draw without losing bits.
-The chapter endpoints carry copies of the episode's real C# files, so what the
-page reports is what the simulator does. Raw 64-bit values cross the wire as hex
-strings for the same reason.
+| Page | What it shows | Lab endpoints |
+|---|---|---|
+| Start | Episode cards + the STAT machine probe (pipeline smoke test) | `/api/stats` |
+| 02 Money | Integer money vs a double twin, bit view, seeded streams, modulo bias | `/api/ch2/money` `/rng` `/bias` |
+| 03 Reels | Strip geometry, deterministic spin walk, payline reads, centre-row census | `/api/ch3/presets` `/spin` `/census` |
+| 04 Math | Paytable solve path with drift, band table at a spin ladder | `/api/ch4/solve` `/band` |
+| 05 Engine | Same-seed triple runs (bit-identical), telemetry starvation | `/api/ch5/determinism` `/telemetry` |
+| 06 Data | Shipped game documents via the real loader, paste-anything validator | `/api/ch6/games` `/validate` |
+| 07 Proof | Exhaustive enumeration census, simulation vs referee verdict | `/api/ch7/enumerate` `/referee` |
+| Run | **The proving ground** — a live 10M-spin run converging inside the band | `/api/run/*` |
 
-## Chapter 2 endpoints
+## The proving ground
 
-| Route | What it demonstrates |
-|---|---|
-| `POST /api/ch2/money` | Integer money against a `double` twin: drift, the 64-bit view, and the refusal an odd raw amount triggers |
-| `POST /api/ch2/rng` | Per-worker streams under SplitMix64 seeding versus naive `seed + workerId` |
-| `POST /api/ch2/bias` | Modulo bias against Lemire multiply-shift over a narrowed draw space |
+`RunCoordinator` owns one run at a time. Workers publish absolute snapshots into a
+bounded drop-oldest channel; a `ConvergenceRecorder` consolidates them into one
+curve point per stride (default 50,000 spins → ~200 points on a 10M run), each
+carrying its own z·σ/√N half-width. Points stream to the page over SSE
+(`/api/run/stream`); a page that connects mid-run reads `/api/run/current` once
+and catches up. The SVG chart draws the analytic band as a narrowing funnel and
+the measured RTP walking inside it.
+
+Recording tip: at Release speed the engine clears ~50M spins/sec across 8 workers,
+so a 10M-spin run finishes in under a second. For a convergence walk the camera
+can follow, use 1 worker and 100M+ spins, or a bigger preset (`Video5x128`).
+
+## Geometry flexibility
+
+The five presets cover 3, 4, and 5 reels (`Classic3`, `Video3`, `Line4`,
+`Video5x64`, `Video5x128`), all selectable in the ch3 lab and the proving ground.
+JSON game definitions support arbitrary reel counts, ragged strip lengths, and
+3–5 window rows; the shipped `classic-three-reel.json` and `orca-dive.json` are
+the worked examples.
+
+## Chapter → source files (what each episode creates on camera)
+
+| Episode | Files pasted and walked | Why they carry the episode |
+|---|---|---|
+| 02 | `Money/Millicents.cs`, `Simulation/SpinRng.cs` | M1/M2/R3 — the invariants everything else stands on |
+| 03 | `Reels/StripReelSet.cs`, `Reels/Payline.cs`, `Reels/Symbol.cs` | A reel is a strip; the strip is the distribution |
+| 04 | `Paytables/Paytable.cs`, `Paytables/PaytableSolver.cs`, `Rtp/AnalyticMath.cs` | One scale factor; sigma priced in closed form |
+| 05 | `Simulation/SimulationEngine.cs`, `Simulation/RunTotals.cs` | Fixed quotas, batched atomics, the two-lane split |
+| 06 | `Games/Definition/*` + `games/*.json` | Games as data; validation that reports everything at once |
+| 07 | `Games/GameAnalyzer.cs` + the ground-truth tests | Enumeration referees simulation |
+
+Recording scripts live in the MMP.SlotGame repo under `docs/scripts/`.
+
+## Tests
+
+```bash
+cd CSharp && dotnet test MMP.SlotDemo.slnx     # engine (202) + server (77)
+cd web && npm test                              # SPA (43), incl. chart geometry
+```
+
+Server tests include seeded fuzz across every lab route (no request may 5xx),
+hostile numeric extremes on run start, recorder boundary cases, and the full run
+lifecycle through the public API — including same-seed reproducibility.
 
 ## Logging
 
-The server logs through Herald.OSS in native mode with a custom 10-level set;
-`sys.*` levels carry framework noise, plain levels carry application signal. The
-HttpJson sink posts to `/api/logs/ingest`, which fans out over SSE to the viewer.
-See `docs/how-to-use-this-harness.md` for the harness-level detail.
+Herald.OSS in native mode with a custom 10-level set; `sys.*` levels carry
+framework noise, plain levels carry application signal. The HttpJson sink posts to
+`/api/logs/ingest` and fans out over SSE to the always-mounted viewer. Set
+`SLOTDEMO_LOG_INGEST_URL=` (empty) to drop the relay sink; the test host does this
+so the file-sink drain never waits on a port nothing bound.

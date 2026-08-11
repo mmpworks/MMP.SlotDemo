@@ -49,6 +49,10 @@ function subscribe(): void {
     else if (event.type === 'point') {
       const payload = event.data as { runId: string; point: CurvePoint }
       curve.value = [...curve.value, payload.point]
+      // A fast run can finish between progress ticks; points keep the readout live.
+      liveSpins.value = payload.point.spins
+      liveRtp.value = payload.point.measuredRtp
+      liveHitFrequency.value = payload.point.hitFrequency
     } else if (event.type === 'progress') {
       const p = event.data as { spins: number; measuredRtp: number; hitFrequency: number }
       liveSpins.value = p.spins
