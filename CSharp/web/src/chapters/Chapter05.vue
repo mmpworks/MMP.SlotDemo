@@ -72,7 +72,7 @@ async function runTelemetry(): Promise<void> {
         Workers get fixed spin quotas up front instead of stealing work, so the RNG
         partition never depends on scheduling luck. Totals are integer counters fed by one
         batched atomic add per 4,096 spins. Telemetry rides a bounded drop-oldest channel
-        carrying absolute snapshots — the lossy lane can lose everything but the truth.
+        carrying absolute snapshots, so a dropped sample is simply superseded by the next one.
       </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Simulation/SimulationEngine.cs</code>,
@@ -81,10 +81,10 @@ async function runTelemetry(): Promise<void> {
     </section>
 
     <section class="lab">
-      <h3>Lab 1 — Same seed, same answer, any day</h3>
+      <h3>Lab 1 — Same seed, same answer</h3>
       <p class="lab__lede">
-        Three runs of the same configuration — on Orca Dive by default, wilds, scatter
-        bonus and all. Wall time varies with whatever else the machine is doing; the
+        Three runs of the same configuration, on Orca Dive by default with wilds and the
+        scatter bonus. Wall time varies with whatever else the machine is doing. The
         totals come back identical to the last millicent, because the bonus draws from the
         same per-worker stream as the reels. Vary the seed to see a real difference.
       </p>
@@ -150,19 +150,19 @@ async function runTelemetry(): Promise<void> {
           </tbody>
         </table>
         <p class="lab-note">
-          The returned column is the claim: integer money (M2) plus fixed quotas plus
-          seeded streams (R3) make an N-worker run reproducible, and the wall-time column
-          shows the schedule had no say in the answer.
+          Read the returned column. Integer money (M2), fixed quotas, and seeded streams
+          (R3) together make an N-worker run reproducible. Wall time varies between runs;
+          the totals do not.
         </p>
       </div>
     </section>
 
     <section class="lab">
-      <h3>Lab 2 — Starve the telemetry, keep the truth</h3>
+      <h3>Lab 2 — Starve the telemetry lane</h3>
       <p class="lab__lede">
         A deliberately slow reader drains the snapshot channel while eight workers flood
-        it. Shrink the capacity and the drop rate climbs — and the exact totals underneath
-        never move, because the two lanes never touch.
+        it. Shrink the capacity and the drop rate climbs. The exact totals never move,
+        because the two lanes never touch.
       </p>
 
       <div class="controls">
@@ -213,7 +213,7 @@ async function runTelemetry(): Promise<void> {
         </div>
         <p class="lab-note">
           Dropped samples are absolute snapshots, so losing them costs chart points and
-          nothing else. This is the design the finale page rides: the browser sees a
+          nothing else. The finale page uses the same design: the browser sees a
           consolidated curve while the integer counters stay lossless.
         </p>
       </div>
@@ -222,9 +222,9 @@ async function runTelemetry(): Promise<void> {
     <section class="chapter-brief">
       <h3>Carried into episode 6</h3>
       <p>
-        The engine takes a play function, so a game with its own rules — wilds, scatters, a
-        pick bonus — plugs into the same workers, quotas, and telemetry. Episode 6 makes
-        the game itself a document.
+        The engine takes a play function, so a game with its own rules (wilds, scatters, a
+        pick bonus) plugs into the same workers, quotas, and telemetry. Episode 6 makes the
+        game itself a document.
       </p>
     </section>
   </article>

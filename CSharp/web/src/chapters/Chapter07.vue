@@ -59,10 +59,9 @@ async function runReferee(): Promise<void> {
       <p>
         Three implementations share nothing but the game data: closed-form analysis,
         Monte-Carlo simulation, and exhaustive enumeration. The enumerator walks every stop
-        combination — no randomness, no sampling — and counts what each category pays.
+        combination with no randomness and no sampling, and counts what each category pays.
         When the simulation's measured RTP lands inside the band around the enumerator's
-        exact figure, the machine is proved, because three ways of being wrong would have
-        to agree.
+        exact figure, all three methods agree.
       </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Games/GameAnalyzer.cs</code>,
@@ -74,8 +73,8 @@ async function runReferee(): Promise<void> {
     <section class="lab">
       <h3>Lab 1 — The census</h3>
       <p class="lab__lede">
-        Every combination counted. The classic game's space is 11,616; Orca Dive's is
-        14,781,416. Both enumerate in well under a second, and the result is exact.
+        The classic game's space is 11,616 combinations; Orca Dive's is 14,781,416. Both
+        enumerate in well under a second.
       </p>
 
       <div class="controls">
@@ -207,10 +206,10 @@ async function runReferee(): Promise<void> {
     </section>
 
     <section class="chapter-brief">
-      <h3>The payoff</h3>
+      <h3>The full run</h3>
       <p>
         The finale runs the full ten-million-spin proof live, with the convergence curve
-        walking into the narrowing band on screen.
+        settling into the narrowing band on screen.
         <a href="#/finale" @click.prevent="emit('navigate', 'finale')">Open the proving ground →</a>
       </p>
     </section>

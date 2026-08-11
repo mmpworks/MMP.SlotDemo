@@ -204,13 +204,13 @@ const verdict = computed(() => {
       </div>
 
       <p v-if="isGameSubject" class="lab-note">
-        A shipped game brings its paytable with it, so there is no RTP to choose — the
-        enumerated reference for Orca Dive is 86.11%, and the run has to walk into that
-        band or the machine is wrong.
+        A shipped game brings its paytable with it, so there is no RTP to choose. The
+        enumerated reference for Orca Dive is 86.11%, and the run should settle into the
+        band around it.
       </p>
       <p v-if="overCap" class="lab__error">
         Aggregate {{ aggregateBp }} bp is over the {{ limits?.maxAggregateBasisPoints }} bp cap.
-        The server refuses this rather than clamping it — try it and read the error.
+        The server refuses the request instead of clamping it. Submit it to see the error.
       </p>
       <p v-if="error" class="lab__error">{{ error }}</p>
     </section>
@@ -271,8 +271,8 @@ const verdict = computed(() => {
       </svg>
 
       <p v-else class="proving-ground__empty">
-        No run yet. Configure above and run the proof — the shaded funnel is what
-        probability theory allows, and the line is the machine walking inside it.
+        No run yet. Configure above and run the proof. The shaded funnel is the range
+        probability theory allows; the line is the measured RTP inside it.
       </p>
 
       <div v-if="verdict" class="verdict-banner" :class="{ 'verdict-banner--failed': !verdict.withinBand }">
@@ -295,9 +295,8 @@ const verdict = computed(() => {
         bounded, drop-oldest channel. The server consolidates those into one curve point
         per {{ (run?.stride ?? stride).toLocaleString() }} spins, each carrying its own
         z·σ/√N half-width, and streams the points here over SSE. Ten million spins become
-        a couple hundred points; the browser never sees the flood, and the flood never
-        waits for the browser. Every start, point, and verdict also lands in the log
-        stream below through Herald.
+        a couple hundred points. The browser never receives the full stream, and the workers
+        never wait on the browser. The run also logs to the stream below through Herald.
       </p>
     </section>
   </article>

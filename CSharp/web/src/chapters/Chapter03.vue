@@ -104,11 +104,11 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
       <h3>What the episode builds</h3>
       <p>
         A reel is a strip: an ordered cycle of symbols the window slides over. That is a
-        different object from a weighted die — adjacent stops travel together into the
-        window, so the strip's layout shapes what multi-row windows can show. Orca Dive
-        makes the point concretely: its reels are 26/29/26/29/26 stops, every reel its own
-        strip, and the Penguin scatter exists only on reels 1, 3, and 5. A payline is a
-        row path across the window; the evaluator walks it left to right.
+        different object from a weighted die. Adjacent stops travel together into the
+        window, so the strip's layout shapes what a multi-row window can show. In Orca Dive
+        the reels are 26/29/26/29/26 stops, every reel its own strip, and the Penguin
+        scatter exists only on reels 1, 3, and 5. A payline is a row path across the window,
+        and the evaluator walks it left to right.
       </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Reels/StripReelSet.cs</code>,
@@ -121,7 +121,7 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
       <h3>Lab 1 — The window over the strip</h3>
       <p class="lab__lede">
         Pick a source, draw a window, and step through the deterministic spin stream. The
-        same seed and index always produce the same window — invariant R3 doing its job.
+        same seed and index always produce the same window. That is invariant R3.
         On Orca Dive, ★ marks the Wild Orca and ◆ the Penguin scatter.
       </p>
 
@@ -188,7 +188,7 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
         <p class="lab-note">
           {{ spin.lines[activeLine]?.name }} reads
           <span class="mono">{{ spin.lines[activeLine]?.cells.map((c) => c.symbol).join(' · ') }}</span>
-          — row path <span class="mono">[{{ spin.lines[activeLine]?.rows.join(', ') }}]</span>.
+          on row path <span class="mono">[{{ spin.lines[activeLine]?.rows.join(', ') }}]</span>.
           The evaluator scores the leading run from reel 0; on Orca the Wild Orca extends
           any run it joins.
         </p>
@@ -196,11 +196,11 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
     </section>
 
     <section class="lab">
-      <h3>Lab 2 — The strip is the distribution</h3>
+      <h3>Lab 2 — Counting what the strip produces</h3>
       <p class="lab__lede">
         Count how often a symbol lands in the centre row over many spins and compare with
-        the strip's exact ratio. No probability table exists anywhere in the engine — the
-        strip's layout is the only source of odds. On Orca Dive the expectation differs
+        the strip's exact ratio. The engine holds no probability table. The strip layout
+        sets the odds. On Orca Dive the expectation differs
         per reel: Wild Orca sits at 2/26 on reel 1 and 1/29 on reel 2, and Penguin's
         column reads zero on reels 2 and 4 because the symbol is absent from those strips.
       </p>
@@ -238,7 +238,7 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
         </table>
         <p class="lab-note">
           {{ symbolName(census.symbolId) }} over {{ census.spins.toLocaleString() }} spins.
-          Push the spin count up and the gap column shrinks — the same convergence the
+          Push the spin count up and the gap column shrinks, the same convergence the
           proving ground shows for the whole game.
         </p>
       </div>
@@ -247,10 +247,9 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
     <section class="chapter-brief">
       <h3>Carried into episode 4</h3>
       <p>
-        <code>ProbabilityOf</code> and <code>JointProbabilityOf</code> on the strip are the
-        seam the math chapter stands on: the paytable solver, the sigma calculation, and
-        Orca's exhaustive enumeration all read the strips directly, which is how the
-        analytic twin prices a game without playing a single spin.
+        Episode 4 uses <code>ProbabilityOf</code> and <code>JointProbabilityOf</code> on the
+        strip directly. The paytable solver, the sigma calculation, and Orca's exhaustive
+        enumeration all read the strips, so a game can be priced without running it.
       </p>
     </section>
   </article>

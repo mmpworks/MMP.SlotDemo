@@ -77,7 +77,7 @@ async function runBand(): Promise<void> {
       <p>
         The canonical paytable carries only ratios. The solver computes the game's expected
         value once from the strips, divides the target RTP by it, and scales every pay by
-        that one number — a closed form, no search loop. Each scaled pay then rounds to
+        that one number. It is a closed form, with no search loop. Each scaled pay then rounds to
         integer millicents independently, so the realized RTP drifts a hair from the
         target, and only the analytic recomputation is authoritative.
       </p>
@@ -151,8 +151,8 @@ async function runBand(): Promise<void> {
           </tbody>
         </table>
         <p class="lab-note">
-          Rare rows carry big pays, common rows small ones; the product of each row's pay
-          and probability, summed, is the RTP. That sum is what the solver scaled.
+          Rare rows carry big pays and common rows carry small ones. Sum each row's pay
+          times its probability and you have the RTP, the number the solver scaled.
         </p>
       </div>
     </section>
@@ -161,7 +161,7 @@ async function runBand(): Promise<void> {
       <h3>Lab 2 — The band, priced before any spin</h3>
       <p class="lab__lede">
         Sigma comes from the strips and the paytable in closed form, covariance included.
-        The band the finale draws is z·σ/√N — this table is that funnel as numbers.
+        The band the finale draws is z·σ/√N. This table is the same figure in numbers.
       </p>
 
       <div class="controls">
@@ -205,9 +205,8 @@ async function runBand(): Promise<void> {
           </tbody>
         </table>
         <p class="lab-note">
-          Each factor of 100 in spins buys one decimal place of certainty — the square
-          root in the denominator is why proving an RTP takes millions of spins, and why
-          the simulation exists.
+          Each factor of 100 in spins buys one decimal place of certainty. The square root
+          in the denominator is why proving an RTP takes millions of spins.
         </p>
       </div>
     </section>
@@ -215,11 +214,10 @@ async function runBand(): Promise<void> {
     <section class="lab">
       <h3>Lab 3 — Orca Dive: the paytable that arrived fixed</h3>
       <p class="lab__lede">
-        Orca Dive ships its paytable published; no solver runs. The same arithmetic still
-        decides everything — each row's pay times its probability is that row's slice of
-        the RTP, and the exhaustive enumerator supplies the probabilities exactly. Rows
-        sort by contribution: the 2× Wild Orca single carries more of the game than the
-        5000× Red 7 jackpot.
+        Orca Dive ships its paytable published, so no solver runs. The arithmetic is the
+        same: each row's pay times its probability is that row's slice of the RTP, and the
+        exhaustive enumerator supplies the probabilities. The table below sorts by
+        contribution rather than by pay size.
       </p>
 
       <div class="controls">
@@ -261,10 +259,9 @@ async function runBand(): Promise<void> {
           </tbody>
         </table>
         <p class="lab-note">
-          Read this table against Lab 1: the solver walks from a target RTP to the pays;
-          a published game walks from the pays to the RTP. Same equation, opposite
-          direction — and the enumeration behind these probabilities is episode 7's
-          referee.
+          Read this table against Lab 1. The solver goes from a target RTP to the pays; a
+          published game goes the other way. The probabilities here come from the
+          enumeration episode 7 uses as its referee.
         </p>
       </div>
     </section>
@@ -272,8 +269,8 @@ async function runBand(): Promise<void> {
     <section class="chapter-brief">
       <h3>Carried into episode 5</h3>
       <p>
-        The analytic twin predicts; the engine measures. Episode 5 builds the machine that
-        plays ten million spins fast enough to put the two on one chart.
+        The analytic figures predict what the engine should measure. Episode 5 builds the
+        engine that plays ten million spins fast enough to chart both.
       </p>
     </section>
   </article>

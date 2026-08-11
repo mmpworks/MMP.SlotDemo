@@ -122,27 +122,27 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   summary: {
     title: 'The summary table',
-    body: 'This is the table researchers actually found on real PAR sheets. In 2009, Kevin Harrigan and Mike Dixon obtained 23 PAR sheets for Ontario slot machines through freedom-of-information requests and published a summary in this column layout (their Table 1): game and geometry, wager, symbols per reel, payback percentage, hit frequency, plays per jackpot, jackpot size, plays per bonus, and volatility index. Our games appear here in the same columns, so you can read this row against their published rows for Double Diamond Deluxe (92.6% payback, VI 10.5) or Lobstermania (85 to 96.2% across versions).',
+    body: 'This is the column layout researchers found on real PAR sheets. In 2009, Kevin Harrigan and Mike Dixon obtained 23 PAR sheets for Ontario slot machines through freedom-of-information requests and published a summary in this column layout (their Table 1): game and geometry, wager, symbols per reel, payback percentage, hit frequency, plays per jackpot, jackpot size, plays per bonus, and volatility index. Our games appear here in the same columns, so you can read this row against their published rows for Double Diamond Deluxe (92.6% payback, VI 10.5) or Lobstermania (85 to 96.2% across versions).',
   },
   playsPerJackpot: {
     title: 'Plays per jackpot',
-    body: 'The average number of spins before the top prize lands: cycle divided by the hit count of the jackpot rule. The 5000× Red 7 line has 4 hits in a 14.8-million cycle, so about one jackpot per 3.7 million spins. The paper reports 46,656 for Double Diamond and 8.1 million for Lobstermania — rarity on this scale is normal, and it is why the jackpot contributes so little RTP.',
+    body: 'The average number of spins before the top prize lands: cycle divided by the hit count of the jackpot rule. The 5000× Red 7 line has 4 hits in a 14.8-million cycle, so about one jackpot per 3.7 million spins. The paper reports 46,656 for Double Diamond and 8.1 million for Lobstermania. Rarity on this scale is normal, and it keeps the jackpot\'s RTP slice small.',
   },
   versions: {
     title: 'Approved versions',
-    body: 'The sharpest finding in the paper: casinos order the same cabinet in several approved payback versions — Lobstermania ran from 85% to 96.2% — and the versions look identical to the player because hit frequency barely changes between them. Payback is the version knob; feel is not. Our preset picker on the proving-ground page works the same way: same reels, different solved paytable.',
+    body: 'Casinos order the same cabinet in several approved payback versions. Lobstermania ran from 85% to 96.2%, and the versions look identical to the player because hit frequency barely changes between them. Payback is the knob the operator picks; the feel of the game stays put. Our preset picker on the proving-ground page works the same way: same reels, different solved paytable.',
   },
   census: {
     title: 'Reel census',
-    body: 'How many times each symbol appears on each strip. This table IS the odds: a symbol\'s chance of landing on a payline cell is its count divided by that strip\'s length. There is no separate probability table inside the machine — the strip layout is the only source of randomness shaping. Note the census differs per reel: Wild Orca is 2-in-26 on reel 1 but 1-in-29 on reel 2.',
+    body: 'How many times each symbol appears on each strip. This table sets the odds: a symbol\'s chance of landing on a payline cell is its count divided by that strip\'s length. The machine holds no separate probability table. The census differs per reel: Wild Orca is 2-in-26 on reel 1 but 1-in-29 on reel 2.',
   },
   wild: {
     title: 'Wild symbol (★)',
-    body: 'Wild Orca substitutes for the four fish symbols, extending their runs. It substitutes for nothing else — a wild that stood in for the sevens would inflate their rare, high pays. It also pays on its own, down to a single symbol on reel 1. When one line matches two rules, the highest pay wins, and ties go to the longer run.',
+    body: 'Wild Orca substitutes for the four fish symbols, extending their runs. It substitutes for nothing else, because a wild that stood in for the sevens would inflate their rare, high pays. It also pays on its own, down to a single symbol on reel 1. When one line matches two rules, the highest pay wins, and ties go to the longer run.',
   },
   scatter: {
     title: 'Scatter symbol (◆)',
-    body: 'The Penguin triggers the bonus when it is visible anywhere in the window on reels 1, 3, and 5 at once. Scatters count window area: with 2 Penguins on a 26-stop strip and a 3-row window, 6 of 26 stops show one. That is why Penguin appears only on the odd reels — its absence from reels 2 and 4 is the trigger rule written into the strips.',
+    body: 'The Penguin triggers the bonus when it is visible anywhere in the window on reels 1, 3, and 5 at once. Scatters count window area: with 2 Penguins on a 26-stop strip and a 3-row window, 6 of 26 stops show one. That is why Penguin appears only on reels 1, 3, and 5.',
   },
   paytable: {
     title: 'Paytable',
@@ -150,15 +150,15 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   hits: {
     title: 'Hits (combinations)',
-    body: 'How many of the 14,781,416 stop combinations produce this exact win. Textbook formulas compute these as products of per-reel symbol counts, then subtract overlaps where a line matches two rules ("prioritisation discounts"). Example: naive counting gives exactly-four Red 7s 100 hits, but 20 of those carry another seven on reel 5 and pay as Mixed 7 five-of-a-kind instead, leaving 80 — the number here.',
+    body: 'How many of the 14,781,416 stop combinations produce this exact win. Textbook formulas compute these as products of per-reel symbol counts, then subtract overlaps where a line matches two rules ("prioritisation discounts"). Example: naive counting gives exactly-four Red 7s 100 hits, but 20 of those carry another seven on reel 5 and pay as Mixed 7 five-of-a-kind instead, leaving the 80 shown here.',
   },
   probability: {
     title: 'Probability and hit rate',
-    body: 'Probability is hits divided by cycle. Hit rate is its reciprocal — one such win every N spins — and is how designers talk about pacing. The same fact in two directions: Red 7 five-of-a-kind is p = 0.00000027, or once in 3.7 million spins.',
+    body: 'Probability is hits divided by cycle. Hit rate is its reciprocal, one such win every N spins, and it is how designers talk about pacing. Red 7 five-of-a-kind is p = 0.00000027, or once in 3.7 million spins.',
   },
   rtpSlice: {
     title: 'RTP slice',
-    body: 'Pay times probability: the fraction of every wagered credit this rule gives back over the long run. Sum the column and you get the line RTP. Sorting by this column is revealing — the humble 2× single Wild Orca contributes more than the 5000× Red 7 jackpot, because frequency beats size in expectation.',
+    body: 'Pay times probability: the fraction of every wagered credit this rule gives back over the long run. Sum the column and you get the line RTP. Sort by this column and the 2× single Wild Orca contributes more than the 5000× Red 7 jackpot: it pays less but lands far more often.',
   },
   lineRtp: {
     title: 'Line RTP, bonus RTP, total',
@@ -166,27 +166,27 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   hitFrequency: {
     title: 'Hit frequency',
-    body: 'The share of spins that win anything on the line: 10.26%, or one hit every 9.75 spins. Note the definition matters — this figure counts line wins only; a simulator that counts bonus triggers as hits will report a slightly higher number (~11.4%). A PAR sheet labels which definition it uses.',
+    body: 'The share of spins that win anything on the line: 10.26%, or one hit every 9.75 spins. This figure counts line wins only. A simulator that counts bonus triggers as hits reports a slightly higher number (~11.4%), so a PAR sheet states which definition it uses.',
   },
   feature: {
     title: 'The bonus feature',
-    body: 'Three Penguins (reels 1, 3, 5) start a pick game: a bag of 30 gifts — 24 prizes and 6 blanks — picked one at a time until a blank, keeping what was picked plus a 1× consolation. Because picking is without replacement, the average award has an exact closed form: 21.57 bets. Trigger rate times average award gives the bonus\'s 26.51% RTP slice.',
+    body: 'Three Penguins (reels 1, 3, 5) start a pick game: a bag of 30 gifts (24 prizes and 6 blanks) picked one at a time until a blank, keeping what was picked plus a 1× consolation. Because picking is without replacement, the average award has an exact closed form: 21.57 bets. Trigger rate times average award gives the bonus\'s 26.51% RTP slice.',
   },
   prizeTiers: {
     title: 'Prize tiers',
-    body: 'The bag\'s contents by value. Many small prizes and few large ones shape the bonus the same way the paytable shapes the base game: the 5× tier (nine of them) carries most of the bonus\'s expected value. Max award is every prize plus the consolation: 145× bet, the best possible bonus.',
+    body: 'The bag\'s contents by value. Many small prizes and few large ones shape the bonus the same way the paytable shapes the base game: the 5× tier (nine of them) carries most of the bonus\'s expected value. The max award is every prize plus the consolation, 145× bet.',
   },
   volatility: {
     title: 'Sigma and the volatility index',
-    body: 'Two games with the same RTP can feel opposite — steady dribbles or rare jackpots. Sigma (standard deviation per unit wagered) measures that spread: 6.13 here, moderate for a 5-reel game. The volatility index is sigma times a confidence factor z (1.64, 1.96, or 2.58 for 90/95/99%) — the form regulators ask for.',
+    body: 'Two games with the same RTP can feel very different: steady dribbles at one extreme, rare jackpots at the other. Sigma (standard deviation per unit wagered) measures that spread, 6.13 here, moderate for a 5-reel game. The volatility index is sigma times a confidence factor z (1.64, 1.96, or 2.58 for 90/95/99%), which is the form regulators ask for.',
   },
   bands: {
     title: 'Confidence bands',
-    body: 'After N spins, measured RTP should sit within ±z·σ/√N of the true figure. The table shows the band tightening with the square root of N: 100× the spins buys 10× the certainty. This is the funnel on the proving-ground page, and it is why proving an RTP takes millions of spins.',
+    body: 'After N spins, measured RTP should sit within ±z·σ/√N of the true figure. The table shows the band tightening with the square root of N: 100× the spins buys 10× the certainty. The proving-ground page draws this same band as a funnel.',
   },
   verification: {
     title: 'Scatter separation check',
-    body: 'A classic PAR-sheet trap: window-area scatter math assumes scatters sit far enough apart that two never show in one window. If a strip edit put two Penguins within 3 stops, the shipped trigger rate would silently drift from the model. This check reads the actual strips: Penguins sit at stops 0 and 13 on each scatter reel — separated, so the exact enumeration equals the clean (6/26)³ form. A regression test pins this.',
+    body: 'A classic PAR-sheet trap: window-area scatter math assumes scatters sit far enough apart that two never show in one window. If a strip edit put two Penguins within 3 stops, the shipped trigger rate would silently drift from the model. This check reads the actual strips: Penguins sit at stops 0 and 13 on each scatter reel, far enough apart that the exact enumeration equals the clean (6/26)³ form. A regression test pins this.',
   },
   paylines: {
     title: 'Payline patterns',
@@ -194,7 +194,7 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   strips: {
     title: 'Strip order',
-    body: 'The full ordered strips, exactly as the window slides over them. Order changes nothing for single-line pays (only counts matter) but everything for scatters and multi-row windows, because adjacent stops enter the window together. This is the part of a PAR sheet manufacturers guard most closely — and here it is the open source of the game.',
+    body: 'The full ordered strips, exactly as the window slides over them. Order changes nothing for single-line pays (only counts matter) but everything for scatters and multi-row windows, because adjacent stops enter the window together. Manufacturers guard this part of a PAR sheet most closely. Here it is published with the game.',
   },
 }
 

@@ -62,9 +62,9 @@ async function validate(): Promise<void> {
         A slot game is a document: symbols, strips, paylines, paytable, and optionally a
         scatter-triggered bonus, all in one JSON file. The loader compiles it into a
         validated <code>GameDefinition</code> or returns the complete list of problems in
-        one pass. Declared facts — stop counts, symbol tallies — are verified against the
-        strips, so a PAR-sheet transcription error is caught at load, before it becomes a
-        wrong RTP.
+        one pass. It checks the declared facts (stop counts, symbol tallies) against the
+        strips, so a PAR-sheet transcription error is caught at load rather than showing up
+        later as a wrong RTP.
       </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Games/Definition/</code> and the shipped
@@ -135,8 +135,8 @@ async function validate(): Promise<void> {
       <h3>Lab 2 — Feed the loader anything</h3>
       <p class="lab__lede">
         Paste a definition and the loader answers with the compiled game or with every
-        problem at once. Collecting the whole list is the design choice: an author fixes a
-        file in one pass instead of replaying load-fix-load for each error.
+        problem at once. The loader collects every problem before it answers, so an author
+        fixes a file in one pass instead of load-fix-load for each error.
       </p>
 
       <div class="controls">
@@ -175,8 +175,8 @@ async function validate(): Promise<void> {
     <section class="chapter-brief">
       <h3>Carried into episode 7</h3>
       <p>
-        A game that is data can be enumerated. Episode 7 walks every stop combination in
-        the document and uses that exhaustive census to referee the simulation.
+        Because the game is data, every stop combination can be walked. Episode 7 does that
+        and uses the exhaustive census to referee the simulation.
       </p>
     </section>
   </article>

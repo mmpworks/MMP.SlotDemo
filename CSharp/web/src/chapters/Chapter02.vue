@@ -19,8 +19,8 @@ defineProps<{ title: string; blurb: string }>()
         Two small types carry the guarantees the rest of the simulator depends on.
         <code>Millicents</code> keeps money as a count of integers so totals stay exact and
         order-independent. <code>SpinRng</code> gives every worker its own seeded stream so a
-        run can be replayed exactly. Everything downstream gets to be ordinary because these
-        two are strict.
+        run can be replayed. Because these two types are strict, the code that uses them can
+        be ordinary.
       </p>
       <dl class="invariants">
         <div>
@@ -40,7 +40,7 @@ defineProps<{ title: string; blurb: string }>()
         Source:
         <code>src/MMP.SlotGame.Core/Money/Millicents.cs</code> and
         <code>src/MMP.SlotGame.Core/Simulation/SpinRng.cs</code>. The labs below run copies of
-        those exact files, served from
+        those files, served from
         <code>CSharp/src/SlotDemo.Server/Chapters/</code>.
       </p>
     </section>
@@ -53,8 +53,8 @@ defineProps<{ title: string; blurb: string }>()
       <h3>Carried into episode 3</h3>
       <p>
         The stop index at the end of lab 2 is the handoff. Episode 3 takes those numbers and
-        asks what a reel actually is — and why a strip of positions behaves differently from a
-        weighted die, even when the two look identical on a spec sheet.
+        asks what a reel is, and why a strip of positions behaves differently from a weighted
+        die even when the two look identical on a spec sheet.
       </p>
     </section>
   </article>

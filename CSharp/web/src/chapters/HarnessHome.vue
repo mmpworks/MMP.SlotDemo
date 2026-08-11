@@ -34,10 +34,9 @@ async function loadStats(): Promise<void> {
 <template>
   <section class="intro">
     <p>
-      Each episode of the build has a page here. The controls run the episode's own types
-      on the server rather than a JavaScript lookalike, and every step narrates itself
-      through Herald, so the log stream at the bottom of the page is the same code path
-      talking back.
+      Each episode of the build has a page here. The controls call the episode's own types
+      on the server, not a JavaScript copy. Each step logs through Herald, so the log stream
+      at the bottom of the page comes from the code you just ran.
     </p>
   </section>
 
@@ -61,8 +60,8 @@ async function loadStats(): Promise<void> {
     <h2>Machine probe</h2>
     <p class="probe__lede">
       The harness feature this demo site was forked from: a scan for installed AI coding
-      tools. It stays because it exercises the server, the SSE log relay, and the viewer in
-      one click — a quick way to confirm the plumbing before recording.
+      tools. It stays because one click exercises the server, the SSE log relay, and the
+      viewer. Handy for confirming the plumbing before recording.
     </p>
 
     <MachineStrip v-if="stats" :machine="stats.machine" />

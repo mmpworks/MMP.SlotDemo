@@ -77,7 +77,7 @@ function formatCredits(value: number): string {
 
     <div v-if="result" class="results">
       <div v-if="result.refusal" class="refusal">
-        <strong>The type refused the conversion.</strong>
+        <strong>Conversion refused.</strong>
         <p>{{ result.refusal }}</p>
       </div>
 
@@ -112,8 +112,8 @@ function formatCredits(value: number): string {
         <BitStrip :bits="result.wager.bits" :fraction-bits="FRACTION_BITS" label="wager, 64 bits" />
         <BitStrip :bits="result.pay.bits" :fraction-bits="FRACTION_BITS" label="pay, 64 bits" />
         <p class="bits__note">
-          Outlined bits sit below one credit. Nothing here is a mantissa and an exponent —
-          it is one number, and every bit of it is money.
+          Outlined bits sit below one credit. There is no mantissa or exponent here. It is
+          one integer, and every bit of it counts money.
         </p>
       </div>
 
@@ -139,8 +139,8 @@ function formatCredits(value: number): string {
         <p class="assoc__note">
           Same three numbers, two groupings, two answers. Workers finish in whatever order
           the scheduler hands out, so a double-based total carries a race condition inside
-          its arithmetic. Integer addition has no such opinion, which is what makes an
-          N-worker run match a 1-worker run bit for bit.
+          its arithmetic. Integer addition gives the same total in any order, which is what
+          makes an N-worker run match a 1-worker run bit for bit.
         </p>
       </div>
     </div>

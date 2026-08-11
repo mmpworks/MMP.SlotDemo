@@ -40,7 +40,7 @@ const shelves: Shelf[] = [
         free: true,
         url: 'https://slotdesigner.com/wp/wp-content/uploads/Elements-of-Slot-Design-3rd-Edition.pdf',
         about: 'A free, practical walk from empty spreadsheet to working slot math model: strips, weights, hit rate, volatility, feature budgets. Written by the author of the Slot Designer toolchain.',
-        series: 'The closest published analogue to this series\' whole arc — compare its spreadsheet workflow with our code-first one.',
+        series: 'The closest published analogue to this series. Compare its spreadsheet workflow with our code-first one.',
       },
       {
         title: 'Practical Design of Slot Machine Math',
@@ -99,7 +99,7 @@ const shelves: Shelf[] = [
   },
   {
     name: 'PAR sheets and how real machines are built',
-    lede: 'The primary documents. Everything the series reconstructs, these sources show in the wild.',
+    lede: 'The primary documents. These sources show in the wild what the series reconstructs.',
     entries: [
       {
         title: 'PAR Sheets, probabilities, and slot machine play',
@@ -118,7 +118,7 @@ const shelves: Shelf[] = [
         kind: 'paper',
         free: true,
         url: 'https://stoppredatorygambling.org/wp-content/uploads/2012/12/Harrigan-presentation-to-the-2010-NH-Gambling-Commission.pdf',
-        about: 'The same research delivered as slides for a state gambling commission — the fastest readable tour of virtual reels, weighting, and stop maps.',
+        about: 'The same research delivered as slides for a state gambling commission. The fastest readable tour of virtual reels, weighting, and stop maps.',
         series: 'A good pre-read for episode 3.',
       },
       {
@@ -128,8 +128,8 @@ const shelves: Shelf[] = [
         kind: 'patent',
         free: true,
         url: 'https://patents.google.com/patent/US4448419A/en',
-        about: 'The virtual-reel patent that created the modern slot machine: map many RNG values onto few physical stops and the odds detach from the cabinet. Every weighted strip descends from this filing.',
-        series: 'Our strips ARE this idea — episode 3\'s even-interleave builder is a Telnaes mapping laid out in the open.',
+        about: 'The virtual-reel patent that created the modern slot machine: map many RNG values onto few physical stops, and the odds no longer depend on the physical reel. Every weighted strip in use today descends from this filing.',
+        series: 'Our strips implement this idea. Episode 3\'s even-interleave builder is a Telnaes mapping written out in the open.',
       },
       {
         title: 'How to calculate the return for a slot machine (Appendix 1 & 2)',
@@ -138,7 +138,7 @@ const shelves: Shelf[] = [
         kind: 'article',
         free: true,
         url: 'https://wizardofodds.com/games/slots/appendix/2/',
-        about: 'Worked examples of computing a machine\'s return from its reel strips and paytable, plus thousands of logged real spins. The public benchmark for slot analysis done honestly.',
+        about: 'Worked examples of computing a machine\'s return from its reel strips and paytable, plus thousands of logged real spins. The public benchmark for open slot analysis.',
         series: 'The same computation the chapter 4 lab performs, on machines you can find on a floor.',
       },
       {
@@ -174,8 +174,8 @@ const shelves: Shelf[] = [
         kind: 'paper',
         free: true,
         url: 'https://arxiv.org/abs/1805.10941',
-        about: 'Why the modulo reduction is biased and slow, and the multiply-shift-with-rejection method that replaces it. Short, sharp, and immediately usable.',
-        series: 'NextInt is this paper; the chapter 2 bias lab draws its figure 1 live.',
+        about: 'Why the modulo reduction is biased and slow, and the multiply-shift-with-rejection method that replaces it. Short and immediately usable.',
+        series: 'NextInt implements this paper, and the chapter 2 bias lab draws its figure 1 live.',
       },
       {
         title: 'PCG: A family of better random number generators',
@@ -191,7 +191,7 @@ const shelves: Shelf[] = [
   },
   {
     name: 'Regulation — what "certified" means',
-    lede: 'A simulator needs replayability; a regulator demands unpredictability. These documents are the other side of that line.',
+    lede: 'A simulator needs replayable runs; a regulator requires unpredictable ones. These documents cover the regulator\'s side.',
     entries: [
       {
         title: 'GLI-11: Gaming Devices in Casinos (v3.0)',
@@ -201,7 +201,7 @@ const shelves: Shelf[] = [
         free: true,
         url: 'https://gaminglabs.com/wp-content/uploads/2018/09/GLI-11-Gaming-Devices-V3-0.pdf',
         about: 'The de-facto worldwide certification standard for gaming devices: RNG requirements, continuous chi-square self-tests, metering, program verification.',
-        series: 'The warning label on SpinRng — simulation-grade, NOT certified-gaming — is defined by this document\'s other half.',
+        series: 'SpinRng is labelled simulation-grade rather than certified-gaming because of the requirements in this document.',
       },
       {
         title: 'Technical Standards for Gaming Devices',
@@ -235,7 +235,7 @@ const shelves: Shelf[] = [
         kind: 'book',
         url: 'https://www.amazon.com/Slot-Machines-Pictorial-History-First/dp/1889243000',
         about: 'Written by Charles Fey\'s grandson: the Liberty Bell to the video era, with 400 photographs. The mechanical lineage behind every convention the digital machines still imitate.',
-        series: 'Why a 22-stop strip is "canonical" in episode 3: the mechanical machines made it so.',
+        series: 'Where episode 3\'s "canonical" 22-stop strip comes from: the mechanical machines.',
       },
     ],
   },
@@ -289,8 +289,8 @@ const kindLabel: Record<Entry['kind'], string> = {
         Orca Dive is an original fictional game whose numbers were reconstructed from
         public statistical analysis; no manufacturer materials were used anywhere in this
         project. The shelves above are the public literature that teaches the same
-        techniques — the point of the series is that everything a PAR sheet encodes can be
-        built, priced, and proved in the open.
+        techniques. Everything a PAR sheet encodes can be built and checked from open
+        sources.
       </p>
     </section>
   </article>
