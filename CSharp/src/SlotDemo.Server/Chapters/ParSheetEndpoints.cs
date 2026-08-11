@@ -66,7 +66,10 @@ public static class ParSheetEndpoints
                 symbolsPerReel = string.Join("/", Enumerable.Range(0, game.ReelCount).Select(game.Reels.StopCount)),
                 cycle = analysis.StopCombinations,
                 paybackPercent = analysis.TotalRtp * 100,
-                hitFrequencyPercent = analysis.HitFrequency * 100,
+                // Line hits only. Harrigan-style sheets often count any credit-awarding
+                // outcome (bonus triggers included), a higher figure; the name says which
+                // event this measures so the two are never set side by side unlabeled.
+                lineHitFrequencyPercent = analysis.HitFrequency * 100,
                 playsPerJackpot = top.hits > 0 ? (double)analysis.StopCombinations / top.hits : 0,
                 jackpotCredits = top.pay,
                 playsPerBonus = analysis.TriggerProbability > 0 ? 1.0 / analysis.TriggerProbability : (double?)null,

@@ -81,7 +81,7 @@ interface SummaryRow {
   symbolsPerReel: string
   cycle: number
   paybackPercent: number
-  hitFrequencyPercent: number
+  lineHitFrequencyPercent: number
   playsPerJackpot: number
   jackpotCredits: number
   playsPerBonus: number | null
@@ -267,7 +267,7 @@ const symbolName = computed(() => {
                   <th>Wager</th>
                   <th>Symbols per reel</th>
                   <th>Payback %</th>
-                  <th>Hit freq %</th>
+                  <th>Hit freq % (line)</th>
                   <th><button class="par-term" @click="explainKey = 'playsPerJackpot'">Plays per jackpot</button></th>
                   <th>Jackpot (× bet)</th>
                   <th>Plays per bonus</th>
@@ -280,7 +280,7 @@ const symbolName = computed(() => {
                   <td>{{ row.wagerCredits }}</td>
                   <td>{{ row.symbolsPerReel }}</td>
                   <td>{{ row.paybackPercent.toFixed(2) }}</td>
-                  <td>{{ row.hitFrequencyPercent.toFixed(1) }}</td>
+                  <td>{{ row.lineHitFrequencyPercent.toFixed(1) }}</td>
                   <td>{{ Math.round(row.playsPerJackpot).toLocaleString() }}</td>
                   <td>{{ row.jackpotCredits.toLocaleString() }}</td>
                   <td>{{ row.playsPerBonus === null ? 'n/a' : Math.round(row.playsPerBonus).toLocaleString() }}</td>
