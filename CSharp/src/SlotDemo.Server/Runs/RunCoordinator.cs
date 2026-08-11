@@ -199,7 +199,10 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         try
         {
             final = await engine.RunAsync(channel.Writer, observer: null, ct).ConfigureAwait(false);
-            terminal = "completed";
+            // Workers notice cancellation at a batch boundary and return normally, so a
+            // cancelled run usually completes RunAsync without throwing. The token, not
+            // the exception, is the truth about why the run stopped.
+            terminal = ct.IsCancellationRequested ? "cancelled" : "completed";
         }
         catch (OperationCanceledException)
         {

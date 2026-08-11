@@ -102,6 +102,24 @@ public sealed class RunEndpointTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
+    public async Task A_cancelled_run_reports_cancelled_not_completed()
+    {
+        // REGRESSION - workers notice cancellation at a batch boundary and return
+        // normally, so RunAsync finishes without throwing and the run used to read as
+        // "completed" with partial totals. The token decides the terminal status.
+        using var client = _factory.CreateClient();
+
+        (await client.PostAsJsonAsync("/api/run", Request(spins: 2_000_000_000, stride: 1_000_000)))
+            .EnsureSuccessStatusCode();
+        await Task.Delay(200);
+        (await client.PostAsync("/api/run/cancel", null)).EnsureSuccessStatusCode();
+
+        var final = await WaitForCompletionAsync(client, acceptCancelled: true);
+        Assert.Equal("cancelled", final.GetProperty("status").GetString());
+        Assert.True(final.GetProperty("latest").GetProperty("spins").GetInt64() < 2_000_000_000);
+    }
+
+    [Fact]
     public async Task An_aggregate_over_the_cap_is_rejected_with_the_reason()
     {
         using var client = _factory.CreateClient();
