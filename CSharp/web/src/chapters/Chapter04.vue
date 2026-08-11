@@ -5,6 +5,7 @@ import type { BandView, PublishedView, SolveView } from '../api/labs'
 
 defineProps<{ title: string; blurb: string }>()
 
+const subject = ref('game:orca-dive.json')
 const presetName = ref('Video5x64')
 const targetBp = ref(7500)
 const solve = ref<SolveView | null>(null)
@@ -36,9 +37,11 @@ async function runSolve(): Promise<void> {
   busy.value = true
   error.value = ''
   try {
+    const isGame = subject.value.startsWith('game:')
     solve.value = await postJson<SolveView>('/api/ch4/solve', {
-      presetName: presetName.value,
+      presetName: isGame ? '' : subject.value,
       targetBaseRtpBasisPoints: targetBp.value,
+      gameFile: isGame ? subject.value.slice('game:'.length) : '',
     })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Solve failed.'
@@ -90,22 +93,32 @@ async function runBand(): Promise<void> {
     <section class="lab">
       <h3>Lab 1 — Solve a paytable</h3>
       <p class="lab__lede">
-        Pick a target and watch the whole path: canonical ratios, the single scale factor,
-        the rounded integer pays, and the drift the rounding left behind.
+        Pick a target and watch the whole path: the pay ratios, the single scale factor,
+        the rounded pays, and the drift the rounding leaves. On Orca Dive the ratios are
+        the published paytable and the probabilities come from the enumeration, wilds and
+        tie-breaks included. Re-pricing it to 65% or 70% is how a real cabinet ships in
+        several approved payback versions.
       </p>
 
       <div class="controls">
         <label>
-          Preset
-          <select v-model="presetName">
-            <option>Classic3</option><option>Video3</option><option>Line4</option>
-            <option>Video5x64</option><option>Video5x128</option>
+          Subject
+          <select v-model="subject">
+            <optgroup label="Games">
+              <option value="game:orca-dive.json">Orca Dive</option>
+              <option value="game:classic-three-reel.json">Classic Three Reel</option>
+            </optgroup>
+            <optgroup label="Presets">
+              <option value="Classic3">Classic3</option><option value="Video3">Video3</option>
+              <option value="Line4">Line4</option><option value="Video5x64">Video5x64</option>
+              <option value="Video5x128">Video5x128</option>
+            </optgroup>
           </select>
         </label>
         <label>
-          Target base RTP (bp)
+          Target line RTP (bp)
           <input v-model.number="targetBp" type="number" min="100" max="9900" step="100" />
-          <small>7500 = 75.00%</small>
+          <small>7500 = 75.00%; Orca ships at 5960</small>
         </label>
         <button type="button" :disabled="busy" @click="runSolve">Solve</button>
       </div>

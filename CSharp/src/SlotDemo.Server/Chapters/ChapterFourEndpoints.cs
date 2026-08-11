@@ -25,7 +25,15 @@ public static class ChapterFourEndpoints
         app.MapPost("/api/ch4/published", (PublishedRequest request) => Published(request, log));
     }
 
-    public sealed record SolveRequest(string PresetName, int TargetBaseRtpBasisPoints);
+    /// <summary>
+    /// A non-empty <see cref="GameFile"/> solves the shipped game instead of a preset:
+    /// its published pays become the canonical ratios, its enumerated probabilities
+    /// (wilds, groups, and tie-breaks included) price every row, and the target scales
+    /// the line RTP. The bonus is left as shipped, the way approved payback versions of
+    /// a real cabinet vary the line table.
+    /// </summary>
+    public sealed record SolveRequest(
+        string PresetName, int TargetBaseRtpBasisPoints, string GameFile = "");
 
     /// <summary>
     /// Solve a preset's canonical table to a target base RTP and show the whole path:
@@ -36,6 +44,8 @@ public static class ChapterFourEndpoints
     /// </summary>
     private static IResult Solve(SolveRequest request, StructuredLogger log)
     {
+        if (!string.IsNullOrWhiteSpace(request.GameFile))
+            return SolveGame(request, log);
         if (!ReelPreset.All.TryGetValue(request.PresetName ?? "", out var preset))
             return Results.BadRequest(new { error = $"Unknown preset '{request.PresetName}'." });
         if (request.TargetBaseRtpBasisPoints is < 100 or > 9_900)
@@ -78,6 +88,76 @@ public static class ChapterFourEndpoints
             targetBaseRtp = target,
             unscaledEvMultiplier = unscaledEv,
             scaleFactor = target / unscaledEv,
+            realizedBaseRtp = realized,
+            driftBasisPoints = (realized - target) * 10_000,
+            paytable = rows,
+        });
+    }
+
+    private static IResult SolveGame(SolveRequest request, StructuredLogger log)
+    {
+        if (request.TargetBaseRtpBasisPoints is < 100 or > 9_900)
+            return Results.BadRequest(new { error = "Target line RTP 100-9900 basis points." });
+
+        var path = Path.Combine(AppContext.BaseDirectory, "games", Path.GetFileName(request.GameFile));
+        if (!File.Exists(path))
+            return Results.BadRequest(new { error = $"No shipped game named '{request.GameFile}'." });
+        if (!MMP.SlotGame.Core.Games.Definition.GameDefinitionLoader.TryLoad(
+                File.ReadAllText(path), out var definition, out var loadErrors))
+            return Results.BadRequest(new { error = "Definition failed to load.", errors = loadErrors });
+
+        var game = definition!;
+        MMP.SlotGame.Core.Games.GameAnalysis analysis;
+        try { analysis = MMP.SlotGame.Core.Games.GameAnalyzer.Analyse(game); }
+        catch (NotSupportedException ex) { return Results.BadRequest(new { error = ex.Message }); }
+
+        var target = request.TargetBaseRtpBasisPoints / 10_000.0;
+        // Line RTP is linear in the pays, so one scalar re-prices the whole table; each
+        // re-priced pay then rounds to a whole hundredth of the bet, and the realized
+        // figure is recomputed from the enumerated probabilities.
+        var scale = target / analysis.LineRtp;
+
+        var rows = analysis.CombinationCounts
+            .OrderBy(c => c.Key.CategoryIndex).ThenBy(c => c.Key.Count)
+            .Select(c =>
+            {
+                var category = game.Categories[c.Key.CategoryIndex];
+                var shippedPay = category.PayFor(c.Key.Count) / 100.0;
+                var probability = (double)c.Value / analysis.StopCombinations;
+                var scaledHundredths = (long)Math.Round(
+                    category.PayFor(c.Key.Count) * scale, MidpointRounding.ToEven);
+                return new
+                {
+                    symbolId = c.Key.CategoryIndex,
+                    symbol = category.Name,
+                    count = c.Key.Count,
+                    canonical = shippedPay,
+                    probability,
+                    scaledMillicents = scaledHundredths * 1_000,   // hundredth of a 100,000 mc bet
+                    scaledCredits = scaledHundredths / 100.0,
+                };
+            })
+            .ToArray();
+
+        var realized = rows.Sum(r => r.scaledCredits * r.probability);
+
+        log.Information(Category,
+            "Solve {Game} line table to {Target} bp: shipped {Shipped}, realized {Realized}, drift {Drift} bp",
+            new LogProperty("Game", game.Name),
+            new LogProperty("Target", request.TargetBaseRtpBasisPoints),
+            new LogProperty("Shipped", analysis.LineRtp),
+            new LogProperty("Realized", realized),
+            new LogProperty("Drift", (realized - target) * 10_000));
+
+        return Results.Ok(new
+        {
+            preset = game.Name,
+            isGame = true,
+            shippedLineRtp = analysis.LineRtp,
+            bonusRtp = analysis.BonusRtp,
+            targetBaseRtp = target,
+            unscaledEvMultiplier = analysis.LineRtp,
+            scaleFactor = scale,
             realizedBaseRtp = realized,
             driftBasisPoints = (realized - target) * 10_000,
             paytable = rows,
