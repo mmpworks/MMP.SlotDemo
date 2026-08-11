@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { getJson, postJson } from '../api/labs'
+import PaylinePattern from '../components/PaylinePattern.vue'
 import type { CensusView, SourceView, SpinView } from '../api/labs'
 
 defineProps<{ title: string; blurb: string }>()
@@ -179,6 +180,7 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
             :class="{ 'line-chip--active': i === activeLine }"
             @click="activeLine = i"
           >
+            <PaylinePattern :rows="line.rows" :window-rows="source?.rows ?? 3" :active="i === activeLine" />
             {{ line.name }}
           </button>
         </div>
@@ -286,12 +288,15 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
 }
 
 .line-chip {
+  display: grid;
+  gap: 0.3rem;
+  justify-items: center;
   font-family: var(--font-mono);
   font-size: 0.72rem;
   background: transparent;
   color: var(--color-text-secondary);
   border: var(--rule-hairline);
-  padding: 0.3rem 0.7rem;
+  padding: 0.45rem 0.7rem 0.35rem;
   cursor: pointer;
 }
 

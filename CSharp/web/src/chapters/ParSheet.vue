@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { postJson } from '../api/labs'
+import PaylinePattern from '../components/PaylinePattern.vue'
 
 defineProps<{ title: string; blurb: string }>()
 
@@ -156,6 +157,10 @@ const explanations: Record<string, { title: string; body: string }> = {
     title: 'Scatter separation check',
     body: 'A classic PAR-sheet trap: window-area scatter math assumes scatters sit far enough apart that two never show in one window. If a strip edit put two Penguins within 3 stops, the shipped trigger rate would silently drift from the model. This check reads the actual strips: Penguins sit at stops 0 and 13 on each scatter reel — separated, so the exact enumeration equals the clean (6/26)³ form. A regression test pins this.',
   },
+  paylines: {
+    title: 'Payline patterns',
+    body: 'A payline is a fixed path across the window: one row picked per reel. The diagram shows which cell each reel contributes. Orca Dive reads a single Centre line, the shape the source machine used. Multi-line games add paths (Top, Bottom, V, zigzags), and for ordinary line pays the extra lines leave RTP unchanged, because the bet scales with the line count. The chapter 3 lab draws every pattern for the multi-line presets.',
+  },
   strips: {
     title: 'Strip order',
     body: 'The full ordered strips, exactly as the window slides over them. Order changes nothing for single-line pays (only counts matter) but everything for scatters and multi-row windows, because adjacent stops enter the window together. This is the part of a PAR sheet manufacturers guard most closely — and here it is the open source of the game.',
@@ -205,7 +210,16 @@ const symbolName = computed(() => {
               <button class="par-term par-label" @click="explainKey = 'cycle'">Cycle</button>
               <span class="mono">{{ sheet.game.cycle.toLocaleString() }}</span>
             </div>
-            <div><span class="par-label">Bet</span><span class="mono">{{ sheet.game.betCredits }} credit, {{ sheet.game.paylines.length }} payline ({{ sheet.game.paylines[0]?.name }})</span></div>
+            <div><span class="par-label">Bet</span><span class="mono">{{ sheet.game.betCredits }} credit, {{ sheet.game.paylines.length }} payline</span></div>
+          </div>
+          <div class="par-lines">
+            <button class="par-term par-label" @click="explainKey = 'paylines'">Payline patterns</button>
+            <div class="par-lines__row">
+              <div v-for="line in sheet.game.paylines" :key="line.name" class="par-lines__item">
+                <PaylinePattern :rows="line.rows" :window-rows="sheet.game.rows" active />
+                <span class="mono">{{ line.name }}</span>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -507,6 +521,24 @@ const symbolName = computed(() => {
 
 .par-fail {
   color: var(--color-status-error);
+}
+
+.par-lines {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.par-lines__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.par-lines__item {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+  font-size: 0.7rem;
 }
 
 .par-strip {
