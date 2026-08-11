@@ -1,0 +1,28 @@
+import { onMounted, onUnmounted, ref } from 'vue'
+
+/**
+ * Hash routing in a dozen lines. The site is a fixed list of chapter pages with no
+ * params, no guards, and no lazy loading, so a router dependency would carry more
+ * concepts than the navigation has.
+ */
+export function useHashRoute(fallback: string) {
+  const current = ref(readHash() || fallback)
+
+  function readHash(): string {
+    return window.location.hash.replace(/^#\/?/, '')
+  }
+
+  function sync(): void {
+    current.value = readHash() || fallback
+    window.scrollTo({ top: 0 })
+  }
+
+  function go(id: string): void {
+    window.location.hash = `#/${id}`
+  }
+
+  onMounted(() => window.addEventListener('hashchange', sync))
+  onUnmounted(() => window.removeEventListener('hashchange', sync))
+
+  return { current, go }
+}

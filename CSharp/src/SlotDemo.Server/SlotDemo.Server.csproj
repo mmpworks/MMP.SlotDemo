@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SlotDemo.Server.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Herald.OSS" Version="0.12.11" />
+    <PackageReference Include="MMP.Herald.Sinks.File" Version="0.2.1" />
+    <PackageReference Include="MMP.Herald.Sinks.HttpJson" Version="0.2.1" />
+  </ItemGroup>
+
+</Project>

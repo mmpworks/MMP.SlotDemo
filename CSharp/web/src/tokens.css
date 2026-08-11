@@ -1,0 +1,82 @@
+/*
+ * Design tokens — "Nolan/Barrymore" register.
+ * Nolan: near-black cinematic ground, one accent color, high contrast.
+ * Barrymore: art-deco framing (thin brass rules, stepped corners), display
+ * serif headlines, generous letter-spacing.
+ *
+ * Every literal color below is documented with its hex + name in the
+ * comment beside it, per house rule.
+ */
+:root {
+  /* Ground — near-black with a cold navy undertone (Nolan) */
+  --color-ground: #0a0c10; /* #0a0c10 — void-navy: base page background */
+  --color-surface: #12151c; /* #12151c — deep-slate: card/panel background */
+  --color-surface-raised: #181c25; /* #181c25 — raised-slate: hovered/expanded surfaces */
+  --color-surface-dormant: #0d0f13; /* #0d0f13 — dormant-slate: not-installed/not-running cards */
+
+  /* Accent — brass/amber (Barrymore deco metal), the one accent color */
+  --color-accent: #d1a355; /* #d1a355 — brass: primary accent, headline rules, active glow */
+  --color-accent-bright: #f0c988; /* #f0c988 — bright-brass: hover/highlight state of accent */
+  --color-accent-dim: #7a6238; /* #7a6238 — dim-brass: inactive accent, subdued rule lines */
+
+  /* Semantic status (kept distinct from the single decorative accent) */
+  --color-status-running: #6fcf97; /* #6fcf97 — signal-green: system actively running */
+  --color-status-installed: #7fb3d5; /* #7fb3d5 — signal-blue: installed but idle */
+  --color-status-dormant: #4a4f5c; /* #4a4f5c — signal-ash: not installed */
+  --color-status-error: #e2685f; /* #e2685f — signal-ember: error panel accent */
+
+  /* Log viewer — level colors. Each sys.* variant is a desaturated/dimmer
+     version of its plain counterpart so the framework-origin and app-origin
+     lanes read apart at a glance; error/fatal have no sys.* pair. */
+  --color-log-sys-verbose: #4d4b46; /* #4d4b46 — dim-ash: sys.verbose */
+  --color-log-verbose: #6f6c64; /* #6f6c64 — muted-taupe: verbose */
+  --color-log-sys-debug: #5a574f; /* #5a574f — dim-taupe: sys.debug */
+  --color-log-debug: #948f84; /* #948f84 — parchment-dim: debug */
+  --color-log-sys-information: #7d7f86; /* #7d7f86 — dim-steel: sys.information */
+  --color-log-information: #ece7dd; /* #ece7dd — parchment: information (bright) */
+  --color-log-sys-warning: #a8813f; /* #a8813f — dim-amber: sys.warning */
+  --color-log-warning: #e3a53f; /* #e3a53f — amber-warn: warning */
+  --color-log-error: #e2685f; /* #e2685f — signal-ember: error */
+  --color-log-fatal: #ff4d4d; /* #ff4d4d — crimson-alert: fatal (deeper + bold) */
+
+  /* Interpolated {Name} values inside a rebuilt message template — kept
+     distinct from both the decorative brass accent and the level colors. */
+  --color-log-value: #7fd1c9; /* #7fd1c9 — teal-mint: template value highlight */
+
+  /* Text */
+  --color-text-primary: #ece7dd; /* #ece7dd — parchment: primary text on dark ground */
+  --color-text-secondary: #9a978f; /* #9a978f — parchment-dim: secondary/meta text */
+  --color-text-muted: #64625c; /* #64625c — parchment-mute: dormant/disabled text */
+
+  /* Type */
+  --font-display: Georgia, 'Times New Roman', 'Iowan Old Style', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+
+  /* Rhythm */
+  --space-xs: 0.375rem;
+  --space-sm: 0.75rem;
+  --space-md: 1.25rem;
+  --space-lg: 2rem;
+  --space-xl: 3.25rem;
+
+  /* Deco framing */
+  --rule-hairline: 1px solid var(--color-accent-dim);
+  --rule-brass: 1px solid var(--color-accent);
+  --corner-step: 10px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-micro: 120ms;
+  --duration-local: 240ms;
+  --duration-major: 420ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-micro: 0ms;
+    --duration-local: 0ms;
+    --duration-major: 0ms;
+  }
+}

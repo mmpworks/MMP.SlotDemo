@@ -1,0 +1,73 @@
+@import './tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-ground);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  /* Subtle radial vignette — Nolan's darkened-edge cinematic ground. */
+  background-image: radial-gradient(
+    ellipse at 50% -10%,
+    #171b24 0%, /* #171b24 — vignette-center: faint lift near the top edge */
+    #0a0c10 60% /* #0a0c10 — void-navy: matches --color-ground at the rim */
+  );
+}
+
+#app {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg) var(--space-lg);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Deco stepped-corner clip — used on framed panels (cards, strip, error). */
+.deco-frame {
+  position: relative;
+  clip-path: polygon(
+    var(--corner-step) 0%,
+    calc(100% - var(--corner-step)) 0%,
+    100% var(--corner-step),
+    100% calc(100% - var(--corner-step)),
+    calc(100% - var(--corner-step)) 100%,
+    var(--corner-step) 100%,
+    0% calc(100% - var(--corner-step)),
+    0% var(--corner-step)
+  );
+  border: var(--rule-hairline);
+}
+
+.deco-rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-accent) 20%,
+    var(--color-accent) 80%,
+    transparent
+  );
+}
+
+.deco-label {
+  font-family: var(--font-display);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--color-accent);
+}

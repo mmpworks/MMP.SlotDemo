@@ -1,0 +1,30 @@
+# MMP.SlotDemo compose root.
+#
+# The C# harness (server + built-in SPA) is the core service. Add external
+# frontend/backend services beyond the C# environment as additional entries:
+# each new service is one block here, with no restructuring of the core service.
+#
+# Run from this directory:  docker compose up --build
+# Then open http://localhost:5090
+
+services:
+  slotdemo:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "5090:5090"
+
+  # ---- Add external services below. Examples (uncomment + adapt): ----------
+  #
+  # postgres:
+  #   image: postgres:17-alpine
+  #   environment:
+  #     POSTGRES_PASSWORD: dev
+  #   ports:
+  #     - "5432:5432"
+  #
+  # extra-frontend:
+  #   build: ../frontends/my-spa
+  #   ports:
+  #     - "5091:80"
