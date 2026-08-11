@@ -1,6 +1,12 @@
 import type { Component } from 'vue'
 import HarnessHome from './HarnessHome.vue'
 import Chapter02 from './Chapter02.vue'
+import Chapter03 from './Chapter03.vue'
+import Chapter04 from './Chapter04.vue'
+import Chapter05 from './Chapter05.vue'
+import Chapter06 from './Chapter06.vue'
+import Chapter07 from './Chapter07.vue'
+import Finale from './Finale.vue'
 import ChapterPlaceholder from './ChapterPlaceholder.vue'
 
 export interface ChapterEntry {
@@ -30,7 +36,7 @@ export const chapters: ChapterEntry[] = [
     id: 'ch01',
     label: '01',
     title: 'Episode 1 — System Design',
-    blurb: 'Requirements, the two-lane split between exact math and lossy telemetry, and the back-of-envelope that says one process is enough.',
+    blurb: 'Requirements, the two-lane split between exact math and lossy telemetry, and the back-of-envelope that says one process is enough. The interactive blueprint lands here.',
     component: ChapterPlaceholder,
     ready: false,
   },
@@ -46,41 +52,49 @@ export const chapters: ChapterEntry[] = [
     id: 'ch03',
     label: '03',
     title: 'Episode 3 — Reels and Paylines',
-    blurb: 'Why a reel is a strip and not a weighted die, and what a payline actually walks across.',
-    component: ChapterPlaceholder,
-    ready: false,
+    blurb: 'A reel is a strip, a window is a slice of it, and the strip layout is the only source of odds in the whole engine.',
+    component: Chapter03,
+    ready: true,
   },
   {
     id: 'ch04',
     label: '04',
     title: 'Episode 4 — Paytable Math',
-    blurb: 'Solving a paytable to a target RTP, and the closed-form sigma that draws the confidence band.',
-    component: ChapterPlaceholder,
-    ready: false,
+    blurb: 'One scale factor solves a paytable to a target RTP, and closed-form sigma prices the confidence band before a single spin.',
+    component: Chapter04,
+    ready: true,
   },
   {
     id: 'ch05',
     label: '05',
     title: 'Episode 5 — The Simulation Engine',
-    blurb: 'Fixed quotas over work stealing, batched atomic totals, and the bounded telemetry channel.',
-    component: ChapterPlaceholder,
-    ready: false,
+    blurb: 'Fixed quotas, batched atomic totals, and a lossy telemetry lane you can starve without moving the truth.',
+    component: Chapter05,
+    ready: true,
   },
   {
     id: 'ch06',
     label: '06',
     title: 'Episode 6 — Games as Data',
-    blurb: 'A game definition as a document: schema, loader, and the validation boundary it passes through.',
-    component: ChapterPlaceholder,
-    ready: false,
+    blurb: 'A slot game as a JSON document: the loader compiles it or returns every problem at once, and declared facts are verified against the strips.',
+    component: Chapter06,
+    ready: true,
   },
   {
     id: 'ch07',
     label: '07',
     title: 'Episode 7 — Proving the Machine',
-    blurb: 'Exhaustive enumeration as a referee, and the bit-for-bit parallel-equals-sequential test.',
-    component: ChapterPlaceholder,
-    ready: false,
+    blurb: 'Exhaustive enumeration referees the simulation: three implementations sharing only the game data, agreeing.',
+    component: Chapter07,
+    ready: true,
+  },
+  {
+    id: 'finale',
+    label: 'Run',
+    title: 'The Proving Ground',
+    blurb: 'Ten million spins live: the measured RTP walking into the analytic band as the funnel narrows. The whole series on one chart.',
+    component: Finale,
+    ready: true,
   },
 ]
 

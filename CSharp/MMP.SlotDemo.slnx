@@ -1,4 +1,6 @@
 <Solution>
+  <Project Path="src/MMP.SlotGame.Core/MMP.SlotGame.Core.csproj" />
   <Project Path="src/SlotDemo.Server/SlotDemo.Server.csproj" />
+  <Project Path="tests/MMP.SlotGame.Tests/MMP.SlotGame.Tests.csproj" />
   <Project Path="tests/SlotDemo.Server.Tests/SlotDemo.Server.Tests.csproj" />
 </Solution>

@@ -1,0 +1,257 @@
+// Typed clients for the chapter labs and the finale run. One post helper, one get
+// helper; every shape mirrors the server records field for field.
+
+async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+  let response: Response
+  try {
+    response = await fetch(url, init)
+  } catch {
+    throw new Error(`Could not reach ${url}. Is the server running?`)
+  }
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '')
+    throw new Error(`${url} responded with ${response.status}. ${detail}`.trim())
+  }
+  return (await response.json()) as T
+}
+
+export function getJson<T>(url: string): Promise<T> {
+  return requestJson<T>(url)
+}
+
+export function postJson<T>(url: string, body: unknown): Promise<T> {
+  return requestJson<T>(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+// ---- chapter 3 ----
+
+export interface PresetView {
+  name: string
+  reelCount: number
+  rows: number
+  stopsPerReel: number
+  symbols: { id: number; name: string; weight: number; probability: number }[]
+  strip: number[]
+  paylines: { name: string; rows: number[] }[]
+}
+
+export interface SpinView {
+  preset: string
+  spinIndex: number
+  window: { reel: number; row: number; symbolId: number; symbol: string }[]
+  lines: {
+    name: string
+    rows: number[]
+    cells: { reel: number; row: number; symbolId: number; symbol: string }[]
+  }[]
+}
+
+export interface CensusView {
+  preset: string
+  spins: number
+  symbolId: number
+  perReel: { reel: number; observed: number; expected: number; count: number }[]
+}
+
+// ---- chapter 4 ----
+
+export interface SolveView {
+  preset: string
+  targetBaseRtp: number
+  unscaledEvMultiplier: number
+  scaleFactor: number
+  realizedBaseRtp: number
+  driftBasisPoints: number
+  paytable: {
+    symbolId: number
+    symbol: string
+    count: number
+    canonical: number
+    probability: number
+    scaledMillicents: number
+    scaledCredits: number
+  }[]
+}
+
+export interface BandView {
+  preset: string
+  analytic: {
+    baseRtp: number
+    features: { name: string; rtp: number }[]
+    totalRtp: number
+    sigma: number
+  }
+  bands: { spins: number; halfWidth99: number; halfWidth999: number }[]
+}
+
+// ---- chapter 5 ----
+
+export interface DeterminismView {
+  preset: string
+  varySeed: boolean
+  identical: boolean
+  runs: {
+    attempt: number
+    seed: number
+    spins: number
+    wageredMillicents: number
+    returnedMillicents: number
+    hits: number
+    measuredRtp: number
+    elapsedMs: number
+    spinsPerSecond: number
+  }[]
+}
+
+export interface TelemetryView {
+  preset: string
+  channelCapacity: number
+  elapsedMs: number
+  spinsPerSecond: number
+  samplesProducedApprox: number
+  samplesDelivered: number
+  samplesDroppedApprox: number
+  exactFinal: { spins: number; wageredMillicents: number; returnedMillicents: number; measuredRtp: number }
+  lastDeliveredSample: { spins: number; measuredRtp: number }
+}
+
+// ---- chapter 6 ----
+
+export interface GameSummary {
+  file: string
+  valid: boolean
+  errors?: string[]
+  name?: string
+  source?: string | null
+  reels?: number
+  rows?: number
+  stopsPerReel?: number[]
+  stopCombinations?: number
+  symbols?: { id: number; name: string; isWild: boolean; isScatter: boolean }[]
+  paylines?: { name: string; rows: number[] }[]
+  categories?: { name: string; kind: string; pays: { count: number; payHundredths: number }[] }[]
+  bonus?: {
+    name: string
+    scatterSymbolId: number
+    requiredReels: number[]
+    prizes: number
+    blanks: number
+    maxAward: number
+  } | null
+}
+
+export interface ValidateView {
+  valid: boolean
+  errors?: string[]
+  name?: string
+  reels?: number
+  rows?: number
+  stopCombinations?: number
+  symbols?: number
+  categories?: number
+  hasBonus?: boolean
+}
+
+// ---- chapter 7 ----
+
+export interface EnumerateView {
+  supported: boolean
+  reason?: string
+  game?: string
+  stopCombinations?: number
+  hitCombinations?: number
+  triggerCombinations?: number
+  hitFrequency?: number
+  triggerProbability?: number
+  lineRtp?: number
+  bonusRtp?: number
+  totalRtp?: number
+  sigma?: number
+  combinations?: { category: string; count: number; combinations: number; probability: number }[]
+}
+
+export interface RefereeView {
+  supported: boolean
+  reason?: string
+  game?: string
+  spins?: number
+  measured?: {
+    totalRtp: number
+    lineRtp: number
+    bonusRtp: number
+    hitFrequency: number
+    triggerFrequency: number
+  }
+  exact?: {
+    totalRtp: number
+    lineRtp: number
+    bonusRtp: number
+    hitFrequency: number
+    triggerProbability: number
+  }
+  bandHalfWidth?: number
+  withinBand?: boolean
+}
+
+// ---- the finale run ----
+
+export interface RunLimits {
+  maxAggregateBasisPoints: number
+  defaults: {
+    presetName: string
+    baseRtpBasisPoints: number
+    freeSpinsRtpBasisPoints: number
+    pickBonusRtpBasisPoints: number
+    stride: number
+  }
+  workerCeiling: number
+  presets: { name: string; reels: number; rows: number; stopsPerReel: number; paylines: number }[]
+}
+
+export interface CurvePoint {
+  spins: number
+  measuredRtp: number
+  hitFrequency: number
+  bandHalfWidth: number
+  withinBand: boolean
+}
+
+export interface RunDescription {
+  runId: string
+  status: string
+  stride: number
+  config: {
+    preset: string
+    reels: number
+    rows: number
+    stopsPerReel: number
+    paylines: number
+    targetRtp: number
+    workers: number
+    targetSpins: number
+    seed: number
+  }
+  analytic: {
+    baseRtp: number
+    features: { name: string; rtp: number }[]
+    totalRtp: number
+    sigma: number
+  }
+  latest: {
+    spins: number
+    measuredRtp: number
+    hitFrequency: number
+    wageredMillicents: number
+    returnedMillicents: number
+  }
+  curve: CurvePoint[]
+}
+
+export interface RunStreamEvent {
+  type: string
+  data: unknown
+}

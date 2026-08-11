@@ -1,0 +1,97 @@
+{
+  "name": "Classic Three Reel",
+  "source": "Hand-built example. Proves the loader and the analyser are agnostic to reel count, symbol count and per-reel stop count.",
+  "windowRows": 3,
+  "symbols": [
+    {
+      "name": "Seven"
+    },
+    {
+      "name": "Bar"
+    },
+    {
+      "name": "Bell"
+    },
+    {
+      "name": "Wild",
+      "wild": true,
+      "substitutesFor": ["Cherry", "Lemon"]
+    },
+    {
+      "name": "Cherry"
+    },
+    {
+      "name": "Lemon"
+    }
+  ],
+  "groups": {
+    "AnyFruit": ["Cherry", "Lemon"]
+  },
+  "reelStops": [22, 24, 22],
+  "symbolCounts": {
+    "Seven": [1, 2, 1],
+    "Bar": [3, 3, 4],
+    "Bell": [4, 5, 4],
+    "Wild": [4, 2, 2],
+    "Cherry": [5, 6, 5],
+    "Lemon": [5, 6, 6]
+  },
+  "reels": [
+    ["Cherry", "Lemon", "Bell", "Wild", "Bar", "Cherry", "Lemon", "Bell", "Wild", "Bar", "Cherry", "Lemon", "Seven", "Bell", "Wild", "Cherry", "Lemon", "Bar", "Bell", "Wild", "Cherry", "Lemon"],
+    ["Cherry", "Lemon", "Bell", "Bar", "Cherry", "Lemon", "Seven", "Wild", "Bell", "Cherry", "Lemon", "Bar", "Bell", "Cherry", "Lemon", "Bell", "Cherry", "Lemon", "Seven", "Wild", "Bar", "Bell", "Cherry", "Lemon"],
+    ["Lemon", "Cherry", "Bar", "Bell", "Lemon", "Wild", "Cherry", "Bar", "Bell", "Lemon", "Cherry", "Seven", "Lemon", "Bar", "Bell", "Cherry", "Lemon", "Wild", "Bar", "Bell", "Cherry", "Lemon"]
+  ],
+  "paylines": [
+    {
+      "name": "Centre",
+      "rows": [1, 1, 1]
+    }
+  ],
+  "paytable": [
+    {
+      "symbol": "Seven",
+      "pays": {
+        "3": 500
+      }
+    },
+    {
+      "symbol": "Bar",
+      "pays": {
+        "3": 60
+      }
+    },
+    {
+      "symbol": "Bell",
+      "pays": {
+        "3": 30
+      }
+    },
+    {
+      "symbol": "Wild",
+      "pays": {
+        "3": 50,
+        "2": 2,
+        "1": 1
+      }
+    },
+    {
+      "symbol": "Cherry",
+      "pays": {
+        "3": 2
+      }
+    },
+    {
+      "symbol": "Lemon",
+      "pays": {
+        "3": 2
+      }
+    },
+    {
+      "group": "AnyFruit",
+      "name": "MixedFruit",
+      "pays": {
+        "3": 1
+      }
+    }
+  ]
+}

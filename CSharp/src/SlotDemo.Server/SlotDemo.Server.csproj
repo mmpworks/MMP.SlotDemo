@@ -13,6 +13,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Game definitions are DATA, imported at run time. They travel to the output so the
+         server loads the same files the engine's own tests do. -->
+    <Content Include="..\..\games\*.json" Link="games\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MMP.SlotGame.Core\MMP.SlotGame.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Herald.OSS" Version="0.12.11" />
     <PackageReference Include="MMP.Herald.Sinks.File" Version="0.2.1" />
     <PackageReference Include="MMP.Herald.Sinks.HttpJson" Version="0.2.1" />
