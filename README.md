@@ -1,31 +1,30 @@
 # MMP.SlotDemo
 
-A ready-to-clone project harness: a .NET 10 backend, a Vue 3 dashboard, and a
-docker root for growing past the C# core. Clone it, rename it, and a new
-project starts with a working web stack instead of an empty folder.
+The companion site for the *Building a Slot Machine RTP Simulator* series. Every
+episode gets a page here: a short written brief plus controls that run the
+episode's own code on the server and narrate each step through Herald, so the log
+stream at the bottom of the page shows the same computation from the inside.
 
-The harness ships one screen and one button. Press **STAT** and it scans the
-machine for AI coding tools (Claude Code, GitHub Copilot, Codex, Cursor,
-Gemini, Ollama) and shows what's installed and what's running. That is the
-v1 feature. Everything else in this repo exists so the *next* project you
-clone it for can replace that screen while the server, build, docker, and
-test wiring underneath keeps working.
+Forked from [MMP.WorkHarnesses](../MMP.WorkHarnesses) — .NET 10 server, Vue 3 SPA,
+Herald.OSS logging with an SSE relay into a live viewer. The harness's STAT probe
+survives as the start page because it exercises the whole pipeline in one click,
+which is a useful pre-record smoke test.
 
-## Layout
+## Branch layout
 
-| Path | What it is |
+One branch per chapter. `main` carries the shell — chapter registry, hash routing,
+nav, the persistent log viewer — and nothing episode-specific.
+
+| Branch | Contents |
 |---|---|
-| `CSharp/` | The C# bootstrap: server + web dashboard |
-| `CSharp/src/SlotDemo.Server/` | .NET 10 minimal API — serves the SPA and `/api/*` |
-| `CSharp/web/` | Vue 3 + Vite + TypeScript dashboard |
-| `CSharp/tests/` | xUnit fuzz suite for the backend |
-| `CSharp/web/tests/` | Vitest fuzz suite for the frontend |
-| `docker/` | Compose root — add external front/back services as new compose entries |
-| `docs/` | `PRD.md` and `how-to-use-this-harness.md` |
+| `main` | Chapter shell, start page, log viewer |
+| `chapter-02` | Millicents / SpinRng labs: exact money, seeded streams, modulo bias |
+
+A chapter branch adds its page under `CSharp/web/src/chapters/`, its endpoints
+under `CSharp/src/SlotDemo.Server/Chapters/`, and flips its row in
+`CSharp/web/src/chapters/registry.ts` from placeholder to built.
 
 ## Run it
-
-The production-shaped path:
 
 ```bash
 # 1. Build the SPA
@@ -34,61 +33,31 @@ cd CSharp/web && npm install && npm run build && cd ../..
 # 2. Start the server
 dotnet run --project CSharp/src/SlotDemo.Server
 
-# 3. Open http://localhost:5090 — click STAT
+# 3. Open http://localhost:5090
 ```
 
 Dev loop for the SPA: `npm run dev` in `CSharp/web` (Vite on `:5173`, proxies
 `/api` to `:5090`).
 
-Docker instead:
+## Why the labs run server-side
 
-```bash
-cd docker && docker compose up --build
-```
+A JavaScript reimplementation of `Millicents` would prove nothing about
+`Millicents` — and JavaScript cannot even hold a 64-bit draw without losing bits.
+The chapter endpoints carry copies of the episode's real C# files, so what the
+page reports is what the simulator does. Raw 64-bit values cross the wire as hex
+strings for the same reason.
 
-## What v1 does
+## Chapter 2 endpoints
 
-- `GET /api/hello` — hello-world payload (use it as a health check).
-- `GET /api/stats` — probes the machine for AI systems (Claude Code, GitHub
-  Copilot, Codex, Cursor, Gemini, Ollama): CLI version + a live process scan
-  (count, memory, start time).
-- The dashboard renders it all behind one **STAT** button.
+| Route | What it demonstrates |
+|---|---|
+| `POST /api/ch2/money` | Integer money against a `double` twin: drift, the 64-bit view, and the refusal an odd raw amount triggers |
+| `POST /api/ch2/rng` | Per-worker streams under SplitMix64 seeding versus naive `seed + workerId` |
+| `POST /api/ch2/bias` | Modulo bias against Lemire multiply-shift over a narrowed draw space |
 
 ## Logging
 
-The server logs through **Herald.OSS in native mode**, using a custom
-10-level event set. The `sys.*` levels carry framework noise and the plain
-levels carry application signal. Two sinks are wired by default: a rendered
-console writer and a rolling NDJSON file (structured JSON, one object per
-line).
-
-[`docs/how-to-use-this-harness.md`](docs/how-to-use-this-harness.md) covers
-the level set, what a call site looks like, the configuration code, and why
-the harness logs this way.
-
-## Testing
-
-Both ends carry a **seeded fuzz suite**: the tests generate malformed input
-from a fixed random seed, so a failing case replays the same input every run.
-
-```bash
-# Backend — xUnit, from CSharp/tests/SlotDemo.Server.Tests
-dotnet test CSharp/tests/SlotDemo.Server.Tests
-
-# Frontend — Vitest, from CSharp/web
-cd CSharp/web && npm run test
-```
-
-[`docs/how-to-use-this-harness.md`](docs/how-to-use-this-harness.md) covers
-what each suite asserts.
-
-## Extending
-
-- New API surface: add endpoints in `Program.cs` under `/api/*`.
-- New AI system in the stats probe: one catalog row in `AiSystems.cs`.
-- New external service (database, second frontend, worker): one block in
-  `docker/docker-compose.yml`.
-
-## License
-
-Apache-2.0 — see [LICENSE](LICENSE).
+The server logs through Herald.OSS in native mode with a custom 10-level set;
+`sys.*` levels carry framework noise, plain levels carry application signal. The
+HttpJson sink posts to `/api/logs/ingest`, which fans out over SSE to the viewer.
+See `docs/how-to-use-this-harness.md` for the harness-level detail.
