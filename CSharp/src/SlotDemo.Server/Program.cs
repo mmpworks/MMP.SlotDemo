@@ -9,7 +9,14 @@ using SlotDemo.Server;
 // per line — extension drives the format) for the structured record. The sys.* levels
 // carry framework noise (routed there by SystemAwareHeraldProvider); the plain
 // levels carry application signal. See SlotDemoLevels for the ordering rationale.
-var herald = QuickLogBuilder.Create("slotdemo")
+// The relay sink posts to this server's own ingest route. A host that is not listening
+// on it (the in-process test host, for one) leaves the sink posting into nothing, which
+// backs up the async drain and keeps request-time lines out of the file. Setting the
+// variable to an empty string drops the sink and leaves console + file intact.
+var ingestUrl = Environment.GetEnvironmentVariable("SLOTDEMO_LOG_INGEST_URL")
+                ?? "http://localhost:5090/api/logs/ingest";
+
+var heraldBuilder = QuickLogBuilder.Create("slotdemo")
     .WithConsoleSink()
     .WithFileSink("logs/slotdemo-.ndjson",
         interval: "daily",
@@ -19,7 +26,6 @@ var herald = QuickLogBuilder.Create("slotdemo")
     .WithCustomLevel(SlotDemoLevels.SysDebug, "SysDebug")
     .WithCustomLevel(SlotDemoLevels.SysInformation, "SysInformation")
     .WithCustomLevel(SlotDemoLevels.SysWarning, "SysWarning")
-    .WithHttpJsonSink("http://localhost:5090/api/logs/ingest")   // relayed to the SPA log viewer over SSE
     .WithAsyncLogging()   // buffered: the HttpJson sink posts off the request thread, and
                           // startup logs emitted before Kestrel is listening never block
     .WithLevelOrder(SlotDemoLevels.Order)
@@ -29,8 +35,12 @@ var herald = QuickLogBuilder.Create("slotdemo")
     // posted back to it by the HttpJson sink, forever.
     .WithCustomFilter(logEvent =>
         SlotDemoLevels.AtOrAbove(SlotDemoLevels.SysInformation)(logEvent) &&
-        !logEvent.Message.Contains("/api/logs/ingest", StringComparison.Ordinal))
-    .BuildAndCommit();
+        !logEvent.Message.Contains("/api/logs/ingest", StringComparison.Ordinal));
+
+if (!string.IsNullOrWhiteSpace(ingestUrl))
+    heraldBuilder = heraldBuilder.WithHttpJsonSink(ingestUrl);   // relayed to the SPA log viewer over SSE
+
+var herald = heraldBuilder.BuildAndCommit();
 
 var log = herald.Logger;
 var appCategory = new LogCategory("SlotDemo");

@@ -19,10 +19,7 @@ public sealed class HeraldIntegrationTests : IClassFixture<WebApplicationFactory
         using var client = _factory.CreateClient();
         (await client.GetAsync("/api/hello")).EnsureSuccessStatusCode();
 
-        // Program.cs builds the pipeline with WithAsyncLogging, so lines land on a
-        // background drain — poll rather than reading once.
-        var text = await ReadServerLogsAsync();
-        Assert.Contains("Hello endpoint served", text);
+        await AssertLoggedAsync("Hello endpoint served");
     }
 
     [Fact]
@@ -31,28 +28,47 @@ public sealed class HeraldIntegrationTests : IClassFixture<WebApplicationFactory
         using var client = _factory.CreateClient();
         (await client.GetAsync("/api/hello")).EnsureSuccessStatusCode();
 
-        var text = await ReadServerLogsAsync();
-        Assert.Contains("/api/hello", text);
+        await AssertLoggedAsync("/api/hello");
     }
 
-    private static async Task<string> ReadServerLogsAsync()
+    /// <summary>
+    /// Polls until the wanted line appears, rather than until the log has any content at
+    /// all. Program.cs builds the pipeline with <c>WithAsyncLogging</c>, so a line lands on
+    /// a background drain some time after the request returns, and a log file left behind
+    /// by an earlier run is non-empty from the first read. Waiting on the condition itself
+    /// keeps the test honest about what it is checking.
+    /// </summary>
+    private static async Task AssertLoggedAsync(string wanted)
     {
-        // The file sink resolves its relative path against the process working
-        // directory — under the test host that resolves to the test bin directory
-        // rather than the server content root.
-        var logsDir = Path.Combine(Directory.GetCurrentDirectory(), "logs");
-        for (var attempt = 0; attempt < 20; attempt++)
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        var text = "";
+        while (DateTime.UtcNow < deadline)
         {
-            if (Directory.Exists(logsDir))
-            {
-                var text = string.Concat(Directory
-                    .GetFiles(logsDir, "slotdemo-*.ndjson")
-                    .Select(f => { using var s = new StreamReader(new FileStream(
-                        f, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)); return s.ReadToEnd(); }));
-                if (text.Length > 0) return text;
-            }
-            await Task.Delay(100);
+            text = ReadServerLogs();
+            if (text.Contains(wanted, StringComparison.Ordinal)) return;
+            await Task.Delay(50);
         }
-        return "";
+
+        Assert.Fail($"'{wanted}' never reached the log file. Last {text.Length} bytes read.");
+    }
+
+    private static string ReadServerLogs()
+    {
+        // The file sink resolves its relative path against the process working directory,
+        // which under the test host is the test bin directory rather than the server
+        // content root.
+        var logsDir = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+        if (!Directory.Exists(logsDir)) return "";
+
+        return string.Concat(Directory
+            .GetFiles(logsDir, "slotdemo-*.ndjson")
+            .Select(ReadShared));
+    }
+
+    private static string ReadShared(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 }
