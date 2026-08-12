@@ -1,12 +1,13 @@
 # Episode 1 — System Design: A Slot Machine That Proves Itself
 
-**Target:** 20–22 min. **Format:** whiteboard first, source last. This is the only
-episode with no paste blocks — the artifact today is a diagram, and every later
-episode builds one box of it.
+**Target:** 22–24 min. **Format:** whiteboard first, source last. This is the only
+episode with no paste blocks: the artifact today is a diagram, and every later episode
+builds one box of it.
 **Subject:** the engine. The companion site appears three times, for under three
 minutes total, and only to make a design claim visible.
 **Companion article:** `docs/articles/01-system-design.md`
-**Companion site:** MMP.SlotDemo, branch `main`, page `#/ch01`
+**Companion site:** MMP.SlotDemo, branch `main`. Episode 1 has no lab page of its
+own; the illustrations borrow `#/finale` and `#/ch05`.
 
 > **Discipline note for this recording.** The labs illustrate; they do not carry the
 > episode. The whiteboard is the subject. Cut to the browser where a number is easier
@@ -18,15 +19,15 @@ minutes total, and only to make a design claim visible.
 
 **Repo — the subject**
 - [ ] Excalidraw (or draw.io) open on a blank canvas, pen colour set, grid off
-- [ ] Rider on `MMP.SlotGame.slnx`, tree collapsed to project level
+- [ ] Rider on `CSharp/MMP.SlotDemo.slnx`, tree collapsed to project level
 - [ ] `docs/architecture.md` open in a Rider tab, scrolled to the ADR table in §6
-- [ ] `src/MMP.SlotGame.Core/Simulation/SimulationConfig.cs` open in a second tab
+- [ ] `CSharp/src/MMP.SlotGame.Core/Simulation/SimulationConfig.cs` open in a second tab
 - [ ] Test runner loaded with `ConfigValidationTests`
 
 **Companion site — the illustration**
 - [ ] `E:\dev\MMP.SlotDemo`, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
-- [ ] `http://localhost:5090/#/ch01`, blueprint page loaded once so nothing pays
+- [ ] `http://localhost:5090/#/ch05` and `#/finale` each loaded once so nothing pays
       first-request cost
 - [ ] A finished 10M-spin run left on screen in a second tab for the cold open
 
@@ -45,12 +46,19 @@ minutes total, and only to make a design claim visible.
   spins. The shaded band is what probability theory says the wander should be. It
   walks in and it stays in."
 - "Over seven episodes we build everything behind that chart. Today is the map: the
-  way I would whiteboard this in a design interview, requirements through deep dives."
-- Name the route so viewers know where they are: money and randomness, reels,
-  paytable math, the engine, games as data, and the proof.
+  way I would whiteboard this in a design interview, requirements through deep dives.
+  By the end of this one you know where the whole series goes and what gets built
+  when."
+- Name the route, one question per episode, so viewers know where they are. Episode 2,
+  how do you hold money that never drifts and randomness you can replay. Episode 3,
+  what a reel actually is, and why a weighted die gets the odds wrong. Episode 4, how
+  to compute the return and the confidence band without playing a spin. Episode 5, how
+  to play millions of spins in parallel and still reproduce them bit for bit. Episode
+  6, how the game itself becomes a data file. Episode 7, why you should believe any of
+  the numbers.
 - Set the format for the series: "Every later episode creates a file on camera, pastes
-  the finished source, and then I tell you why every line is the way it is. Today we
-  earn the right to write those files."
+  the finished source, and then I tell you why every line is the way it is. Today is the
+  design those files come out of."
 
 ## 1:30–4:30 — Requirements
 
@@ -65,30 +73,29 @@ minutes total, and only to make a design claim visible.
 
 **Non-functional** — spend the time here, and say why each one is hard.
 
-1. **Exact.** Totals are integers an auditor can add up by hand. Say the word plainly:
-   exact, rather than accurate to a few decimal places. The difference is the whole
-   reason episode 2 exists.
+1. **Exact.** Totals are integers an auditor can add up by hand. Say the word: exact,
+   rather than accurate to a few decimal places. That difference is why episode 2
+   exists.
 2. **Deterministic.** The same seed and the same worker count produce the same result,
-   bit for bit. Not statistically similar. Identical.
+   bit for bit. Identical, rather than statistically similar.
 3. **Fast.** Millions of spins per second, because the quality of the proof improves
    with N and a slow simulator caps how much proof you can afford.
 4. **Loud on failure.** A configuration that breaks the RTP cap gets rejected with a
    message. It never gets clamped to something legal and run anyway.
 
-**Non-goals** — say them out loud, because naming what you refuse to build is half of
-a design.
+**Non-goals**, said out loud, because naming what you refuse to build is part of the
+design.
 
 - Simulation-grade randomness, and no claim of a certified gaming RNG.
 - No real money anywhere in the system.
 - Features pay out and end; they never re-enter the base game.
 
-### Beat — why the non-goals earn their place
+### Beat — what each non-goal removes
 
 Each non-goal removes a whole subsystem. Certified randomness would pull in hardware
 entropy and an audit trail. Real money would pull in accounts, ledgers, and
 regulation. Features re-entering the base game would make the closed-form math
-recursive. Three sentences of restraint buy back months of work, and the deep dives
-later today only fit because of them.
+recursive. Three sentences of restraint buy back months of work.
 
 ## 4:30–6:30 — Back of the envelope
 
@@ -97,8 +104,8 @@ later today only fit because of them.
 - Cost of one spin: five random draws, one window read, nine line walks. Call it a few
   hundred nanoseconds.
 - Sixteen cores at roughly a million spins per second each puts ten million spins near
-  one second. **Draw a box around the conclusion:** one process, one machine. No
-  queue, no cluster, no distributed anything.
+  one second. **Draw a box around the conclusion:** one process, one machine. No queue
+  and no cluster.
 - Then the number that shapes everything: workers can generate ten million events per
   second, and a browser chart wants about ten updates per second. Write both numbers
   and the gap between them. "Seven orders of magnitude. That gap is the design
@@ -106,8 +113,8 @@ later today only fit because of them.
 
 ### Beat — estimates as a design tool
 
-The estimate is not there to be right to two significant figures. It is there to
-eliminate options. One second on one machine means a distributed run is pure cost. Had
+The estimate exists to eliminate options rather than to be right to two significant
+figures. One second on one machine means a distributed run is pure cost. Had
 the number come back at four hours, the whole shape of the system would change. Doing
 the arithmetic before drawing boxes is what keeps the boxes honest.
 
@@ -128,8 +135,8 @@ the arithmetic before drawing boxes is what keeps the boxes honest.
 Both lanes carry "the result of a spin", and that shared phrase is the trap. In lane 1
 the result is a counter increment that must land. In lane 2 the result is a picture of
 progress that may be skipped. Once the two are named separately, the guarantees stop
-fighting, and each lane gets the machinery it actually needs instead of the strongest
-machinery either one needs.
+fighting, and each lane gets the machinery it needs instead of the strongest machinery
+either one needs.
 
 ## 8:30–12:30 — High-level design
 
@@ -139,12 +146,12 @@ the flowchart in the companion article so the two line up.
 Draw order:
 
 1. The Core box. N workers inside it, each with its own RNG stream.
-2. `RunTotals` — exact counters, updated by batched atomic adds. Lane 1.
-3. A bounded channel out of the workers, into a single pump, into a SignalR hub, into
-   the SPA. Lane 2.
-4. The Server box drawn around the pump, the hub, and the REST endpoints.
+2. `RunTotals`: exact counters, updated by batched atomic adds. Lane 1.
+3. A bounded channel out of the workers, into a single pump, into the run stream,
+   into the SPA over server-sent events. Lane 2.
+4. The Server box drawn around the pump, the stream, and the REST endpoints.
 5. The SPA box with the chart in it.
-6. REST arrows: `GET /api/config/limits` and `POST /api/runs`.
+6. REST arrows: `GET /api/run/limits` and `POST /api/run`.
 
 Key lines to land while drawing:
 
@@ -152,18 +159,16 @@ Key lines to land while drawing:
   returns values and writes to a channel the caller handed it. That is why the test
   suite can run ten million spins with no web server anywhere."
 - "The SPA reads the RTP cap from the API rather than hardcoding it. The rule lives on
-  the server; the client previews it. That is what DRY buys — one authority for a
-  rule, rather than zero copies of a number."
-- "Notice what is absent. No message broker, no database, no cache. Each one would be
-  a box that has to be run, monitored, and explained. They are absent because the
-  arithmetic in the last segment said they buy nothing."
+  the server and the client previews it, so there is one authority for it."
+- "Nothing here is a message broker, a database, or a cache. Each one would be a box
+  that has to be run, monitored, and explained. They are absent because the arithmetic
+  in the last segment said they buy nothing."
 
-> **Illustration (45 seconds, BROWSER).** Chapter 1 blueprint page. The same two-lane
-> diagram renders live, with the lane-1 counters and the lane-2 event rate ticking
-> against each other during a short run. Point at the two rates: the counter total
-> climbs by every spin, and the telemetry line updates a few times a second while
-> reporting how many samples it skipped. "Same run, two lanes, and the drop counter is
-> a feature reporting itself." Cut back to the whiteboard.
+> **Illustration (45 seconds, BROWSER).** Episode 5's lab page, `#/ch05`, Lab 2. Run it
+> once at the default capacity. The spin total climbs by every spin while the delivered
+> and dropped sample counts sit next to each other. Point at the two rates. "Same run,
+> two lanes. The counter took every spin, and the drop count is how many chart samples
+> lane 2 threw away." Cut back to the whiteboard.
 
 ## 12:30–15:30 — Deep dive 1: one validation boundary, and exact money
 
@@ -176,15 +181,15 @@ Key lines to land while drawing:
 - The cap is an integer comparison on basis points: 9900 passes, 9901 fails. There is
   no floating-point boundary to argue about at 99.00%.
 - Money is a `long` count of millicents, and no conversion to `double` exists in the
-  type. "The compiler enforces the money rule. A reviewer enforces it on a good day."
+  type. "The compiler enforces the money rule on every build."
 - State the associativity point once, because episode 7 collects on it: integer
   addition gives the same total in any order, so an N-worker total equals a
   single-worker total bit for bit. Determinism becomes a property that can be asserted
   with `==`.
-- Tease it: "Episode 2 is two files and about a hundred lines, and it is entirely
-  about making these two guarantees unbreakable."
+- Tease it: "Episode 2 is two files and about a hundred lines, and it is about making
+  these two guarantees hold."
 
-### Beat — why validation lives at exactly one boundary
+### Beat — why validation lives at one boundary
 
 Scatter the same checks across constructors, endpoints, and the SPA and they drift.
 One of them gets a new rule, another keeps the old one, and the disagreement surfaces
@@ -206,23 +211,26 @@ Two rules make a lossy lane safe:
    the browser a lever on simulation throughput. `TryWrite` returns false, the sample
    is skipped, and the worker keeps going.
 
-Then the question that always comes up: why no message broker?
+Then the two transport questions that always come up: why no message broker, and why
+plain server-sent events instead of a socket?
 
 - Every event here is ephemeral, every consumer is in-process, and the real result of
   the run is a counter rather than a stream of messages.
+- The browser-facing leg is one-way. The SPA starts and cancels a run over REST and
+  reads everything else, so SSE is a `MapGet` writing `data:` lines, with reconnect
+  the browser handles itself. A duplex transport would carry a hub abstraction and a
+  connection lifecycle for a return channel nothing sends on.
 - A broker adds serialization at megahertz rates to buy durability that nothing in
   this system asks for.
 - Show the alternatives table in the ADR and read one row. "The decision is written
   down with what it costs, so the next person can reopen it with evidence."
 - **The seam:** if cross-process ever matters, a broker slots in behind
-  `ChannelWriter<TelemetrySample>` and the engine keeps its current shape. One
-  interface held the door open. Nobody built the room.
+  `ChannelWriter<TelemetrySample>` and the engine keeps its current shape.
 
-> **Illustration (40 seconds, BROWSER).** Blueprint page, telemetry panel. Throttle the
-> consumer, and the drop counter climbs while the run's spin total stays on pace. Then
-> point at the chart: the line keeps its shape, because each sample carried the whole
-> picture rather than a difference. "The chart is missing frames and it is still
-> correct. That is the snapshot rule paying for itself." Cut back.
+> **Illustration (40 seconds, BROWSER).** Same page, Lab 2, second run with the channel
+> capacity shrunk. The drop count climbs, and the exact final total counts every spin
+> either way. "The chart lost frames and it is still correct, because the next
+> message carries the current totals rather than a difference." Cut back.
 
 ## 18:00–20:00 — Deep dive 3: the analytic twin
 
@@ -234,20 +242,19 @@ Then the question that always comes up: why no message broker?
   standard deviation from the strips alone. The band is z times sigma over the square
   root of N, and it narrows as the run proceeds."
 - "Two independent implementations of the same game. One counts probabilities, one
-  plays spins. Their agreement is the product. Everything else is plumbing around that
-  agreement."
+  plays spins. They share the paytable and the strips, and no payout code. Their
+  agreement is the check."
 - Then plant episode 7: "A third implementation joins in the last episode. Brute-force
   enumeration walks every possible outcome and referees the other two. Three
   implementations agreeing is a much stronger claim than one implementation passing
   its own tests."
 
-### Beat — independence is the whole value
+### Beat — why independence is the point
 
 Two implementations that share a helper share that helper's bugs. The value here comes
 from the calculator and the simulator having no common code path at all: they agree
 because the game is what it says it is, rather than because they inherited the same
-mistake. Keeping them independent costs some duplicated understanding of the domain,
-and that cost is the point.
+mistake. Keeping them independent costs some duplicated understanding of the domain.
 
 ## 20:00–22:00 — The tests are part of the design
 
@@ -281,6 +288,9 @@ what turns it into a fact.
 - Recap the requirements as a chain, one breath each: exact leads to millicents,
   deterministic leads to seeded per-worker streams and fixed quotas, fast leads to a
   lock-free hot path, loud leads to a single validation boundary.
+- Point back at the route from the cold open, now that the boxes exist: each episode
+  builds one of them, and the companion article carries the same map in writing along
+  with what you can run at the end of each chapter.
 - Next: "The two smallest files in the repo. About a hundred lines between them, one
   for money and one for randomness, and they are the reason everything after them gets
   to be ordinary."
@@ -289,18 +299,17 @@ what turns it into a fact.
 
 ## Recording notes
 
-- Budget: roughly eighteen minutes on the whiteboard and in Rider, under three in the
+- Budget: roughly twenty minutes on the whiteboard and in Rider, under three in the
   browser. If a take runs long, browser time goes first.
 - Strongest visuals in order: the two-lane split as it gets drawn, the seven-orders-of-
   magnitude gap written out as two numbers, and the drop counter climbing while the
-  chart stays correct. Give each a beat of silence.
+  chart stays correct. Hold on each for a beat.
 - Zoom hotkey belongs on: the `TryCreate` signature, the ADR alternatives table, and
   the two boundary test names. The whiteboard reads at normal size if the pen is thick
   enough.
 - The high-level diagram from 8:30 gets reused in every later episode's cold open.
   Screenshot the finished board before wiping it.
 - Running long? Compress deep dive 2 to a thirty-second point-and-read on the ADR
-  table. Keep both deep dive 1 and deep dive 3 whole — they are the setup for episodes
-  2 and 7.
+  table. Keep both deep dive 1 and deep dive 3 whole; they set up episodes 2 and 7.
 - Do not open the browser cold on camera. A dead demo in episode 1 costs the series
   more than it costs this recording.

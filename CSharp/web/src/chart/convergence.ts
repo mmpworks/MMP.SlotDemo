@@ -2,8 +2,8 @@ import type { CurvePoint } from '../api/labs'
 
 /**
  * Pure geometry for the proving-ground chart. Everything here is arithmetic from run
- * data to SVG coordinates, kept out of the component so the mapping is testable: an
- * off-by-one in this file would draw the verdict in the wrong place on camera.
+ * data to SVG coordinates, kept out of the component so the mapping is testable on its
+ * own.
  */
 
 export const TWO_SIDED_99 = 2.5758293035489004 // matches NormalQuantile.TwoSided99 server-side
@@ -82,8 +82,7 @@ export function buildGeometry(frame: ChartFrame, input: ChartInput): ChartGeomet
   const x = xScale(frame, maxSpins)
   const y = yScale(frame, input.analyticRtp, halfRange)
 
-  // Early bands are wider than the anchored Y range on purpose; clamping the funnel
-  // to the plot edges draws it entering from off-screen instead of stretching the frame.
+  // Clamp to the plot edges — see verticalHalfRange for why the early bands run off-frame.
   const yTop = frame.pad.top
   const yBottom = frame.height - frame.pad.bottom
   const clamp = (v: number) => Math.min(yBottom, Math.max(yTop, v))

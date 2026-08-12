@@ -1,11 +1,14 @@
 # Episode 3 — Reels Are Strips, Not Dice
 
-**Target:** 24–26 min. **Format:** create the file, paste the finished source, then
+**Target:** 24–27 min. **Format:** create the file, paste the finished source, then
 walk it. The typing is a jump cut; the walkthrough is the episode.
 **Subject:** the engine. The companion site appears three times, for under three
 minutes total, and only to make an engine claim visible.
 **Companion article:** `docs/articles/03-reels-and-paylines.md`
 **Companion site:** MMP.SlotDemo, branch `main`, page `#/ch03`
+**Files created on camera:** `CSharp/src/MMP.SlotGame.Core/Reels/Symbol.cs`,
+`StripReelSet.cs`, `Payline.cs`. **Shown, not created:**
+`CSharp/src/MMP.SlotGame.Core/Paylines/LinePayEvaluator.cs`, `CSharp/games/orca-dive.json`.
 
 > **Discipline note for this recording.** The labs illustrate; they do not carry the
 > episode. If a beat can be made on the whiteboard or in Rider, make it there. Cut to
@@ -17,12 +20,12 @@ minutes total, and only to make an engine claim visible.
 ## Prep checklist
 
 **Repo — the subject**
-- [ ] Rider on `MMP.SlotGame.slnx`, tree expanded to `MMP.SlotGame.Core`
+- [ ] Rider on `CSharp/MMP.SlotDemo.slnx`, tree expanded to `MMP.SlotGame.Core`
 - [ ] `Reels/` folder present, all three target files moved aside so they get created
       on camera
 - [ ] `Paylines/LinePayEvaluator.cs` open in a background tab for the flash-on-screen
       beat
-- [ ] `games/orca-dive.json` open in a background tab, scrolled to `reelStops`
+- [ ] `CSharp/games/orca-dive.json` open in a background tab, scrolled to `reelStops`
 - [ ] Scratch file ready for the wrong-model snippet
 - [ ] Test runner loaded: `MultiRowWindowTests`, `PaylineGeometryFuzzTests`
 - [ ] Clipboard manager staged with Block A, then Block B, then Block C
@@ -77,39 +80,41 @@ for (var cell = 0; cell < 3; cell++) window[cell] = Draw();
 - "A real reel is an ordered cyclic strip. A spin picks one stop. The window shows that
   stop and the two positions after it, wrapping at the end. One random number, three
   symbols."
-- Land the correlation hard: "If Seven's neighbour on the strip is Blank, then Seven in
-  row zero forces Blank in row one. Probability one. The die model says five in
-  twenty-two."
+- Then the correlation: "If Seven's neighbour on the strip is Bell, then Seven in
+  row zero forces Bell in row one. Probability one. The die model says four in
+  twenty-two." (Seven and Bell are both real symbols in `classic-three-reel.json`, and
+  Bell's count on reel 1 there is 4 of 22, so the whiteboard numbers check against a
+  file that is on disk.)
 - Then the part that makes this dangerous: "Single-cell marginals agree between the two
   models. One in twenty-two either way. Every one-row test passes under both. What
-  diverges is V-shaped lines, multi-line variance, and the confidence band — the
-  numbers you only check at the end of the project."
-- "This was the red team's first blocker here. It is RT-1 in the docs, and the type we
-  are about to write is its resolution."
+  diverges is V-shaped lines, multi-line variance, and the confidence band: the numbers
+  you check at the end of the project."
+- "This was the first thing the design review caught, and the type we are about to write
+  is what it turned into."
 - Close the segment with the industry tell: "Par sheets publish strip layouts rather
-  than symbol frequencies. Now you know why they bother."
+  than symbol frequencies, and this is the reason."
 
 ## 5:30–6:15 — Create the first file
 
 **Scene:** RIDER.
 
 - Right-click `MMP.SlotGame.Core` → new directory `Reels` → new file.
-- **Path on screen and said out loud:** `src/MMP.SlotGame.Core/Reels/Symbol.cs`
-- Paste **Block A**. "One line of code and nine lines of comment. The comment is the
-  interesting part."
+- **Path on screen and said out loud:** `CSharp/src/MMP.SlotGame.Core/Reels/Symbol.cs`
+- Paste **Block A**. "One line of code and eight times that much comment. Let's read the
+  comment."
 
-### Block A — `src/MMP.SlotGame.Core/Reels/Symbol.cs`
+### Block A — `CSharp/src/MMP.SlotGame.Core/Reels/Symbol.cs`
 
 ```csharp
 namespace MMP.SlotGame.Core.Reels;
 
 /// <summary>
-/// One reel symbol. v1 strips carry neither wilds nor scatters (both are AIF seams —
-/// the flags exist so the shape is extensible, but no preset sets them; see
-/// red-team-resolutions RT-5/RT-25 and the wild note in architecture §10):
-/// wild substitution makes the analytic closed form non-linear (best-line max), and
-/// scatter-count triggering couples features to the window. v1 keeps both out so the
-/// analytic math is exact and features stay independent RTP terms.
+/// One reel symbol. The stock presets leave both flags clear, which keeps the preset
+/// pipeline's analytic math a closed form and its features independent RTP terms: wild
+/// substitution makes that closed form non-linear (best-line max), and scatter-count
+/// triggering couples features to the window. Loaded game definitions use both — Orca Dive
+/// ships a wild and a scatter — and <see cref="MMP.SlotGame.Core.Games.GameAnalyzer"/>
+/// prices those by enumeration.
 /// </summary>
 public readonly record struct Symbol(byte Id, string Name, bool IsWild = false, bool IsScatter = false);
 ```
@@ -127,42 +132,43 @@ it.
 where identity would be meaningless, no allocation in a loop that runs constantly, and
 generated equality nobody has to maintain.
 
-### Beat 2 — two flags nothing sets, and why they ship anyway
+### Beat 2 — two flags the presets leave alone, and why they ship anyway
 
-`IsWild` and `IsScatter` default to false and no v1 preset sets either one. That looks
-like dead code until you read what the comment says it is buying.
+`IsWild` and `IsScatter` default to false, and every stock preset leaves them there. On
+the preset path they look like dead weight until you read what the comment says they buy.
 
 - Both flags cost one bit of a struct that is already padded, so the price is nothing.
 - Adding a field later is a shape change that ripples through every JSON document,
-  every builder, and every test fixture. Adding it now, unused, costs one line.
-- The flags being present makes the *absence* of the behaviour explicit. Somebody
-  reading this knows wilds were considered and deferred, rather than forgotten.
+  every builder, and every test fixture. Adding it now costs one line.
+- The comment names who does use them: a loaded game definition. Orca Dive ships a wild
+  and a scatter, and it arrives in episode 6 through this door.
 
-**The line to say:** "This is a door held open. Nobody built the room. Episode 6 walks
-through the door when the real game needs scatters."
+**The line to say:** "The presets keep the flags at false so their math stays a closed
+form. Episode 6 is the game that uses them."
 
-### Beat 3 — why the deferral is a math decision, not a scheduling one
+### Beat 3 — the deferral is a math decision
 
-Read the reason out of the comment, because it is the real content of this type.
+Read the reason out of the comment.
 
 - A wild substitutes for other symbols, so a line's payout becomes the maximum over
   several interpretations. Maximum is not linear, and the closed-form expected value in
   episode 4 stops being a plain sum.
 - A scatter triggers on a count anywhere in the window, which couples a feature to the
   window rather than leaving it an independent term.
-- Keeping both out of v1 is what lets the analytic math stay exact. "The feature was
-  cut to protect a proof. That is a better reason than running out of time, and it is
-  written down where the next person will find it."
+- Keeping both off the preset strips is what lets the preset pipeline's analytic math
+  stay a closed form. The games that want wilds and scatters get priced a different way:
+  `GameAnalyzer` enumerates them, which is episode 7's machinery. "Two pricing paths, and
+  the comment says which game takes which."
 
 ## 8:00–9:00 — Create the second file
 
 **Scene:** RIDER.
 
 - New file in the same folder. **Path on screen:**
-  `src/MMP.SlotGame.Core/Reels/StripReelSet.cs`
-- Paste **Block B**. Let it land. "That is the model. Now we earn it."
+  `CSharp/src/MMP.SlotGame.Core/Reels/StripReelSet.cs`
+- Paste **Block B**. Pause on the constructor, then trace one stop through `SymbolAt`.
 
-### Block B — `src/MMP.SlotGame.Core/Reels/StripReelSet.cs`
+### Block B — `CSharp/src/MMP.SlotGame.Core/Reels/StripReelSet.cs`
 
 ```csharp
 using MMP.SlotGame.Core.Simulation;
@@ -170,17 +176,15 @@ using MMP.SlotGame.Core.Simulation;
 namespace MMP.SlotGame.Core.Reels;
 
 /// <summary>
-/// A reel is an ORDERED CYCLIC STRIP (RT-1). A spin draws one uniform stop index per
-/// reel; the visible window shows adjacent strip positions {s, s+1, ... s+Rows-1} mod S.
-/// Rows within a reel are therefore correlated by strip adjacency; different reels are
-/// independent. A weighted multiset is NOT equivalent once a multi-row window exists,
-/// which was red-team BLOCKER RT-1, and this type is its resolution.
+/// A reel is an ordered cyclic strip. A spin draws one uniform stop index per reel; the
+/// visible window shows adjacent strip positions {s, s+1, ... s+Rows-1} mod S. Rows within
+/// a reel are therefore correlated by strip adjacency, while different reels are
+/// independent. A weighted multiset loses that adjacency, so it stops being equivalent the
+/// moment a multi-row window exists.
 ///
-/// GEOMETRY IS DATA. Reel count, per-reel stop count and window height all arrive as
-/// arguments; nothing here assumes 3 reels, 5 reels, equal-length strips or a 3-row
-/// window. Strips of differing lengths on the same machine are normal; the public Orca
-/// Dive reconstruction used by this project has 26/29/26/29/26 stops, so each reel's
-/// length is read separately.
+/// Reel count, per-reel stop count and window height all arrive as arguments. Strips of
+/// differing lengths on the same machine are normal; Orca Dive, the fictional game this
+/// project ships, has 26/29/26/29/26 stops, so each reel's length is read separately.
 /// </summary>
 public sealed class StripReelSet
 {
@@ -299,7 +303,7 @@ public sealed class StripReelSet
 `Symbol[][]`, ragged on purpose. **Jump to `orca-dive.json`** and point at
 `"reelStops": [26, 29, 26, 29, 26]`.
 
-- Real machines carry unequal strips, and the public Orca Dive reconstruction is one.
+- Real machines carry unequal strips, and Orca Dive is modelled on one.
 - "Had we stored a single stops-per-reel field, this file would be unloadable, and we
   would have discovered that the week we tried to validate against a published par
   sheet."
@@ -307,8 +311,8 @@ public sealed class StripReelSet
   this type knows the number three. `Rows` is read from the definition and flows
   through every method.
 
-**The CUPID reading:** domain-based. A gaming mathematician would say "each reel has
-its own strip", and the type says the same thing in the same shape.
+A gaming mathematician would say "each reel has its own strip", and the type says it in
+the same shape.
 
 ### Beat 5 — the constructor is the boundary
 
@@ -323,7 +327,7 @@ Four guards, each with a message a human can act on.
 - Validate loudly at the boundary; stay silent afterwards. Every method below the
   constructor assumes a valid reel set, and none of them re-check.
 
-### Beat 6 — the defensive copy, and the sentence that explains it
+### Beat 6 — the defensive copy
 
 Read the comment aloud, then the line: `strips.Select(strip => strip.ToArray()).ToArray()`.
 
@@ -332,9 +336,8 @@ Read the comment aloud, then the line: `strips.Select(strip => strip.ToArray()).
   from underneath all of them.
 - Copying once at construction costs microseconds and buys an object that is safe to
   share without a lock, for the whole life of the run.
-- **The immutability rule, applied at a seam:** the type does not trust its caller to
-  stop mutating. It takes ownership by copying, and afterwards there is nothing to
-  synchronize.
+- **The immutability rule at a seam:** the type takes ownership by copying, and
+  afterwards there is nothing to synchronize.
 
 ### Beat 7 — `ProbabilityOf`, the marginal
 
@@ -349,14 +352,14 @@ Count the symbol on the strip, divide by the strip length. Three lines.
 
 ### Beat 8 — `JointProbabilityOf`, the method the die model cannot have
 
-This is the RT-1 fix, so slow down.
+Slow down here.
 
 - It walks all S stops and counts how many put symbol `a` at `rowA` and symbol `b` at
   `rowB` at the same time. Exhaustive, so the count is exact rather than sampled.
 - "The weighted-die model has no way to express this question. In that model rows are
   independent, so the joint probability is forced to be the product of the marginals.
-  Here it is whatever the strip layout actually makes it, and those two numbers are
-  different for every real reel."
+  Here it is whatever the strip layout makes it, and those two numbers differ for every
+  real reel."
 - Where it gets spent: variance. Correlated rows change how much a run wanders even
   when they leave the mean untouched. "The confidence band in episode 4 is built out of
   this method."
@@ -366,7 +369,7 @@ This is the RT-1 fix, so slow down.
 > probability from the engine's own `JointProbabilityOf`, running server-side. The
 > marginals match to the digit; the joint numbers separate. Then it runs both models
 > to a variance estimate and the bands come out visibly different widths. "Same mean,
-> different spread. That is the whole bug in one picture." Cut back.
+> different spread even though the symbol counts match." Cut back.
 
 ### Beat 9 — `DrawWindow`, the hot path
 
@@ -384,25 +387,25 @@ The method that runs five times per spin, ten million spins per run.
 
 ### Beat 10 — one type, two audiences
 
-The DRY beat, and the episode's structural point.
+The DRY beat.
 
 - This one class draws windows for the simulator and reports probabilities for the
   calculator. They read the same object.
 - "Two implementations proving each other only works if they cannot disagree about the
   board. They cannot drift on geometry here, because there is nothing between them to
   drift."
-- Compare against the alternative honestly: a separate `ReelMath` class holding its own
-  copy of the strips would be tidier by one measure, and would introduce the exact
-  failure mode episode 7 exists to catch.
+- Compare against the alternative: a separate `ReelMath` class holding its own
+  copy of the strips would be tidier by one measure, and would introduce the failure
+  mode episode 7 exists to catch.
 
 ## 17:00–17:45 — Create the third file
 
 **Scene:** RIDER.
 
-- New file. **Path on screen:** `src/MMP.SlotGame.Core/Reels/Payline.cs`
+- New file. **Path on screen:** `CSharp/src/MMP.SlotGame.Core/Reels/Payline.cs`
 - Paste **Block C**.
 
-### Block C — `src/MMP.SlotGame.Core/Reels/Payline.cs`
+### Block C — `CSharp/src/MMP.SlotGame.Core/Reels/Payline.cs`
 
 ```csharp
 namespace MMP.SlotGame.Core.Reels;
@@ -427,23 +430,20 @@ public sealed record Payline
 
     /// <summary>
     /// Standard line patterns used by the stock presets: 1 center, 3 horizontals,
-    /// 5 adds V/Λ, and 9 adds zig-zags. This is a project convention, not a universal
-    /// slot-game payline set. v1
-    /// supports 5 or 9 lines and windows of <see cref="StripReelSet.MinRows"/>..
-    /// <see cref="StripReelSet.MaxRows"/> rows (validated by the caller, not here).
+    /// 5 adds V/Λ, and 9 adds zig-zags. This is a project convention rather than a
+    /// universal slot-game payline set. v1 supports 5 or 9 lines and windows of
+    /// <see cref="StripReelSet.MinRows"/>..<see cref="StripReelSet.MaxRows"/> rows
+    /// (validated by the caller, not here).
     ///
-    /// Row geometry, derived from <paramref name="rows"/> every call — never a fixed
-    /// constant, so a 4- or 5-row preset gets correct shapes without touching this method:
+    /// Row geometry is derived from <paramref name="rows"/> on every call:
     /// top = 0, bottom = rows - 1, middle = rows / 2 (integer division).
     ///
-    /// For an ODD row count the middle is the true center (5 rows: 0, 2, 4 — a V/hat spans
-    /// the full window height and both zig-zags swing by the same 2 rows). For an EVEN row
-    /// count there is no exact center; integer division rounds toward the BOTTOM half (4
-    /// rows: middle = 2, not 1). A V/hat still spans the full height (0 to rows-1) because
-    /// it only uses middle as an intermediate ramp point, but the zig-zags become
-    /// asymmetric: ZigTop/ZagTop swing 2 rows (0 to 2) while ZigBottom/ZagBottom swing 1 row
-    /// (2 to 3). That asymmetry is a documented consequence of the rounding choice, not a
-    /// bug — the alternative (rounding up) would just move the asymmetry to the other side.
+    /// An odd row count puts the middle at the true center: 5 rows give 0, 2, 4, a V/hat
+    /// spans the full window height, and both zig-zags swing by 2 rows. An even row count
+    /// has no center, and integer division rounds toward the bottom half: 4 rows put the
+    /// middle at index 2. A V/hat still spans 0 to rows-1, since middle is only an
+    /// intermediate ramp point, but the zig-zags become asymmetric. In a four-row window
+    /// ZigTop/ZagTop swing two rows (0 to 2) and ZigBottom/ZagBottom swing one (2 to 3).
     /// </summary>
     public static IReadOnlyList<Payline> For(int reels, int lineCount, int rows)
     {
@@ -476,17 +476,16 @@ public sealed record Payline
         };
     }
 
-    /// <summary>The single centre-row line — the whole payline set of a classic one-line game.</summary>
+    /// <summary>The center-row payline used by classic one-line games.</summary>
     public static Payline Center(int reels, int rows) => new("Center", Repeat(reels, rows / 2));
 
     private static int[] Repeat(int reels, int row) =>
         [.. Enumerable.Repeat(row, reels)];
 
     /// <summary>
-    /// V-shape: start row, dip/peak to the far row at the middle reel, back. Row-count
-    /// agnostic by construction — it only ever interpolates between the two row values it
-    /// is given, so <see cref="For"/> generalizing to a new window height needs no change
-    /// here, only correctly-derived <paramref name="edgeRow"/>/<paramref name="midRow"/>.
+    /// V-shape: start row, dip/peak to the far row at the middle reel, back. It interpolates
+    /// between the two row values it is given, so it works at any window height. The caller
+    /// derives <paramref name="edgeRow"/> and <paramref name="midRow"/>.
     /// </summary>
     private static int[] Bend(int reels, int edgeRow, int midRow)
     {
@@ -525,35 +524,34 @@ Name plus one row index per reel. Center on a five-reel three-row machine is
   wrapper. Same defensive-copy move as the reel set, same reason: this object is read
   concurrently by every worker for the life of the run.
 - `IReadOnlyList<int>` as the parameter type says "I will read this", and the copy says
-  "and I will not depend on you keeping it still". Both halves matter.
+  "and I will not depend on you keeping it still".
 
 ### Beat 12 — shapes are computed, never tabulated
 
 `Repeat`, `Bend`, and `Alternate` build the nine standard lines from three row values.
 
 - `topRow`, `bottomRow`, and `middleRow` are derived from the `rows` argument on every
-  call. There is no hardcoded 2 anywhere in the method, which is why a four-row or
-  five-row preset gets correct shapes without a code change.
+  call, which is why a four-row or five-row preset gets correct shapes without a code
+  change.
 - `Bend` interpolates between the two rows it is handed, so a four-reel V comes out
   proportioned without anyone drawing it by hand.
 - Compare the alternative out loud: a hand-written table of nine shapes for three
   window heights is twenty-seven arrays to keep consistent, and the day someone adds a
   height it becomes thirty-six.
 
-### Beat 13 — the honest paragraph about even row counts
+### Beat 13 — the paragraph about even row counts
 
-Read the doc comment's last paragraph aloud. This is the beat worth the time.
+Read the doc comment's last paragraph aloud, then show the four-row result.
 
 - With an odd row count, `rows / 2` is the true centre and everything is symmetric.
 - With an even count there is no centre, integer division rounds toward the bottom
   half, and the zig-zags come out asymmetric: two rows of swing on one side, one on the
   other.
-- The comment states this is a consequence of the rounding choice rather than a defect,
-  and names what rounding the other way would do — move the asymmetry to the other
-  side.
-- **The point:** "There was no symmetric answer available. The code picked one, wrote
-  down what it costs, and said why the alternative is no better. That paragraph is the
-  difference between a documented convention and a bug somebody finds in a year."
+- The article names what rounding the other way would do: put the shorter swing on the
+  top side instead.
+- **The point:** "There was no symmetric answer available. The code picked one and wrote
+  down what it costs. That paragraph is the difference between a documented convention
+  and a bug somebody finds in a year."
 
 ### Beat 14 — the throw that lists what works
 
@@ -576,13 +574,12 @@ method built around a nine-line convention.
 - The engine takes evaluation as a delegate, so adding one is a new class plus a
   registration, with no edits to anything here.
 - "No ways-pays evaluator exists in this repo, because nobody has asked for one. The
-  door is open. The restraint is the discipline."
+  delegate is what makes adding one cheap when somebody does."
 
 > **Illustration (45 seconds, BROWSER).** Chapter 3 page, payline lab. Set the window
 > height to 3, 4, and then 5, and the nine generated shapes redraw over the grid from
 > the engine's own `Payline.For` running server-side. Stop on 4 rows and point at the
-> asymmetric zig-zags. "The code told us this would happen and told us why. Watching it
-> happen is confirmation rather than surprise." Cut back.
+> asymmetric zig-zags. "The comment said this would happen. Here it is." Cut back.
 
 ## 22:30–23:15 — Flash the evaluator
 
@@ -596,7 +593,7 @@ method built around a nine-line convention.
   changes the variance; it never changes the mean."
 - Name the collaborators so the separation is visible: `StripReelSet` draws, `Payline`
   describes geometry, the evaluator prices, and the engine schedules. "Four types, four
-  jobs, and no SlotMachine class that does all of it."
+  jobs."
 
 ## 23:15–25:30 — The tests are part of the design
 
@@ -627,8 +624,8 @@ Two suites hold this episode's claims.
   here:** `Bend` does floating-point interpolation and rounding, and the stock presets
   only exercise a few of its inputs.
 - **`NineLineSet_VAndHatLines_TouchBothWindowEdgesAtTheMiddleReel`** pins the doc
-  comment's own claim across random geometry. "The comment made a promise. The test
-  collects on it."
+  comment's own claim across random geometry. "The comment claims it; the test checks
+  it."
 - **`For_UnsupportedLineCount_ThrowsRatherThanReturningAPartialSet`** is the negative
   space again. Beat 14 said a partial set would be the quiet failure; this is what
   keeps it from happening.
@@ -637,8 +634,8 @@ Two suites hold this episode's claims.
 ## 25:30–26:15 — Wrap
 
 - Three files. A symbol that is one line and two deferred features, a reel set that is
-  the RT-1 resolution, and paylines that are computed geometry with an honest note about
-  rounding.
+  the strip-adjacency model, and paylines that are computed geometry with a written note
+  about rounding.
 - The three claims to carry forward: reels are ordered cyclic strips, marginals feed
   expected value, and strip enumeration feeds variance.
 - Next: "The par sheet as code. Hitting any RTP target with one closed-form scalar, and
@@ -650,13 +647,13 @@ Two suites hold this episode's claims.
 
 - Engine-to-browser budget: roughly twenty-three minutes in Rider and on the
   whiteboard, under three in the browser. If a take runs long, browser time goes first.
-- Strongest visuals in order: the whiteboard forced-neighbour moment (Seven then Blank,
+- Strongest visuals in order: the whiteboard forced-neighbour moment (Seven then Bell,
   probability one), the ragged `reelStops` line in `orca-dive.json`, and the payline lab
   redrawing shapes as the window height changes. Rehearse the first one; it is the hook.
 - Zoom hotkey belongs on: the `reelStops` array, the `JointProbabilityOf` loop body, the
   defensive-copy line, and the even-row-count paragraph in the `Payline` doc comment.
 - The three paste blocks are the finished files verbatim. If a paste lands wrong, cut
-  and re-paste rather than hand-fixing — the file has to match the repo.
+  and re-paste rather than hand-fixing: the file has to match the repo.
 - Running long? Compress beat 12 to one sentence and drop the evaluator flash. Keep
   beat 8 whole, keep beat 13 whole, and keep the test section whole.
 - The companion site runs the engine's own reel code server-side, so if a lab ever

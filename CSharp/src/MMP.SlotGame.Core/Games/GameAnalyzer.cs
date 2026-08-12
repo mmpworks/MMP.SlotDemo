@@ -4,36 +4,34 @@ using MMP.SlotGame.Core.Money;
 namespace MMP.SlotGame.Core.Games;
 
 /// <summary>
-/// Exact analysis of a loaded game by enumeration over SYMBOL tuples rather than stop
-/// tuples: every combination of one symbol per reel, weighted by how many stops produce it,
-/// instead of every individual stop. For Orca Dive that is tens of thousands of tuples
-/// instead of 14,781,416 stops, for the same answer, and it falls out of the fact that a
-/// payline reads exactly one cell per reel.
+/// Exact analysis of a loaded game by enumeration over symbol tuples rather than stop
+/// tuples: every combination of one symbol per reel, weighted by how many stops produce it.
+/// A payline reads one cell per reel, so both enumerations give the same answer. For Orca
+/// Dive that is tens of thousands of tuples instead of 14,781,416 stops.
 ///
-/// The scatter is the one thing that does NOT read a single cell, so it rides through the
-/// same enumeration as a second weight: beside each reel plain symbol counts sits the count
-/// of stops that show that symbol on the payline AND the scatter somewhere in the window.
-/// Multiplying the second weight on the required reels and the first elsewhere gives the
-/// joint distribution of (line pay, feature triggered) exactly. That joint matters: line pay
-/// and the feature are NOT independent, because a scatter in the window costs that reel a
-/// payline symbol, so a sigma built by simply adding their variances would be wrong.
+/// The scatter reads the whole window rather than a single cell, so it rides through the
+/// same enumeration as a second weight: beside each reel's plain symbol counts sits the
+/// count of stops that show that symbol on the payline and the scatter somewhere in the
+/// window. Multiplying the second weight on the required reels and the first elsewhere
+/// gives the joint distribution of (line pay, feature triggered). Line pay and the feature
+/// are correlated, because a scatter in the window costs that reel a payline symbol, so a
+/// sigma built by adding their variances would be wrong.
 ///
 /// Reel count is a loop bound, not a constant: the enumeration is a recursive descent over
 /// however many reels the definition has, and the same code analyses a 3-reel classic and a
 /// 5-reel video game.
 ///
-/// KNOWN LIMIT, stated rather than hidden: this analyses SINGLE-payline games. Multi-line EV
-/// is a plain sum over lines, but multi-line sigma needs the line-pair covariance that
+/// Known limit: this analyses single-payline games. Multi-line EV is a plain sum over
+/// lines, but multi-line sigma needs the line-pair covariance that
 /// <see cref="Rtp.AnalyticMath"/> computes for the wild-free preset games, and combining
 /// that with wilds and a window-coupled feature is a separate piece of work. Multi-line
-/// definitions still SIMULATE correctly; they just cannot be analysed here yet.
+/// definitions still simulate correctly; analysis here does not yet reach them.
 /// </summary>
 public static class GameAnalyzer
 {
     /// <summary>
-    /// Enumeration is the product of the distinct symbols actually present on each reel. A
-    /// definition far past this is almost certainly a mistake, and failing loudly beats
-    /// appearing to hang.
+    /// Enumeration is the product of the distinct symbols present on each reel. A definition
+    /// far past this is likely a mistake; the analyzer throws instead of appearing to hang.
     /// </summary>
     public const long MaxEnumeration = 200_000_000;
 
@@ -51,8 +49,8 @@ public static class GameAnalyzer
 
     /// <summary>
     /// One analysis in flight. A class rather than a pile of ref parameters because the
-    /// descent carries eight accumulators, and threading those through a recursive signature
-    /// would be the least readable thing in the codebase.
+    /// descent carries eight accumulators, and a recursive signature would have to thread
+    /// all eight through every call.
     /// </summary>
     private sealed class Enumeration
     {
@@ -152,13 +150,13 @@ public static class GameAnalyzer
         /// pay, T is the trigger indicator and W is the feature award, independent of
         /// everything once triggered. So E[X] = E[L] + P(T)*E[W] and
         /// E[X^2] = E[L^2] + 2*E[L*T]*E[W] + P(T)*E[W^2]. The middle term is the coupling,
-        /// and it is the reason the enumeration carries a second weight at all.
+        /// and the enumeration carries its second weight to supply it.
         ///
         /// The tallies accumulate at <see cref="Millicents.ScaleFactor"/> (see
         /// <see cref="Accumulate"/>); L is linear in the multiplier so a single /ScaleFactor
-        /// recovers it, and L^2 is quadratic so it needs /ScaleFactor^2. This is the one place
-        /// that division happens, which is what keeps <see cref="Games.GameRunner"/>'s
-        /// simulated pay and this analytic pay in the same unit all the way through.
+        /// recovers it, and L^2 is quadratic so it needs /ScaleFactor^2. That division happens
+        /// here and nowhere else, which keeps <see cref="Games.GameRunner"/>'s simulated pay
+        /// and this analytic pay in the same unit throughout.
         /// </summary>
         private GameAnalysis Summarise()
         {

@@ -5,13 +5,13 @@ Each has a matching 20-minute recording script in `docs/scripts/`.
 
 | # | Article | Script | Core topic |
 |---|---|---|---|
-| 1 | [System Design: A Slot-Game RTP Simulator](01-system-design.md) | `01-system-design-script.md` | Requirements → architecture, the two-path pipeline, ADR-001 |
+| 1 | [System Design: A Slot-Game RTP Simulator](01-system-design.md) | `01-system-design-script.md` | Requirements → architecture, the two-path pipeline |
 | 2 | [Money You Can Trust: Integer Millicents and Deterministic Randomness](02-money-and-randomness.md) | `02-money-and-randomness-script.md` | `Millicents` (incl. `ScaledMultiply`), `SpinRng`, invariants M1/M2/R3 |
 | 3 | [Reels Are Strips, Not Dice: Modeling Slot Geometry](03-reels-and-paylines.md) | `03-reels-and-paylines-script.md` | `StripReelSet`, `Payline`, `LinePayEvaluator`, 3–5 row windows |
 | 4 | [The PAR-Sheet Math in Code: Expected RTP and Variance](04-paytable-math.md) | `04-paytable-math-script.md` | `Paytable`, `PaytableSolver`, `AnalyticMath`, σ |
 | 5 | [A Replayable Parallel Simulation Engine](05-simulation-engine.md) | `05-simulation-engine-script.md` | `SimulationEngine`, `RunTotals`, channels, convergence |
 | 6 | [Games as Data: Loading a Third-Party Slot Deconstruction](06-games-as-data.md) | `06-games-as-data-script.md` | `GameDefinition`, `WinEvaluator`, `GameRunner`, `GameAnalyzer`, Orca Dive |
-| 7 | [Proving the Machine: Ground Truth, Statistics, and Bit-for-Bit Determinism](07-proving-the-machine.md) | `07-proving-the-machine-script.md` | Test architecture, exhaustive enumeration, AC-1..AC-7 |
+| 7 | [Proving the Machine: Ground Truth, Statistics, and Bit-for-Bit Determinism](07-proving-the-machine.md) | `07-proving-the-machine-script.md` | Test architecture, exhaustive enumeration, the acceptance suite |
 
 ## Publishing notes
 

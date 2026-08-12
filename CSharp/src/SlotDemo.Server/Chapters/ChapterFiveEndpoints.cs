@@ -23,20 +23,19 @@ public static class ChapterFiveEndpoints
         app.MapPost("/api/ch5/telemetry", (TelemetryRequest request, CancellationToken ct) => Telemetry(request, log, ct));
     }
 
-    /// <summary>
-    /// <paramref name="GameFile"/> switches the subject from a solved preset to a shipped
-    /// game document (Orca Dive is the one the series builds), run through GameRunner on
-    /// the same engine. Empty means preset.
-    /// </summary>
+    /// <param name="GameFile">
+    /// Switches the subject from a solved preset to a shipped game document (Orca Dive is
+    /// the one the series builds), run through GameRunner on the same engine. Empty means
+    /// preset.
+    /// </param>
     public sealed record DeterminismRequest(
         string PresetName, ulong Seed, int WorkerCount, long Spins, int Repeats, bool VarySeed,
         string GameFile = "");
 
     /// <summary>
     /// Run the same configuration several times and compare the final snapshots field by
-    /// field. Same seed: every run identical, bit for bit, including with the worker
-    /// count held while wall time varies. VarySeed instead shows what a real difference
-    /// looks like, so "identical" is a measurement and never an assumption.
+    /// field. Hold the seed and worker count and every run comes back identical, bit for
+    /// bit, whatever the wall time. VarySeed gives each attempt a different stream.
     /// </summary>
     private static async Task<IResult> Determinism(
         DeterminismRequest request, StructuredLogger log, CancellationToken ct)
@@ -79,8 +78,8 @@ public static class ChapterFiveEndpoints
 
         for (var attempt = 0; attempt < request.Repeats; attempt++)
         {
-            // A fresh engine per attempt: the engine itself is stateless between runs, and
-            // fresh counters are the reset rule (swap, never zero).
+            // A fresh engine per attempt: the engine holds no state between runs, so each
+            // attempt starts from new counters.
             var seed = request.VarySeed ? request.Seed + (ulong)attempt : request.Seed;
 
             var clock = Stopwatch.StartNew();

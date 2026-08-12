@@ -5,7 +5,7 @@ namespace MMP.SlotGame.Core.Games.Definition;
 /// <summary>
 /// A pick-until-you-lose bonus, configured from data: a bag of prize gifts plus some number
 /// of blanks that end the round for a fixed consolation. Orca Dive fills it with 24
-/// prizes and 6 Party Poopers, but nothing here knows that.
+/// prizes and 6 blanks, but nothing here knows that.
 ///
 /// <see cref="Play"/> draws gifts without replacement. The closed forms below provide an
 /// independent analytic check of that play path.
@@ -48,7 +48,7 @@ public sealed class PickBonus
 
     public int BlankCount { get; }
 
-    /// <summary>Paid when a blank ends the round. Zero is a perfectly good value.</summary>
+    /// <summary>Paid when a blank ends the round. Zero is a valid value.</summary>
     public int Consolation { get; }
 
     public int GiftCount => _prizes.Length + BlankCount;

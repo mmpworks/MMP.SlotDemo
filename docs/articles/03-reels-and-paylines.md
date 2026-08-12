@@ -82,23 +82,21 @@ hit probabilities, multi-line variance, and the confidence band on the convergen
 chart. A PAR sheet for a strip-based game therefore needs the ordered reel-strip or
 reel-mapping information, not merely a bag of symbol counts.
 
-This came out of the project's red-team review as its first blocker, and the fix is
-the type below.
+That distinction is what the type below exists to preserve.
 
 ## StripReelSet
 
 ```csharp
 /// <summary>
-/// A reel is an ORDERED CYCLIC STRIP. A spin draws one uniform stop index per
-/// reel; the visible window shows adjacent strip positions {s, s+1, ... s+Rows-1}
-/// mod S. Rows within a reel are therefore correlated by strip adjacency; different
-/// reels are independent.
+/// A reel is an ordered cyclic strip. A spin draws one uniform stop index per reel; the
+/// visible window shows adjacent strip positions {s, s+1, ... s+Rows-1} mod S. Rows within
+/// a reel are therefore correlated by strip adjacency, while different reels are
+/// independent. A weighted multiset loses that adjacency, so it stops being equivalent the
+/// moment a multi-row window exists.
 ///
-/// GEOMETRY IS DATA. Reel count, per-reel stop count and window height all arrive
-/// as arguments; nothing here assumes 3 reels, 5 reels, equal-length strips or a
-/// 3-row window. Strips of differing lengths on the same machine are normal; the
-/// public Orca Dive reconstruction used later has 26/29/26/29/26 stops, so
-/// each reel's length is read separately.
+/// Reel count, per-reel stop count and window height all arrive as arguments. Strips of
+/// differing lengths on the same machine are normal; Orca Dive, the fictional game this
+/// project ships, has 26/29/26/29/26 stops, so each reel's length is read separately.
 /// </summary>
 public sealed class StripReelSet
 {
@@ -173,14 +171,14 @@ public sealed class StripReelSet
 }
 ```
 
-A few choices in that listing earn a closer look.
+A few choices in that listing need explaining.
 
 **Geometry is data.** Reel count, per-reel strip length, and window height all
 arrive as constructor arguments. Reels on the same game can have different strip
-lengths; the public Orca Dive reconstruction used in article 6 has 26/29/26/29/26 stops
+lengths; Orca Dive, the fictional game in article 6, has 26/29/26/29/26 stops
 across five reels, so `StopCount(reel)` is per reel, never a single field.
-Hardcoding "5 reels, 3 rows" would have been invisible debt until the first real
-game arrived, and later in this article, until the first 4- and 5-row game did too.
+Hardcoding "5 reels, 3 rows" would have held until the first loaded game arrived,
+and again until the first 4- and 5-row window.
 
 That's also why `_strips` is typed `Symbol[][]`, an array of arrays, rather than a
 single rectangular `Symbol[,]`. A rectangular array forces every row to be the
@@ -189,9 +187,8 @@ columns; there's no way to declare one with five columns on one row and eight on
 the next. An array of arrays makes no such promise: each inner array is its own
 object with its own length, so reel 0 can carry 26 stops and reel 1 can carry 29
 without wasting space or padding the shorter reel out to match the longer one.
-Ragged strip lengths aren't an edge case this engine tolerates; they're the normal
-shape of a real machine, so the data structure that can't represent them wasn't a
-candidate.
+Real machines routinely carry strips of different lengths, and `Symbol[][]`
+represents them directly.
 
 `MinRows`, `MaxRows`, and `DefaultRows` are declared `const`, not `static
 readonly` the way `Millicents.ScaleFactor` is in article 2. The difference is
@@ -210,51 +207,42 @@ answers the two-rows-one-reel question by walking every stop on the strip: S
 iterations with no statistical sampling, and feeds the variance math. The counted
 fraction is exact; exposing it as a `double` can still introduce the normal tiny
 floating-point representation error discussed in article 2. Both queries live on
-the type that owns the strips, so the analytic layer never touches a raw symbol array;
-the correlation lives where the data lives.
+the type that owns the strips, so the analytic layer never touches a raw symbol array.
 
 These two functions could have been written as one, `ProbabilityOf(reel, symbolA,
 rowA, symbolB = null, rowB = null)`, with the joint calculation only running when
-the second pair of arguments is supplied. That single-function-with-a-flag shape
-looks like less code, but it hides two facts a reader needs up front: the two
-queries cost different amounts of work (marginal is a single pass over the strip;
-joint is the same pass but checking two positions per stop) and they answer two
-different questions in probability terms (one symbol's frequency versus two
-symbols' frequency together). Naming them separately puts both of those facts in
-the function signature itself, where a caller and a reader see them without
-opening the body, instead of behind an optional parameter's default value.
+the second pair of arguments is supplied. That shape hides two facts a reader needs
+up front. The two queries cost different amounts of work: marginal is a single pass
+over the strip, joint is the same pass checking two positions per stop. And they ask
+two different questions, one symbol's frequency versus two symbols' frequency
+together. Separate names put both facts in the signature.
 
 **The draw allocates nothing.** `DrawWindow` returns `void` and takes a
 `Span<Symbol> window` parameter instead of returning a new `Symbol[]`. A `Span<T>`
 is a view onto memory the caller already owns; writing through it fills the
 caller's own array in place, no new object created, no data copied in or out.
-Shaping the function this way, filling a buffer rather than manufacturing and
-handing back a new one, is what makes the zero-allocation claim possible at all:
-a method that returns `Symbol[]` has to allocate that array somewhere, every
-single call, no matter how the caller uses the result. `Strip(int reel)` returns a
+A method that returns `Symbol[]` has to allocate that array somewhere, on every
+single call, no matter how the caller uses the result. Filling a buffer instead is
+what keeps the draw allocation-free. `Strip(int reel)` returns a
 `ReadOnlySpan<Symbol>` for the same reason in the other direction: a read-only
 window onto the strip array that exists already, so a caller can inspect one
 reel's stops without a copy and without a chance to modify them. Both spans exist
 because this method runs once per spin, tens of millions of times a run, and the
-engine reuses one caller-owned window buffer per worker for the whole run instead
-of allocating a fresh array every spin.
+engine reuses one caller-owned window buffer per worker for the whole run.
 
 **Symbol ids are a `byte`, not an `int`.** `ProbabilityOf` and every other symbol
 lookup in this engine takes a `byte symbolId`, and `Symbol.Id` is declared `byte`
 too. A real machine's symbol table, ten or twelve names, fits comfortably inside
 the 256 values a `byte` can hold, so there's headroom to spare without reaching
-for a wider type. That choice isn't just a label; a `byte` is one-quarter the size
-of an `int`, so a window array (`Symbol[]`, one entry per visible cell) holding
-byte-sized ids packs four times as many symbols into the same block of memory,
-which means more of it fits in the CPU's cache on the hottest loop in the engine.
-Choosing the smallest type that can't overflow the real data is a small decision
-here, but it's a decision that pays every single spin.
+for a wider type. A `byte` is also one-quarter the size of an `int`, so a window
+array (`Symbol[]`, one entry per visible cell) holding byte-sized ids packs four
+times as many symbols into the same block of memory, and more of it fits in the
+CPU's cache on the hottest loop in the engine.
 
 **One type draws and reports.** `DrawWindow` and `ProbabilityOf` read the same
-strips. That's DRY at work: the simulator and the analytic calculator must agree on
-the geometry, and they're guaranteed to, because they read the same object. Split
-those into a "runtime reel" and a "math reel" and there would be two places for the
-geometry to drift apart.
+strips, so the simulator and the analytic calculator cannot disagree about the
+geometry. Split those into a "runtime reel" and a "math reel" and there would be two
+places for the geometry to drift apart.
 
 > 🧪 **Try it live.** The companion site's chapter 3 page (<http://localhost:5090>,
 > then `#/ch03`) is built on this type. **Lab 1 — The window over the strip** walks a
@@ -271,8 +259,7 @@ per spin. Before the worked examples, walk it once in words.
    every reel, independently. Nothing about a payline has entered the picture yet;
    this step only decides where each reel physically stopped.
 2. **Read the window.** Each reel's stop, plus its neighbors, fills a grid: rows
-   tall, reels wide. This is the entire visible outcome of the spin. Every symbol
-   the player can see lives in this grid, and nothing outside it exists.
+   tall and reels wide. This grid is the visible outcome of the spin.
 3. **Walk each payline.** A payline is a row-index pattern, one row number per
    reel, read left to right. `Payline.Rows[0]` says which row to read on reel 0,
    `Payline.Rows[1]` says which row on reel 1, and so on. Reading a payline means
@@ -290,8 +277,8 @@ per spin. Before the worked examples, walk it once in words.
 
 Step 5 is where a paytable's *numbers* enter the picture. In this project's stock
 game generator, those numbers begin as a canonical shape: a set of ratios saying
-which symbols pay more than others. One `paytableScaleFactor`, called `k` in the
-formula, resizes that shape toward the target RTP. This is the solver used by this
+which symbols pay more than others. One `paytableScaleFactor` resizes that shape
+toward the target RTP. This is the solver used by this
 project, not a rule requiring all commercial slot paytables to be designed that
 way. Article 2 covers the scale factor in full; the pays used in this article's
 examples are already the finished numbers used for play.
@@ -327,7 +314,7 @@ public sealed record Payline
     /// </summary>
     public static IReadOnlyList<Payline> For(int reels, int lineCount, int rows) { /* … */ }
 
-    /// <summary>The single centre-row line: the whole payline set of a classic one-line game.</summary>
+    /// <summary>The centre-row payline used by classic one-line games.</summary>
     public static Payline Center(int reels, int rows) => new("Center", /* … */);
 }
 ```
@@ -335,14 +322,14 @@ public sealed record Payline
 A `Payline` is a name and a list of row indices: pure data, no behavior. The
 constructor copies the caller's row list into a read-only snapshot, so a line's
 shape is fixed the moment it is built.
-This article's window height section comes back to `For` in detail, because the
-row math above is where a taller window changes the shapes it builds.
+"How many rows can this engine's window have?", below, comes back to `For` in detail,
+because the row math above is where a taller window changes the shapes it builds.
 
 ## A single line, paid
 
 The Orca Dive game definition used by this project declares one line, the
-Centre row, and pays 3-of-a-kind Seal at 20 times that line's wager. This window
-where that line wins, drawn as a grid. The Centre payline reads row 1 (the middle
+Centre row, and pays 3-of-a-kind Seal at 20 times the total spin wager. Here is a
+window where that line wins, drawn as a grid. The Centre payline reads row 1 (the middle
 row) on every reel; that row is marked with `←` to show which one the line actually
 reads.
 
@@ -353,25 +340,28 @@ row 1:     Seal      Seal     Seal    Squid    Mackerel   ← Centre payline
 row 2:    Squid     Herring   Mackerel Blue7    Salmon
 ```
 
+The grid labels reels 1–5 for reading; the code indexes them 0–4.
+
 Reading the Centre payline, left to right: `Seal, Seal, Seal, Squid, Mackerel`. The
-first three reels match Seal; reel 4 breaks the run with Squid. Run length 3.
+first three reels match Seal; the fourth breaks the run with Squid. Run length 3.
 Orca Dive's paytable has an entry for Seal at a run of 3 (it pays 20), so this
-line pays 20 times the line bet. Rows 0 and 2 are drawn in the grid because the
-player can see them, but the Centre payline never reads them; they have no effect
-on this line's payout at all. Because this example has only one active line, the
-line bet and the total spin bet are the same. In a multiline game they need not be:
-ten lines at one credit per line means a ten-credit total spin bet.
+line pays 20 times the wager. (Orca Dive has one line, so the total-wager basis from
+article 2 and the traditional line-bet basis happen to name the same number here.)
+Rows 0 and 2 are drawn in the grid because the player can see them, but the Centre
+payline never reads them; they have no effect on this line's payout at all. In a
+multiline game the two bases diverge: ten lines at one credit per line means a
+ten-credit total spin bet.
 
 ## Why doesn't this pay? Two near-misses
 
-The single most common misreading of a payline is "I can see three Seals, why
+A common misreading of a payline is "I can see three Seals, why
 didn't I win?" There are two different ways to have three of a symbol visible and
 still be paid nothing, and both come straight out of the five-step pipeline above.
 
 **Near-miss 1: the run doesn't start on reel 0.** A payline pays a *leftmost* run;
 step 4 always starts counting from reel 0. If the payline's cells read
 `Mackerel, Seal, Seal, Seal, Squid`, there really are three Seals in a row on the
-line, but they start at reel 1, not reel 0. Comparing everything to the first cell
+line, but they start on the second reel rather than the first. Comparing everything to the first cell
 (Mackerel), the run length is 1, because Mackerel doesn't match Seal. Three Seals sit
 on the line and the line still pays nothing, because a slot payline reads like a
 sentence: it always starts at the beginning, and it never skips ahead to find a
@@ -413,8 +403,8 @@ row 1), (reel 5, row 0)`.
 Walking all five configured lines through the five-step pipeline:
 
 - **Top** (row 0): `B, A, C, A, A`. Reel 1 is B, reel 2 is A: mismatch immediately.
-  Run length 1. Below the minimum winning run. Top pays nothing, a third
-  near-miss, this time on a line that simply didn't line up.
+  Run length 1. Below the minimum winning run. Top pays nothing: a third
+  near-miss, on a line that never lined up.
 - **Centre** (row 1): `B, B, B, Y, Z`. Reels 1 through 3 match B; reel 4 breaks the
   run with Y. Run length 3. Centre pays 10.
 - **Bottom** (row 2): `C, B, B, D, C`. The first two symbols differ. Run length 1.
@@ -432,13 +422,11 @@ can work, but the data and evaluator must use the same one. RTP always divides t
 total award by the **total spin wager**. This is the rule
 `LinePayEvaluator` below and article 6's `WinEvaluator.EvaluateWindow` both apply:
 every line is scored separately by the same five-step process, and every line
-that pays adds its amount to the spin's total. Notice that Centre and V actually
-share two cells outright: reel 2's row 1 and reel 4's row 1 sit on both lines,
-which is why the two lines break at the same reel (reel 4, where both read Y). Two
-lines sharing cells and paying together is not a coincidence to be suspicious of;
-it's a direct consequence of the correlation this whole article opened with;
-article 4 turns that same fact into the analytic variance formula for a multi-line
-game.
+that pays adds its amount to the spin's total. Centre and V share two cells: reel
+2's row 1 and reel 4's row 1 sit on both lines, which is why the two lines break at
+the same reel (reel 4, where both read Y). Two lines sharing cells tend to pay
+together, which is the correlation this article opened with. Article 4 turns that
+same fact into the analytic variance formula for a multi-line game.
 
 ## How many rows can this engine's window have?
 
@@ -487,21 +475,27 @@ consequence: a zig-zag alternating between the top row and `middleRow` swings 2
 rows (0 to 2), while a zig-zag alternating between the bottom row and `middleRow`
 swings only 1 row (3 to 2).
 
+**5 rows — odd, so there is a true center:**
+
 ```
-5 rows (odd, exact center):        4 rows (even, no exact center):
-row 0  ─┐                          row 0  ─┐
-row 1   │  2-row swing               top zig-zag swings 2 rows (0→2)
-row 2  ─┤← middleRow                row 1
-row 3   │  2-row swing             row 2  ─← middleRow (rounds toward bottom)
-row 4  ─┘                            bottom zig-zag swings 1 row (3→2)
-                                    row 3  ─┘
+row 0  ─┐
+row 1   │  top zig-zag swings 2 rows (0→2)
+row 2  ─┤← middleRow
+row 3   │  bottom zig-zag swings 2 rows (4→2)
+row 4  ─┘
 ```
 
-That asymmetry is a documented consequence of picking one rounding direction, not a
-bug. Rounding the other way (toward the top half instead) would simply move which
-side of the window gets the shorter swing; a 4-row window has an even number of
-rows, and no rounding rule makes an even number split into two exactly equal
-halves around a single center point.
+**4 rows — even, so there is no true center:**
+
+```
+row 0  ─┐
+row 1   │  top zig-zag swings 2 rows (0→2)
+row 2  ─┤← middleRow (rounds toward the bottom half)
+row 3  ─┘  bottom zig-zag swings 1 row (3→2)
+```
+
+Rounding the other way would put the shorter swing on the top side instead. A 4-row
+window has no single center row for any rounding rule to find.
 
 One shape does *not* change with this rounding: a V or a Hat always spans the full
 window height, top row to bottom row, regardless of how many rows there are or
@@ -513,9 +507,9 @@ asymmetry.
 
 ## Proof from a hand-built fixture
 
-These aren't just claims about the geometry; they're pinned as expected values in
-`MultiRowWindowTests.cs`, checked against a small hand-built game at both 4 and 5
-rows. Walking the 5-row case by hand shows why.
+The geometry above is pinned as expected values in `MultiRowWindowTests.cs`, checked
+against a small hand-built game at both 4 and 5 rows. Here is the 5-row case worked
+by hand.
 
 The fixture is a 3-reel game with a 20-stop strip repeated on every reel. Each
 strip carries 4 copies of symbol A and 2 copies of a scatter symbol, Star, placed
@@ -553,7 +547,8 @@ is `4 + 2 = 6`. The bonus's RTP contribution is `0.125 × 6 = 0.75`.
 along with the line hit frequency (0.008) and trigger probability (0.125) computed
 above. This is an analytic calculation rather than a simulated estimate. However,
 values such as `0.2`, `0.008`, and `0.79` do not have exact finite binary
-floating-point representations, so the test compares them to 12 decimal places.
+floating-point representations, so the test compares them to 12 decimal places (the
+preset fixtures in article 7 are pinned tighter still, at 14).
 
 The 4-row version of the same fixture (16-stop strips instead of 20, same 4 A's and
 2 Stars, same bonus) runs the identical arithmetic at a different scale: line hit
@@ -565,7 +560,7 @@ fixtures for 3 million simulated spins each and checks the measured RTP lands
 inside the analytic band, the same convergence check article 5 builds in general,
 now exercised at window heights other than 3.
 
-## The one thing that doesn't generalize automatically
+## What doesn't generalize automatically
 
 `Payline.For`'s standard shapes (Center, Top, Bottom, V, Hat, and the four
 zig-zags) generalize to any window height by formula, which is why the section
@@ -623,15 +618,15 @@ This governs only the preset and solver pipeline built in these early articles. 
 article 6 loads a reconstructed game from JSON, a pay category pays at whatever run
 length its own data declares. A game's rules may, for example, pay a lone wild.
 
-The evaluator also illustrates the CUPID properties:
+CUPID (Composable, Unix-philosophy, Predictable, Idiomatic, Domain-based) is the
+design checklist article 1 introduced. Against it, the evaluator reads:
 
 - **Composable.** It takes lines and a paytable at construction, a window by
   `ReadOnlySpan`, and returns `Millicents`. No logger, no config object, no side
   effects. A test can set it up in five lines.
 - **Unix philosophy.** It converts windows to money. It does not draw windows
   (`StripReelSet`), does not decide pay amounts (`ScaledPaytable`), does not run
-  spins (`SimulationEngine`). Four collaborators, four jobs, no god class doing all
-  of it.
+  spins (`SimulationEngine`). Four collaborators, four jobs.
 - **Predictable.** Left-to-right, run length gated by one named constant, match on
   symbol id. No hidden wild logic in v1; when wilds arrive (article 6), they arrive
   as a *different evaluator*, not as flags threaded through this one.
@@ -645,10 +640,10 @@ payline rule is already visible in the multi-line worked example above, and it h
 article 4 depends on: the expected value of the whole window is a plain sum of
 per-line expected values, no matter how much the lines overlap. Overlap changes
 the *variance* (two lines sharing a reel win together more often than independence
-predicts) but never the mean. Where variance is the question, `JointProbabilityOf`
-is the answer.
+predicts) but never the mean. `JointProbabilityOf` supplies what that variance
+calculation needs.
 
-## LinePayEvaluator isn't the only way to score a window
+## Other ways to score a window
 
 `LinePayEvaluator` is one implementation of "window to money." Ways-pays games
 (the 243-ways machines that count matching symbols on adjacent reels in any row)

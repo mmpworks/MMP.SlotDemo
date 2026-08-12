@@ -5,12 +5,12 @@ math. This one builds the machine that checks it: a parallel simulation engine
 whose results are reproducible bit for bit, with live telemetry that never blocks
 the workers.*
 
-The analytic calculator says the game returns 98% with a per-spin standard
-deviation σ. The engine's job is to play millions of spins and compare the
+The analytic calculator says the stock preset returns 98% — the 7,500 + 1,300 + 1,000
+basis points article 1 ships as defaults — with a per-spin standard deviation σ. The
+engine's job is to play millions of spins and compare the
 measured number with the predicted band: fast enough to watch, lossless in its
 money totals, and deterministic enough to replay. Those three requirements pull in
-different directions, and this article is about the small set of decisions that
-satisfy all three at once.
+different directions.
 
 The main pieces, before the code:
 
@@ -24,8 +24,8 @@ The main pieces, before the code:
 
 ## Determinism is also a scheduling problem
 
-"Same seed, same result" sounds like it lives in the random number generator.
-Mostly it lives somewhere else: *which spin runs on which worker*. The obvious
+"Same seed, same result" sounds like a property of the random number generator. Most
+of it is a property of the scheduler: *which spin runs on which worker*. The obvious
 parallel loop,
 
 ```csharp
@@ -117,8 +117,8 @@ private void WorkerLoop(int workerId, long quota, /* … */)
 A cancellation request can arrive while a worker is already inside a batch. That
 worker may finish as many as 4,095 more spins before noticing cancellation. With
 several workers, more than one batch may
-be in flight. The exact delay is hardware- and game-dependent, so the design should
-not promise a particular number of microseconds. `BatchSize` is the knob trading
+be in flight. The exact delay is hardware- and game-dependent, so this chapter doesn't
+quote a figure in microseconds. `BatchSize` is the knob trading
 cancellation responsiveness against the cost of checking the token on every spin;
 4,096 is the current engineering choice and should be benchmarked if workloads
 change.
@@ -155,13 +155,11 @@ reduces that synchronization frequency by as much as a factor of 4,096 without
 changing the integer sum. This is invariant M2 from article 2: regrouping integer
 additions changes when subtotals are published, not what they add up to.
 
-Batching is not an approximation. The final total is not "close to"
-what per-spin accumulation would have produced; it is the identical sum, because
+The batched total is the identical sum a per-spin accumulation would produce, because
 `(a + b) + c` and `a + (b + c)` are the same value for integers, unlike the
-floating-point case article 2 opens with. Batching changes how often the addition
-happens, never what it adds up to.
+floating-point case article 2 opens with.
 
-One wrinkle, documented rather than hidden: a mid-run `Snapshot()` reads four
+One wrinkle: a mid-run `Snapshot()` reads four
 counters that are individually atomic but not atomic *as a set*; it can pair a
 `wagered` from one batch with a `returned` from the previous one. The skew is
 tied to concurrent updates and is not guaranteed to be bounded to one batch when
@@ -170,7 +168,6 @@ display. The final snapshot is
 taken after `Task.WhenAll`, on a quiesced engine, where it's exact, and that's the
 one the acceptance tests read. The tempting fix, a lock around snapshot versus add,
 would put contention on the hot path to improve a number nobody asserts on.
-Knowing which numbers need to be exact is the design.
 
 ## Telemetry that never blocks the workers
 
@@ -187,6 +184,7 @@ load the workers outrun the consumer and old samples vanish. The two rules that
 make that loss harmless, absolute snapshots and never blocking on write, are
 article 1's design, now visible as code:
 
+<!-- EXPORT: render this Mermaid block to PNG before publishing -->
 ```mermaid
 flowchart LR
     subgraph workers["N workers, private RNG and scratch"]
@@ -208,22 +206,29 @@ flowchart LR
 > the telemetry, keep the truth** throttles the sample consumer so you can drop chart
 > points on purpose and watch the counters stay exact.
 
-## What the engine doesn't know
+## What a game supplies
 
-Look at what `SimulationEngine` *doesn't* contain. There's no reel, no paytable, no
-payline anywhere in it: the spin itself arrives as a pair of delegates.
+`SimulationEngine` receives the spin operation as a pair of delegates. Reel,
+paytable, and payline rules stay in the game code.
 
 ```csharp
-/// <summary>Plays ONE spin: draw, evaluate, award. RNG arrives by ref (R3), so the
-/// stream advances in the caller's worker.</summary>
+/// <summary>
+/// Plays one spin: draw, evaluate, award. RNG arrives by ref, so the stream advances in
+/// the caller's worker.
+/// </summary>
 public delegate SpinOutcome SpinPlay(ref SpinRng rng);
 
-/// <summary>Builds one SpinPlay per worker; each play owns its own scratch buffers.</summary>
+/// <summary>
+/// Builds one <see cref="SpinPlay"/> per worker. A game with its own evaluation rules
+/// (wilds, scatter-triggered bonuses, picks simulated round by round) reuses the
+/// determinism, quota partitioning, batching and telemetry below through this seam.
+/// OrcaDive is the first such game. Each worker's play owns its own scratch buffers, so
+/// this is a factory and not one shared instance.
+/// </summary>
 public delegate SpinPlay SpinPlayFactory();
 ```
 
-The stock game wires them up like this. Notice the per-worker closure owning its
-own scratch window, which is why the factory exists at all:
+The stock game wires them up with a separate scratch window for each worker:
 
 ```csharp
 return () =>                                    // called once per worker
@@ -244,39 +249,35 @@ return () =>                                    // called once per worker
 ```
 
 This delegate prevents the scheduling policy from being copied into each game.
-When article 6 loads a reconstructed commercial game (wilds, scatter triggers, a
-pick bonus with its own rules), that game brings its own `SpinPlay` and reuses the
+When article 6 loads Orca Dive, the project's fictional worked game, it brings its
+own wild, scatter, and pick rules through `SpinPlay` and reuses the
 quota partitioning, seeded streams, batched counters, and telemetry. Keeping one
 worker loop prevents the two game paths from drifting into different scheduling
 behavior.
 
-Notice what the engine asks a game to supply: a function, `SpinPlay`, not an
-object with a `PlayOneSpin` method on some `IGame` interface. The engine's own
-job, scheduling workers, batching counters, coalescing telemetry, has nothing to
-do with what a spin means, so it doesn't need to know a game's shape at all, only
-that handing it a `ref SpinRng` back gets a `SpinOutcome` in return. An interface
+The engine asks a game for a `SpinPlay` function. Scheduling workers, batching
+counters, and coalescing telemetry do not depend on the game's rules; the worker
+only needs to turn a `ref SpinRng` into a `SpinOutcome`. An interface
 would work too, but it would also imply the engine might call other methods on
 that same object someday, session state, configuration, anything else `IGame`
-grew over time. A delegate states that one thing, and only one thing, is
-expected here, which matches what the engine actually needs from a game: the
-engine supplies the loop, the game supplies what happens inside one turn of it.
+grew over time. A delegate names the single call the engine makes: the engine
+supplies the loop, the game supplies what happens inside one turn of it.
 
 The reel strips are built once and shared across workers. `StripReelSet` copies its
 input arrays at construction, so outside mutation cannot change the active game and
-every worker sees byte-identical geometry. Immutable data shares freely; mutable scratch
-stays per-worker. That one distinction is most of multithreaded design.
+every worker sees byte-identical geometry. Immutable data shares freely and mutable
+scratch stays per-worker, which is why the worker loop needs no lock of its own.
 
 There's also an optional `SpinObserver` delegate, a per-spin diagnostic hook, null
-by default and therefore costing one branch. It's how the server can inspect
-individual spins during a small diagnostic run while staying logging-free in the
-library itself. It is deliberately *not* the telemetry path; wiring it into a
-10-million-spin run would mean paying for a debugger on every spin of a run built
-to be fast.
+by default, so the hot path pays at most a predictable null check. It's how the
+server can inspect individual spins during a small diagnostic run while staying
+logging-free in the library itself. It is a diagnostic hook, not the telemetry path:
+on a 10-million-spin run it would cost a callback per spin.
 
 ## Watching the estimate converge
 
-Run it, and the dashboard draws the story: the measured RTP starts noisy, the
-`±z·σ/√N` band narrows as `√N` grows, and the line settles into the band the math
+Run it and the dashboard shows the measured RTP starting noisy, the
+`±z·σ/√N` band narrowing as `√N` grows, and the line settling into the band the math
 predicted before the first spin. The exact width at ten million spins depends on
 the game's σ; wager size alone does not determine it. A correct run is expected to
 fall inside a 99% band about 99% of the time when the normal approximation is

@@ -6,7 +6,7 @@ namespace MMP.SlotGame.Core.Paylines;
 
 /// <summary>
 /// Turns a drawn window into base-game money: left-to-right k-of-a-kind per payline,
-/// k ≥ 3, no wilds (v1 — see Symbol). One job (CUPID Unix): window → millicents.
+/// k ≥ 3. The preset strips carry no wilds, so substitution never enters here.
 /// </summary>
 public sealed class LinePayEvaluator(IReadOnlyList<Payline> lines, ScaledPaytable paytable)
 {

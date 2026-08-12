@@ -1,11 +1,10 @@
 namespace MMP.SlotGame.Core.Games.Definition;
 
 /// <summary>
-/// The on-disk JSON shape, and nothing more. Every property is nullable and nothing is
-/// checked here on purpose: deserialization should never be the thing that reports a bad
-/// game file, because the message it gives is about JSON and the message a user needs is
-/// about slots. <see cref="GameDefinitionLoader"/> does the checking and produces
-/// <see cref="GameDefinition"/>, which is the only type the rest of the engine ever sees.
+/// The on-disk JSON shape. Every property is nullable and validation happens elsewhere,
+/// so that a bad game file is reported in slot terms instead of JSON deserializer terms.
+/// <see cref="GameDefinitionLoader"/> does the checking and produces
+/// <see cref="GameDefinition"/>, which is the type the rest of the engine sees.
 ///
 /// These types are internal for that reason: the JSON shape is not part of the API.
 /// </summary>

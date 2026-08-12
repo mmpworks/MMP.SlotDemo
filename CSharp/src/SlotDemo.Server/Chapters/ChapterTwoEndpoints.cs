@@ -26,11 +26,11 @@ public static class ChapterTwoEndpoints
 
     // ---- exact money -------------------------------------------------------------
 
-    /// <summary>
-    /// <paramref name="WagerMillicents"/> is the odd-amount seam: whole credits always divide
-    /// evenly by the pay scale, so the only way to watch the type refuse an inexact
-    /// conversion on camera is to hand it a raw amount that does not.
-    /// </summary>
+    /// <param name="WagerMillicents">
+    /// The odd-amount seam: whole credits always divide evenly by the pay scale, so the way
+    /// to watch the type refuse an inexact conversion is to hand it a raw amount that does
+    /// not divide evenly.
+    /// </param>
     public sealed record MoneyRequest(
         long WagerCredits, int ScaledMultiplier, long Repeats, long WagerMillicents = 0);
 
@@ -75,17 +75,18 @@ public static class ChapterTwoEndpoints
         }
         catch (InvalidOperationException ex)
         {
-            // The type refusing an inexact conversion is the lesson, not an outage.
+            // An inexact conversion is the expected result for this lab input.
             pay = Millicents.Zero;
             refusal = ex.Message;
             log.Warning(Category, "ScaledMultiply refused: {Reason}", new LogProperty("Reason", ex.Message));
         }
 
-        // Integer scaling stands in for the repeated addition; both are exact, and one
-        // of them does not take an hour on camera.
+        // Integer scaling stands in for repeated addition. Both are exact; this one returns
+        // in milliseconds.
         var exactTotal = pay * request.Repeats;
 
         // The same arithmetic in double, accumulated the way a float-based engine would.
+        // Past 2M steps the loop stops and scales the result, to keep the request bounded.
         var floatStep = wager.ToCredits() * (request.ScaledMultiplier / 100.0);
         double floatTotal = 0;
         var accumulateSteps = Math.Min(request.Repeats, 2_000_000);
@@ -175,7 +176,7 @@ public static class ChapterTwoEndpoints
             ? SharedLeadingBits(firstDraws[0], firstDraws[1])
             : 0;
 
-        // Same seed, same worker, second pass: the replay claim, checked rather than asserted.
+        // Same seed, same worker, second pass, so the page can compare the two draws.
         var replayRng = request.Mixed
             ? SpinRng.ForWorker(request.Seed, 0)
             : SpinRng.ForWorkerUnmixed(request.Seed, 0);
@@ -229,9 +230,9 @@ public static class ChapterTwoEndpoints
 
         var threshold = (ulong)(space % request.Bound);   // values below this cause the skew
 
-        // Two passes from the same seed rather than one interleaved pass: Lemire discards
-        // draws and modulo does not, so sharing a loop would leave the two histograms
-        // counting different numbers of samples and the comparison would prove nothing.
+        // Two passes from the same seed rather than one interleaved pass. Lemire discards
+        // draws and modulo does not, so a shared loop would give the two histograms
+        // different sample counts.
         var moduloRng = SpinRng.ForWorker(request.Seed, 0);
         for (var i = 0; i < request.Samples; i++)
         {

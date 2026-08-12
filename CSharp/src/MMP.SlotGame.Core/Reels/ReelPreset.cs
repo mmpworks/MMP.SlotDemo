@@ -1,14 +1,13 @@
 namespace MMP.SlotGame.Core.Reels;
 
 /// <summary>
-/// The v1 configuration surface for slot geometry is preset selection (RT-25): a fixed,
-/// enumerable set of popular real-world shapes. This record is the AIF seam for custom
-/// shapes — the shape is extensible; the free-form editing surface is not built.
+/// The v1 configuration surface for slot geometry is preset selection: a fixed,
+/// enumerable set of popular real-world shapes. This record is the seam for custom
+/// shapes. The record is extensible; the free-form editing surface is still to be built.
 ///
-/// Strips are built DETERMINISTICALLY from the weighted spec: each symbol's weight
-/// count is spread round-robin across the strip (even spacing, fixed layout). Same
-/// preset → same strip, always — the strip layout is part of the reproducibility
-/// contract, not a random artifact.
+/// Strips are built deterministically from the weighted spec: each symbol's copies are
+/// laid at evenly spaced fractional positions and sorted into strip order. The same preset
+/// yields the same strip on every run, which is what makes a seeded run reproducible.
 /// </summary>
 public sealed record ReelPreset(
     string Name,
@@ -17,7 +16,7 @@ public sealed record ReelPreset(
     IReadOnlyList<(Symbol Symbol, int Weight)> SymbolWeights,
     IReadOnlyList<Payline> Paylines)
 {
-    /// <summary>All v1 presets, keyed by name. DRY: one table, no per-preset classes.</summary>
+    /// <summary>All v1 presets, keyed by name. One table rather than a class per preset.</summary>
     public static IReadOnlyDictionary<string, ReelPreset> All { get; } = BuildAll();
 
     public StripReelSet BuildReels()
@@ -51,7 +50,7 @@ public sealed record ReelPreset(
 
     private static Dictionary<string, ReelPreset> BuildAll()
     {
-        // Classic symbol set (8 distinct: 7s, bars, bells, cherries, blanks).
+        // Classic symbol set (8 distinct: sevens, three bar tiers, bell, cherry, lemon, blank).
         var seven = new Symbol(0, "Seven");
         var bar3 = new Symbol(1, "TripleBar");
         var bar2 = new Symbol(2, "DoubleBar");
@@ -77,6 +76,8 @@ public sealed record ReelPreset(
         {
             (seven, 1), (bar3, 2), (bar2, 2), (bar1, 3), (bell, 3), (cherry, 3), (lemon, 3), (blank, 5),
         };
+        // Video3 keeps the classic symbol set on a 32-stop strip; the extra stops are what
+        // change its odds.
         var classic32 = new (Symbol, int)[]
         {
             (seven, 1), (bar3, 2), (bar2, 3), (bar1, 5), (bell, 5), (cherry, 5), (lemon, 5), (blank, 6),

@@ -56,7 +56,7 @@ public readonly record struct Millicents(long Value) : IComparable<Millicents>
         return new Millicents(Value / ScaleFactor * scaledMultiplier);
     }
 
-    /// <summary>Display-only. The one sanctioned exit to floating point.</summary>
+    /// <summary>The type's only conversion to floating point. Display and ratio math; run totals stay in millicents.</summary>
     public double ToCredits() => (double)Value / PerCredit;
 
     public override string ToString() => $"{ToCredits():0.#####}cr";

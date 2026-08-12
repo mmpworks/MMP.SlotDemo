@@ -142,7 +142,7 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   scatter: {
     title: 'Scatter symbol (◆)',
-    body: 'The Penguin triggers the bonus when it is visible anywhere in the window on reels 1, 3, and 5 at once. Scatters count window area: with 2 Penguins on a 26-stop strip and a 3-row window, 6 of 26 stops show one. That is why Penguin appears only on reels 1, 3, and 5.',
+    body: 'The Penguin triggers the bonus when it is visible anywhere in the window on reels 1, 3, and 5 at once. Scatters count window area: with 2 Penguins on a 26-stop strip and a 3-row window, 6 of 26 stops show one. Penguin lives only on reels 1, 3, and 5 because those are the reels the bonus requires.',
   },
   paytable: {
     title: 'Paytable',
@@ -174,7 +174,7 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   prizeTiers: {
     title: 'Prize tiers',
-    body: 'The bag\'s contents by value. Many small prizes and few large ones shape the bonus the same way the paytable shapes the base game: the 5× tier (nine of them) carries most of the bonus\'s expected value. The max award is every prize plus the consolation, 145× bet.',
+    body: 'The bag\'s contents by value. Many small prizes and few large ones shape the bonus the same way the paytable shapes the base game. The 5× tier carries more of the expected value than any other: nine prizes at 5× come to 45 of the bag\'s 144, ahead of the single 20× and the three 10× together. The max award is every prize plus the consolation, 145× bet.',
   },
   volatility: {
     title: 'Sigma and the volatility index',
@@ -190,11 +190,11 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   paylines: {
     title: 'Payline patterns',
-    body: 'A payline is a fixed path across the window: one row picked per reel. The diagram shows which cell each reel contributes. Orca Dive reads a single Centre line, the shape the source machine used. Multi-line games add paths (Top, Bottom, V, zigzags), and for ordinary line pays the extra lines leave RTP unchanged, because the bet scales with the line count. The chapter 3 lab draws every pattern for the multi-line presets.',
+    body: 'A payline is a fixed path across the window: one row picked per reel. The diagram shows which cell each reel contributes. Orca Dive reads a single Centre line, the classic single-line shape. Multi-line games add paths (Top, Bottom, V, zigzags), and for ordinary line pays the extra lines leave RTP unchanged, because the bet scales with the line count. The chapter 3 lab draws every pattern for the multi-line presets.',
   },
   strips: {
     title: 'Strip order',
-    body: 'The full ordered strips, exactly as the window slides over them. Order changes nothing for single-line pays (only counts matter) but everything for scatters and multi-row windows, because adjacent stops enter the window together. Manufacturers guard this part of a PAR sheet most closely. Here it is published with the game.',
+    body: 'The full ordered strips, exactly as the window slides over them. Order changes nothing for single-line pays (only counts matter) but everything for scatters and multi-row windows, because adjacent stops enter the window together. Strip order is the part of a real PAR sheet that stays confidential. Orca Dive\'s is in `games/orca-dive.json`, so you can read it against the counts above.',
   },
 }
 

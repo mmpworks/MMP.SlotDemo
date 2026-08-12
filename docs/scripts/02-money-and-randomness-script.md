@@ -6,6 +6,8 @@ walk it. The typing is a jump cut; the walkthrough is the episode.
 minutes total, and only to make an engine claim visible.
 **Companion article:** `docs/articles/02-money-and-randomness.md`
 **Companion site:** MMP.SlotDemo, branch `main`, page `#/ch02`
+**Files created on camera:** `CSharp/src/MMP.SlotGame.Core/Money/Millicents.cs`,
+`CSharp/src/MMP.SlotGame.Core/Simulation/SpinRng.cs`.
 
 > **Discipline note for this recording.** The labs illustrate; they do not carry the
 > episode. If a beat can be made in Rider, make it in Rider. Cut to the browser only
@@ -17,12 +19,14 @@ minutes total, and only to make an engine claim visible.
 ## Prep checklist
 
 **Repo — the subject**
-- [ ] Rider on `MMP.SlotGame.slnx`, tree expanded to `MMP.SlotGame.Core`
+- [ ] Rider on `CSharp/MMP.SlotDemo.slnx`, tree expanded to `MMP.SlotGame.Core`
 - [ ] `Money/` and `Simulation/` folders present, the two target files moved aside so
       they get created on camera
 - [ ] Scratch file or C# Interactive ready for the float demonstrations
-- [ ] Test runner loaded: `MillicentsTests`, `MillicentsFuzzTests`, `DeterminismTests`,
-      `NoAmbientRngTests`, `ConcurrencyTests`
+- [ ] Test runner loaded: `SlotDemo.Server.Tests/MillicentsTests` (the M1 reflection scan
+      and the M2 shuffle live here), plus `MMP.SlotGame.Tests`: `MillicentsTests`,
+      `MillicentsFuzzTests`, `DeterminismTests`, `NoAmbientRngTests`, `SpinRngFuzzTests`,
+      `ConcurrencyTests`
 - [ ] Clipboard manager staged with Block A then Block B
 
 **Companion site — the illustration**
@@ -45,8 +49,8 @@ minutes total, and only to make an engine claim visible.
 - "Two files today. About a hundred lines between them. One holds money, one holds
   randomness, and between them they decide whether a ten-million-spin run means
   anything."
-- "Everything downstream — reels, paytables, the engine, the proof in episode 7 —
-  gets to be ordinary because these two are strict. That trade is the episode."
+- "Everything downstream (reels, paytables, the engine, the proof in episode 7) gets
+  to be ordinary because these two are strict."
 - Set the format: "I paste each file finished, then we go through it and I tell you
   why every line is the way it is."
 
@@ -59,8 +63,8 @@ Type live:
 0.1 + 0.2 == 0.3          // false
 0.1 + 0.2                 // 0.30000000000000004
 ```
-- "In a renderer nobody notices. In a system whose whole job is telling 97.99% from
-  98.01% after ten million spins, that noise is the same size as the answer."
+- "In a renderer nobody notices. In a system that has to tell 97.99% from 98.01%
+  after ten million spins, that noise is the same size as the answer."
 
 Then the part that matters more, also typed live:
 ```csharp
@@ -72,17 +76,17 @@ Then the part that matters more, also typed live:
 - Land it on threads: "Sixteen workers finish in whatever order the scheduler picks.
   If the total is a `double`, the result depends on finish order. The arithmetic
   itself has a race in it, and no lock fixes that."
-- "So: count integers. The same answer banks landed on."
+- "So count integers, the way banks do."
 
 ## 3:15–4:15 — Create the file
 
 **Scene:** RIDER.
 
 - Right-click `MMP.SlotGame.Core` → new directory `Money` → new file.
-- **Path on screen and said out loud:** `src/MMP.SlotGame.Core/Money/Millicents.cs`
-- Paste **Block A**. Let it land. "That is the whole type. Now we earn it."
+- **Path on screen and said out loud:** `CSharp/src/MMP.SlotGame.Core/Money/Millicents.cs`
+- Paste **Block A**. Pause on the constructor, then trace one exact addition.
 
-### Block A — `src/MMP.SlotGame.Core/Money/Millicents.cs`
+### Block A — `CSharp/src/MMP.SlotGame.Core/Money/Millicents.cs`
 
 ```csharp
 namespace MMP.SlotGame.Core.Money;
@@ -143,7 +147,7 @@ public readonly record struct Millicents(long Value) : IComparable<Millicents>
         return new Millicents(Value / ScaleFactor * scaledMultiplier);
     }
 
-    /// <summary>Display-only. The one sanctioned exit to floating point.</summary>
+    /// <summary>The type's only conversion to floating point. Display and ratio math; run totals stay in millicents.</summary>
     public double ToCredits() => (double)Value / PerCredit;
 
     public override string ToString() => $"{ToCredits():0.#####}cr";
@@ -156,7 +160,7 @@ public readonly record struct Millicents(long Value) : IComparable<Millicents>
 
 ### Beat 1 — why a struct and not a class
 
-The question viewers ask most. Four reasons, then the honest counterweight.
+The question viewers ask most. Four reasons, then the counterweight.
 
 1. **Identity is wrong here.** Two amounts of 2.25 credits are the same amount. A
    class gives every amount an identity it never wanted, and reference equality
@@ -170,11 +174,9 @@ The question viewers ask most. Four reasons, then the honest counterweight.
 4. **Copying is the safe default.** Passing a struct hands over a copy, so no caller
    can reach back and change an amount somebody else is holding.
 
-The counterweight, because it is the other half of the truth: structs get copied, so
-a **mutable** struct is a trap — a copy advances while the original stands still.
-`readonly` closes it. Every operation returns a new value and nothing changes in
-place. That is the immutability rule expressed in the type system instead of in a
-code review comment.
+The counterweight: structs get copied, so a **mutable** struct is a trap, because a
+copy advances while the original stands still. `readonly` closes it. Every operation
+returns a new value and nothing changes in place.
 
 ### Beat 2 — `record struct` for the parts you should not hand-write
 
@@ -185,14 +187,12 @@ a human wants credits.
 
 ### Beat 3 — the scale, and where it lives
 
-- `PerCredit = 100_000` — five decimal digits below a credit. Enough resolution for a
+- `PerCredit = 100_000`: five decimal digits below a credit. Enough resolution for a
   paytable solver to hit a target RTP with no remainder to lose.
-- `ScaleFactor = 100` — pay multipliers travel as integers, so 2.25× is carried as
-  `225`. **The DRY point:** parser, analyzer, and payout code all read this one field.
-  One authority, rather than the number 100 scattered across the codebase waiting to
-  disagree with itself.
+- `ScaleFactor = 100`: pay multipliers travel as integers, so 2.25× is carried as
+  `225`. Parser, analyzer, and payout code all read this one field, so the number 100
+  lives in one place.
 - **The seam:** naming it costs one line and leaves the resolution changeable later.
-  A door held open, not a room nobody asked for.
 
 ### Beat 4 — the operator that refuses to exist
 
@@ -200,9 +200,8 @@ Walk the list, then stop at the multiply.
 
 - `+`, `-`, comparisons: ordinary, and they exist so call sites read like arithmetic
   rather than `new Millicents(a.Value + b.Value)`.
-- `operator *(Millicents, long)` — money taken a whole number of times. Money times
-  money means nothing, so that overload is absent by design, and the absence is the
-  documentation.
+- `operator *(Millicents, long)`: money taken a whole number of times. Money times
+  money means nothing, so that overload is absent by design.
 - **Break it on camera.** In a scratch method, type `total * 0.98` and let the red
   squiggle sit for a beat. No implicit conversion to `double` exists anywhere in the
   type, so the line that would quietly lose money fails to compile.
@@ -212,37 +211,36 @@ Walk the list, then stop at the multiply.
 ### Beat 5 — one exit, and it has a name
 
 `ToCredits()` is the only path to floating point. It says so in its own doc comment,
-and it is greppable. Contrast the two worlds in one sentence: with an implicit
-conversion, money leaks into a double anywhere and silently; with a named method,
-every exit is a search result you can audit before a release.
+and it is greppable. An implicit conversion would let money slip into a double
+anywhere; a named method makes every exit a search result you can audit before a
+release.
 
-### Beat 6 — a throw that teaches
+### Beat 6 — the throw and its message
 
 Read the `ScaledMultiply` message aloud. It names the amount, the scale, and why the
 conversion cannot be exact.
 
-- **CUPID, predictable:** the type refuses work it cannot do exactly instead of
-  rounding quietly and moving on.
+- The type refuses work it cannot do exactly instead of rounding quietly.
 - Error messages are part of the interface. One that explains the rule saves the next
   person an afternoon.
 
 > **Illustration (30 seconds, BROWSER).** Chapter 2 page, money lab. Raw wager
 > `12345` millicents, run. The refusal text appears on the page, and the same line
-> appears in the log stream underneath at warning level. "The type is not being
-> difficult. It is saying this wager cannot carry a fractional multiplier without
-> losing part of a millicent, and it will not guess which way to round." Cut back.
+> appears in the log stream underneath at warning level. "This wager cannot carry a
+> fractional multiplier without losing part of a millicent, and the type will not
+> guess which way to round." Cut back.
 
 ### Beat 7 — M2, stated once so it can be tested later
 
 Integer addition gives the same total in any order, so an N-worker total matches a
-1-worker total bit for bit. That turns determinism from a hope into a property.
-Flag it: "Remember this. In episode 7 it becomes a test with `==` in it."
+1-worker total bit for bit. Flag it: "Remember this. In episode 7 it becomes a test
+with `==` in it."
 
 > **Illustration (40 seconds, BROWSER).** Money lab, multiplier `110`, one million
 > repeats: the integer column holds and the double column drifts by about `1.1e-05`
-> credits. Switch to `225` and the drift goes to zero — 2.25 is a sum of powers of
-> two, so binary holds it perfectly, while 1.1 rounds on every addition. Point at the
-> 64-bit strip: "One number. Every bit is money. No mantissa, no exponent." Cut back.
+> credits. Switch to `225` and the drift goes to zero, because 2.25 is a sum of powers
+> of two and binary holds it perfectly, while 1.1 rounds on every addition. Point at
+> the 64-bit strip: "One integer, end to end. No mantissa, no exponent." Cut back.
 
 ## 12:30–14:00 — Determinism's three enemies
 
@@ -262,10 +260,10 @@ Flag it: "Remember this. In episode 7 it becomes a test with `==` in it."
 **Scene:** RIDER.
 
 - New directory `Simulation`, new file. **Path on screen:**
-  `src/MMP.SlotGame.Core/Simulation/SpinRng.cs`
+  `CSharp/src/MMP.SlotGame.Core/Simulation/SpinRng.cs`
 - Paste **Block B**.
 
-### Block B — `src/MMP.SlotGame.Core/Simulation/SpinRng.cs`
+### Block B — `CSharp/src/MMP.SlotGame.Core/Simulation/SpinRng.cs`
 
 ```csharp
 namespace MMP.SlotGame.Core.Simulation;
@@ -280,7 +278,7 @@ namespace MMP.SlotGame.Core.Simulation;
 /// Each worker starts from a distinct value derived from the master seed and worker id;
 /// SplitMix64 expands that value into the four xoshiro state words.
 ///
-/// Simulation-grade RNG. NOT certified-gaming RNG (PRD NG-1).
+/// Simulation-grade RNG. Real-money play requires a certified gaming RNG; this is not one.
 /// </summary>
 public struct SpinRng
 {
@@ -321,7 +319,7 @@ public struct SpinRng
         return result;
     }
 
-    /// <summary>Uniform integer in [0, bound) using Lemire's rejection method.</summary>
+    /// <summary>Uniform integer in [0, <paramref name="bound"/>) using Lemire's rejection method.</summary>
     public int NextInt(int bound)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(bound);
@@ -348,10 +346,10 @@ public struct SpinRng
 Four `ulong` fields: the entire generator is 32 bytes on the worker's stack. No
 allocation, no pointer chase, and each worker's state stays in its own cache line
 rather than being memory two cores fight over. In a loop that runs ten million times,
-that is the difference between the generator being free and the generator being the
-profile.
+that is the difference between the generator costing nothing and the generator
+dominating the profile.
 
-### Beat 9 — the mutable struct, and why the hazard is the design
+### Beat 9 — the mutable struct, and the discipline around it
 
 Say the anti-pattern before the comment section does: a mutable struct usually forks
 its state silently, because copies advance independently.
@@ -361,26 +359,25 @@ Here that hazard is turned into discipline.
 - Any method consuming randomness declares it in its signature. Randomness becomes
   visible in the type system instead of hiding inside a field.
 - `grep "ref SpinRng"` lists everything in the engine that can consume a random
-  number. That is the R3 audit, and it takes a second.
+  number. That is the R3 audit.
 
 ### Beat 10 — seeding, and when borrowed code is the engineering decision
 
 - `masterSeed ^ workerId`, then SplitMix64 four times. One mixing function does two
   jobs: separates the workers, and expands one seed into four well-spread state words.
 - The constants are published and canonical, from the generator's author. **The
-  beat:** "This is where invention is a liability. Somebody proved these constants
-  behave. Using their proof is the engineering decision, and writing my own would be
-  the ego decision."
+  beat:** "Somebody proved these constants behave. Using their proof is cheaper than
+  proving my own."
 - Same argument for xoshiro256** itself: modern .NET uses it inside `Random`. Owning
   these twenty lines pins the byte stream across runtime versions, which is what lets
   a test assert an exact total three years from now.
 
 > **Illustration (50 seconds, BROWSER).** RNG lab, the strongest visual in the
 > episode. Click **seed + workerId**: workers 0 and 1 share **51 leading bits** of
-> their first draw and every reduced stop comes out 0. "That is not two streams. That
-> is one stream wearing a hat." Click **SplitMix64**: shared prefix drops to 0 and the
-> stops spread. Point at the replay row — same seed, same worker, same first value.
-> Cut back.
+> their first draw and every reduced stop comes out 0. "Fifty-one shared bits means
+> those two workers are walking nearly the same stream." Click **SplitMix64**: shared
+> prefix drops to 0 and the stops spread. Point at the replay row: same seed, same
+> worker, same first value. Cut back.
 
 ### Beat 11 — `NextInt`, and paying for uniformity
 
@@ -388,7 +385,7 @@ Here that hazard is turned into discipline.
   is slightly wrong: when the range does not divide the space evenly, the low buckets
   each receive one extra source value.
 - Lemire's version multiplies, takes the high half, and rejects the short tail. One
-  multiply, one shift, and evenness that is exact rather than close.
+  multiply, one shift, and every bucket gets the same number of source values.
 - Read the trade out loud from the code: the `while (true)` is the rejection loop, and
   the rejection rate is the price of the exactness.
 
@@ -403,38 +400,42 @@ Here that hazard is turned into discipline.
 
 Read the doc comment aloud: simulation-grade, and not certified-gaming.
 
-- A regulator needs unpredictability — nobody can guess the next value, including
+- A regulator needs unpredictability: nobody can guess the next value, including
   someone holding the source.
-- A simulator needs replayability — anybody holding the seed reproduces the run.
-- Opposite requirements sharing one word. Writing that boundary into the type's own
-  documentation means the next person reads it before making a decision instead of
-  after.
+- A simulator needs replayability: anybody holding the seed reproduces the run.
+- Opposite requirements sharing one word, which is why the boundary is written into
+  the type's own documentation.
 
 ## 21:30–24:30 — The tests are part of the design
 
 **Scene:** RIDER test runner, then TERMINAL.
 
-This section is the payoff for the invariants, so give it real time.
+Give this section real time.
 
-- **M1 has a test that looks for an absence.** Open the reflection test: it scans the
-  type for any conversion to `double`, `float`, or `decimal` and expects to find
-  nothing. "Somebody adds an implicit conversion in eight months because it made one
-  call site tidier. This is what tells them no."
-- **M2 has a test that shuffles.** Sum the same amounts forward, backward, and
-  scrambled, and assert all three totals are equal. Then the companion assertion: the
-  same sum in `double` disagrees with itself. "One line of test carries the whole
-  argument from the top of the episode."
+- **M1 has a test that looks for an absence.** Open
+  `SlotDemo.Server.Tests/MillicentsTests.M1_the_type_exposes_no_conversion_to_a_floating_point_number`:
+  it scans the type for any `op_Implicit` or `op_Explicit` returning `double`, `float`,
+  or `decimal`, and expects to find nothing. "Somebody adds an implicit conversion in
+  eight months because it made one call site tidier. This is what tells them no."
+- **M2 has a test that shuffles.**
+  `M2_a_total_does_not_depend_on_the_order_the_parts_arrive_in`, in the same class. Sum
+  five hundred amounts forward, backward, and scrambled, and assert all three totals are
+  equal. "One test carries the argument from the top of the episode."
+- **Where these two live, and why.** Both sit in the companion site's own suite, over its
+  copies of these files. If the demo ever drifts from the engine, its tests fail first.
 - **R3 has two.** `SameSeedAndWorkerCount_ProducesIdenticalSnapshots` proves replay.
   `DifferentSeed_ProducesDifferentTotals` catches determinism achieved by ignoring
   the seed. **Say why the second exists:** "Test the negative space, or a stuck
   generator passes for a reliable one."
 - **`NoAmbientRngTests`** enforces R3 by reading the assembly rather than by everyone
   remembering the rule.
-- **Uniformity, done honestly.** The reduction test measures chi-square across twenty
-  fixed seeds and allows at most one excursion past the 99% critical value. "A single
-  seed is one sample of a random variable. A healthy generator lands in the tail about
-  one run in a hundred, so a one-seed test either flakes or gets tuned until it stops
-  flaking, and a tuned test proves nothing."
+- **Uniformity, checked at the right resolution.**
+  `SpinRngFuzzTests.NextInt_DistributesRoughlyUniformlyAcrossTheBound` runs fifty
+  iterations, each drawing a fresh seed and a fresh bound, and measures chi-square
+  against a threshold its own comment calls deliberately loose. "It is there to catch a
+  broken modulus or a biased rejection loop, and it says so. Tighten the threshold and
+  it flakes on healthy noise, and a flaking test gets tuned until it stops, and a tuned
+  test proves whatever it was tuned to."
 - Run the suite. Green.
 - Flash `ParallelRun_EqualsSequentialReplication_BitForBit` without opening it.
   "Episode 7 takes this one apart. It passes because of the three rules we set today."
@@ -444,8 +445,8 @@ This section is the payoff for the invariants, so give it real time.
 - Two types, three invariants: **M1** no floating point in money paths, enforced by
   the compiler and guarded by a test. **M2** order-independent totals, which makes
   parallel provable. **R3** no ambient randomness, which makes runs replayable.
-- "Everything after this episode is easier because these two are strict. That is the
-  whole trade, and it cost about a hundred lines."
+- "Everything after this episode is easier because these two are strict, and it cost
+  about a hundred lines."
 - Next: "What a reel actually is. It is not a weighted die, and the difference stays
   invisible until it costs you a weekend."
 
@@ -456,11 +457,11 @@ This section is the payoff for the invariants, so give it real time.
 - Engine-to-browser budget: roughly 22 minutes in Rider and the test runner, under
   three in the browser. If a take runs long, the browser time goes first.
 - Strongest visuals in order: the red squiggle on `total * 0.98`, the 51-shared-bits
-  correlation, the modulo histogram's step. Give each silence to land.
+  correlation, the modulo histogram's step. Hold on each for a beat.
 - Zoom hotkey belongs on: the compiler error, the exception message, the shared-prefix
   row, and the histogram step. Everything else reads at normal size.
 - The two paste blocks are the finished files verbatim. If a paste lands wrong, cut
-  and re-paste rather than hand-fixing — the file has to match the repo.
+  and re-paste rather than hand-fixing: the file has to match the repo.
 - Running long? Compress beat 2 (`record struct` freebies) to one sentence and drop
   `NextDouble`. Keep every beat that names an invariant, and keep the test section
   whole.

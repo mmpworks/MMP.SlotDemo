@@ -96,7 +96,7 @@ function tilt(count: number): number {
 
       <div class="charts">
         <figure>
-          <figcaption>draw % bound</figcaption>
+          <figcaption>Modulo reduction (<code>draw % bound</code>)</figcaption>
           <div class="bars">
             <span
               v-for="(count, i) in result.moduloCounts"

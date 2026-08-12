@@ -13,22 +13,21 @@ namespace SlotDemo.Server.Runs;
 /// Owns the one active simulation run behind the finale page.
 ///
 /// Two kinds of subject run here: a solved preset (the series' configurable game) and a
-/// shipped game document (Orca Dive), both on the same engine, the same recorder, and
-/// the same stream. The subject decides where the analytic reference comes from — the
-/// solver-plus-closed-form pipeline for presets, exhaustive enumeration for games — and
-/// nothing downstream can tell the difference.
+/// shipped game document (Orca Dive, Classic Three Reel), both on the same engine, the
+/// same recorder, and the same stream. The subject decides where the analytic reference
+/// comes from: the solver-plus-closed-form pipeline for presets, exhaustive enumeration
+/// for games. Everything downstream reads the same shape either way.
 ///
-/// Three separations carry this class, all inherited from the engine's own design:
+/// The class inherits three separations from the engine's own design:
 ///
 /// 1. The exact path and the lossy path never touch. Totals are integer counters inside
 ///    the engine; everything this class publishes is a copy for display.
-/// 2. Telemetry is bounded and drop-oldest. A browser that stalls costs chart points.
-///    The workers never wait on it.
+/// 2. Telemetry is bounded and drop-oldest, so a stalled browser costs chart points while
+///    the workers keep running.
 /// 3. Snapshots are absolute, never deltas, so a dropped sample leaves no hole to repair.
 ///
-/// One run at a time. A second start while a run is live is refused rather than queued:
-/// the page is a demonstration surface, and two runs sharing one chart would teach the
-/// wrong thing.
+/// One run at a time. A second start while a run is live is refused rather than queued,
+/// because the finale page draws one chart and two runs would share it.
 /// </summary>
 public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log)
 {
@@ -389,7 +388,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
 
 /// <summary>
 /// What the SPA sends to start a run. Untrusted; every field is validated downstream.
-/// A non-empty <see cref="GameFile"/> runs a shipped game document (Orca Dive) through
+/// A non-empty <c>GameFile</c> runs a shipped game document through
 /// GameRunner instead of a solved preset; the RTP fields are ignored then, because a
 /// published paytable already decided them.
 /// </summary>

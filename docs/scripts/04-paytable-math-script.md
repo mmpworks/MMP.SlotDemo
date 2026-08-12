@@ -1,11 +1,14 @@
 # Episode 4 — The Par Sheet in Code: Exact RTP and Variance
 
-**Target:** 26–28 min. **Format:** create the file, paste the finished source, then
+**Target:** 26–29 min. **Format:** create the file, paste the finished source, then
 walk it. The whiteboard carries the derivation; the paste carries the transcription.
 **Subject:** the engine. The companion site appears three times, for under three
 minutes total, and only to make an engine claim visible.
 **Companion article:** `docs/articles/04-paytable-math.md`
 **Companion site:** MMP.SlotDemo, branch `main`, page `#/ch04`
+**Files created on camera:** `CSharp/src/MMP.SlotGame.Core/Paytables/Paytable.cs`,
+`PaytableSolver.cs`, `CSharp/src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`.
+**Shown, not created:** `CSharp/src/MMP.SlotGame.Core/Features/FeatureSchedule.cs`.
 
 > **Discipline note for this recording.** This is the slowest episode of the series and
 > the one that needs the most rehearsal. The labs illustrate; they do not carry it.
@@ -17,7 +20,7 @@ minutes total, and only to make an engine claim visible.
 ## Prep checklist
 
 **Repo — the subject**
-- [ ] Rider on `MMP.SlotGame.slnx`, tree expanded to `MMP.SlotGame.Core`
+- [ ] Rider on `CSharp/MMP.SlotDemo.slnx`, tree expanded to `MMP.SlotGame.Core`
 - [ ] `Paytables/` and `Rtp/` folders present, the three target files moved aside so
       they get created on camera
 - [ ] `Features/FeatureSchedule.cs` open in a background tab for the flash beat
@@ -69,14 +72,14 @@ minutes total, and only to make an engine claim visible.
    with the trailing factor dropping out when k equals the reel count.
 3. **Dwell on that trailing factor.** "Leave it off and three-of-a-kind quietly includes
    every four and five as well. You pay some windows twice in expectation, and RTP
-   comes out high by a few tenths of a percent. High enough to be wrong, small enough
-   to look plausible. It is the classic off-by-one of slot math."
+   comes out high by a few tenths of a percent. High enough to be wrong and small enough
+   to look plausible."
 4. **Sum it up.** Expected value is the sum over symbols, run lengths, and lines of the
    pay times its probability. Cost is on the order of reels times symbols per line.
    Microseconds.
 5. **Land the scale.** "The five-reel stop space here is about 11.5 billion combinations.
    We just declined to visit them and got the exact answer anyway."
-6. **Say why that speed is architecture:** the analytic result returns synchronously on
+6. **Then the consequence:** the analytic result returns synchronously on
    every configuration change, so the chart knows its target before spin one.
 
 ## 6:30–7:15 — Create the first file
@@ -84,11 +87,10 @@ minutes total, and only to make an engine claim visible.
 **Scene:** RIDER.
 
 - New directory `Paytables`, new file. **Path on screen and said out loud:**
-  `src/MMP.SlotGame.Core/Paytables/Paytable.cs`
-- Paste **Block A**. "Two records and a generator. The comments outweigh the code, and
-  they are the reason the code stays this short."
+  `CSharp/src/MMP.SlotGame.Core/Paytables/Paytable.cs`
+- Paste **Block A**. "Two records and a generator. The comments outweigh the code."
 
-### Block A — `src/MMP.SlotGame.Core/Paytables/Paytable.cs`
+### Block A — `CSharp/src/MMP.SlotGame.Core/Paytables/Paytable.cs`
 
 ```csharp
 using MMP.SlotGame.Core.Money;
@@ -129,9 +131,9 @@ public sealed record Paytable
         Pays.GetValueOrDefault((symbolId, count));
 
     /// <summary>
-    /// Canonical multipliers per symbol set. One table per set (DRY); the shape is
-    /// "premiums pay steep, commons pay shallow", scaled later to hit target RTP —
-    /// so only the RATIOS here matter.
+    /// Canonical multipliers per symbol set: premiums pay steep, commons pay shallow.
+    /// <see cref="PaytableSolver"/> scales the whole table to hit target RTP, so the
+    /// ratios between these entries are what carry over.
     /// </summary>
     public static Paytable CanonicalFor(int reelCount, int symbolCount)
     {
@@ -157,9 +159,8 @@ public sealed record Paytable
 public delegate Millicents PayoutScaler(double rawPayMultiplier);
 
 /// <summary>
-/// The realized game: integer-millicent pays. INVARIANT R1: the analytic calculator
-/// and the spin evaluator both read THIS instance — rounding residual is shared, never
-/// a divergence between the two computations.
+/// The realized game: integer-millicent pays. The analytic calculator and the spin
+/// evaluator both read this instance, so they share one rounding residual.
 /// </summary>
 public sealed record ScaledPaytable
 {
@@ -182,34 +183,34 @@ public sealed record ScaledPaytable
 ### Beat 1 — two types for two stages of the same table
 
 `Paytable` holds dimensionless multipliers as `double`. `ScaledPaytable` holds integer
-`Millicents`. Same information, two lives, and the split is deliberate.
+`Millicents`. Same information at two stages.
 
 - Before the solver runs, only the ratios exist and floating point is the right
   representation for a ratio.
 - After the solver runs, the numbers are money, and episode 2 said money is an integer.
   The type change is where that promotion happens, and it happens once.
 - "If one type carried both stages, every reader would have to know which stage they
-  were in. Two types answer that question by existing."
+  were in."
 
 ### Beat 2 — the canonical table is a shape, not a price list
 
 `CanonicalFor` builds a curve: symbol 0 is the premium, each later symbol pays about
 2.2 times less, and each extra matching reel pays about five times more.
 
-- **The key sentence to say slowly:** "Only the ratios here matter. Expected value is
+- **Then, slowly:** "Only the ratios here matter. Expected value is
   linear in the pays, so the solver can multiply the whole table by one number and hit
   any target it likes. Choosing the shape and choosing the return are separate
   decisions, and this method only makes the first one."
 - The magic numbers 60, 2.2, and 5 are a teaching curve rather than a real par sheet,
   and the comment says so. A real game brings its own table through the JSON path in
   episode 6.
-- **DRY reading:** one table per symbol set. There is no per-preset table to keep in
-  sync, because the shape is generated from the geometry.
+- One table per symbol set. The shape is generated from the geometry, so there is no
+  per-preset table to keep in sync.
 
 ### Beat 3 — `MinimumWinningRun`, and a constant that names its own coupling
 
 The longest comment in the file sits on a `const int` equal to 3. Read it aloud, then
-say why it is worth thirteen lines.
+say why it runs thirteen lines.
 
 - The paytable generator and the line evaluator both need the same idea of the shortest
   paying run. Lower one and not the other and you get one of two silent failures: pay
@@ -219,8 +220,8 @@ say why it is worth thirteen lines.
   quietly returns less than its par sheet claims.
 - The comment also scopes the rule: it governs the preset pipeline, and the JSON path
   pays at whatever run length its own data declares.
-- **The point:** "The coupling exists whether or not anyone writes it down. Writing it
-  down at the constant is where a maintainer will actually be standing when it matters."
+- **The point:** "The coupling exists whether or not anyone writes it down. The constant
+  is where a maintainer will be standing when it matters."
 
 ### Beat 4 — the read-only wrapper around a copy
 
@@ -242,20 +243,20 @@ evaluator both read *this instance*.
   That residual is shared by both computations, which makes it a resolution limit
   rather than a disagreement.
 - "Apply the scale factor twice, in two places, and the fourth decimal starts
-  disagreeing at ten million spins. It looks exactly like a convergence bug, and you
+  disagreeing at ten million spins. It looks like a convergence bug, and you
   can lose a weekend to it."
-- **The DRY reading that matters:** repeated *knowledge* is the violation. The code
-  does not have to be duplicated for the knowledge to be.
+- **The DRY reading:** repeated *knowledge* is the violation, even where no code is
+  duplicated.
 
 ## 12:00–12:45 — Create the second file
 
 **Scene:** RIDER.
 
-- New file. **Path on screen:** `src/MMP.SlotGame.Core/Paytables/PaytableSolver.cs`
-- Paste **Block B**. "Thirty-nine lines, half of them comment, and one line of them is
-  the whole idea."
+- New file. **Path on screen:** `CSharp/src/MMP.SlotGame.Core/Paytables/PaytableSolver.cs`
+- Paste **Block B**. "Thirty-nine lines, half of them comment, and one line carries the
+  idea."
 
-### Block B — `src/MMP.SlotGame.Core/Paytables/PaytableSolver.cs`
+### Block B — `CSharp/src/MMP.SlotGame.Core/Paytables/PaytableSolver.cs`
 
 ```csharp
 using MMP.SlotGame.Core.Money;
@@ -265,23 +266,22 @@ using MMP.SlotGame.Core.Rtp;
 namespace MMP.SlotGame.Core.Paytables;
 
 /// <summary>
-/// Finds the one scalar paytableScaleFactor = targetBaseRtp / unscaledBaseGameEv and
-/// applies it ONCE, at paytable construction, producing integer millicents
-/// (round-half-even — uniform truncation would bias RTP low systematically, RT-10).
-/// Round-half-even removes that systematic bias; it does NOT guarantee the rounded
-/// table lands exactly on targetBaseRtp — individual pays round up or down independently,
-/// so the realized total can drift a hair from the target. <see cref="AnalyticMath.RealizedBaseRtp"/>,
-/// recomputed from THIS rounded table, is the authoritative number; targetBaseRtp is only
-/// ever a target.
+/// Finds the scalar paytableScaleFactor = targetBaseRtp / unscaledBaseGameEv and applies
+/// it once, at paytable construction, producing integer millicents. Rounding is half-even,
+/// which removes the low bias uniform truncation would introduce.
+///
+/// Each pay rounds independently, so the realized total can drift a hair from
+/// targetBaseRtp. Read <see cref="AnalyticMath.RealizedBaseRtp"/>, recomputed from the
+/// rounded table, for the number the game pays.
 /// </summary>
 public sealed class PaytableSolver
 {
     /// <summary>
     /// <paramref name="targetBaseRtp"/> is a fraction (e.g. 0.75) derived from integer
     /// basis points upstream. <paramref name="wager"/> is the total spin bet: every line's
-    /// award is scaled against this SAME total, and a spin's payout is the sum across all
-    /// paylines, so RTP throughout this pipeline means "return relative to the total amount
-    /// wagered per spin," not "relative to a single line's share of it."
+    /// award is scaled against that same total, and a spin's payout is the sum across all
+    /// paylines. RTP throughout this pipeline therefore means return relative to the total
+    /// amount wagered per spin, not relative to one line's share of it.
     /// </summary>
     public static ScaledPaytable Solve(StripReelSet reels, IReadOnlyList<Payline> lines, Paytable canonical, double targetBaseRtp, Millicents wager)
     {
@@ -311,8 +311,8 @@ Point at `targetBaseRtp / unscaledBaseGameEv` and let it sit.
 - **Say what this replaces:** "The obvious implementation is a search. Guess a factor,
   simulate or compute, adjust, repeat until you are close enough. That version has a
   tolerance, a maximum iteration count, and a convergence failure mode. This version has
-  none of those, because the relationship is exact and somebody wrote down why."
-- **CUPID, predictable:** the same inputs give the same table every time, with no
+  none of those, because the relationship is linear."
+- **And it is repeatable:** the same inputs give the same table every time, with no
   iteration order and no starting guess to influence the result.
 
 ### Beat 7 — the guard that comes before the division
@@ -334,12 +334,11 @@ Point at `targetBaseRtp / unscaledBaseGameEv` and let it sit.
   systematically low. Across a full paytable that bias accumulates rather than
   cancelling.
 - Round-half-even scatters the ties both ways, so the errors cancel instead of adding.
-- **Then the honest part**, read from the class comment: this removes the *systematic*
+- **Then the second half**, read from the class comment: this removes the *systematic*
   bias without guaranteeing the rounded table lands exactly on the target. Each pay
   rounds independently, so the realized total drifts a hair.
-- "The comment could have stopped at 'we use banker's rounding'. It goes on to say what
-  banker's rounding does not buy you, and that second half is what keeps the next
-  person from trusting the target as if it were the answer."
+- "The comment goes on to say what banker's rounding does not buy, which is what keeps
+  the next person from trusting the target as the answer."
 
 ### Beat 9 — realized versus target, and which one is authoritative
 
@@ -347,9 +346,9 @@ Point at `targetBaseRtp / unscaledBaseGameEv` and let it sit.
 one the 99% cap is checked against.
 
 - The failure mode this prevents: a solver that reports its own target back as its
-  analytic RTP. "That solver looks perfect and it is lying, because it never checked
-  what the table it produced actually pays."
-- Policing the number the game actually pays costs one extra computation on a config
+  analytic RTP. "That solver looks perfect and never checked what the table it produced
+  pays."
+- Checking the number the game pays costs one extra computation on a config
   change, which is microseconds.
 
 ### Beat 10 — `PayoutScaler` as a delegate, and the type that was declined
@@ -359,11 +358,11 @@ one the 99% cap is checked against.
 - The reflex from a SOLID-first habit is an `IPayoutScaler` interface, an
   implementation, and a decorator so scalers can compose.
 - Closures already compose: `x => outer(inner(x))`, for free, with nothing to register.
-- **CUPID, idiomatic:** in C#, one behaviour with no identity and no lifetime is a
-  delegate. Buying the interface, the class, the file, and the registration would add
-  four things to read and change nothing about what the code can do.
-- The delegate still has a name and a doc comment, so the concept is visible in the
-  domain vocabulary. "Declining the type is not the same as hiding the idea."
+- In C#, one behaviour with no identity and no lifetime is a delegate. The interface,
+  the class, the file, and the registration would add four things to read and change
+  nothing the code can do.
+- The delegate still has a name and a doc comment, so the concept stays visible in the
+  domain vocabulary.
 
 > **Illustration (50 seconds, BROWSER).** Chapter 4 page, solver lab. Move the target
 > RTP slider and watch the whole integer paytable recompute server-side through the
@@ -378,30 +377,35 @@ one the 99% cap is checked against.
 
 1. **Why sigma at all.** The band on the chart is z times sigma over the square root of
    N. "Without an exact sigma the band is a guess, and every statistical test in episode
-   7 would need a hand-tuned tolerance. A hand-tuned tolerance proves whatever you tuned
-   it to."
+   7 would need a hand-tuned tolerance instead."
 2. **Write the identity.** Var of a sum equals the sum of the variances plus twice the
    sum of the covariances over distinct pairs.
-3. **Per-line variance is easy** — the same probabilities that gave expected value.
+3. **Per-line variance is easy:** the same probabilities that gave expected value.
 4. **The covariance is where episode 3 collects.** Two lines cross the same reels, and
-   their cells on a reel are strip neighbours. They win together. "This is the exact
-   place the weighted-die model gives a wrong answer while agreeing with reality on
-   every mean you can check."
+   their cells on a reel are strip neighbours. They win together. "This is where the
+   weighted-die model gives a wrong answer while agreeing with reality on every mean you
+   can check."
 5. Do not derive the algebra on camera. Point at the identity and move to the code.
+6. **Why not just measure sigma?** Run a million spins, take the sample standard
+   deviation, use that for the band. It works, it is four lines, and it is circular: the
+   band would be derived from the same simulator it is supposed to be judging. When the
+   simulator is wrong, the band moves with it and the run lands inside a wrong band.
+   Computing sigma from the strips costs us the next twenty minutes and buys a band the
+   simulator cannot influence. "That is why `JointRowSymbolTables` exists."
 
 ## 19:30–20:15 — Create the third file
 
 **Scene:** RIDER.
 
 - New directory `Rtp`, new file. **Path on screen:**
-  `src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`
+  `CSharp/src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`
 - Paste **Block C**. It is the longest file in the series so far. "We walk four methods
   and read past the rest."
 
-### Block C — `src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`
+### Block C — `CSharp/src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`
 
 > **Recording note:** this is the full file, pasted verbatim from
-> `src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`. Paste it whole on camera; the
+> `CSharp/src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`. Paste it whole on camera; the
 > walkthrough below covers `BaseEvMultiplier`, `ExactlyKLeading`,
 > `SigmaPerUnitWagered`, and `JointRowSymbolTables`, and reads past the two private
 > helpers between them.
@@ -419,14 +423,13 @@ namespace MMP.SlotGame.Core.Rtp;
 ///
 ///  - Line EV uses the closed form over per-reel marginals. Rows of one line sit on
 ///    different reels, and reels are independent, so marginals suffice for EV.
-///  - Line VARIANCE needs more: two lines share reels, and rows within a reel are
-///    correlated by strip adjacency (RT-1). Cov(line i, line j) therefore uses the
-///    per-reel JOINT row-pair distribution, obtained by enumerating the S stops per
-///    reel (RT-2's method). Joint probability across reels still factorizes, because
-///    reels are independent.
+///  - Line variance needs more: two lines share reels, and rows within a reel are
+///    correlated by strip adjacency. Cov(line i, line j) therefore uses the per-reel
+///    joint row-pair distribution, obtained by enumerating the S stops per reel. Joint
+///    probability across reels still factorizes, because reels are independent.
 ///
-/// σ here is the analytic, configuration-derived band source for AC-1 (RT-7). The
-/// empirical Welford estimate is a cross-check, never the authority.
+/// σ here is the analytic, configuration-derived source of the convergence band; the
+/// empirical Welford estimate cross-checks it.
 /// </summary>
 public static class AnalyticMath
 {
@@ -435,10 +438,9 @@ public static class AnalyticMath
     /// payout, summed across every payline, in wager-multiplier units. "Unscaled"
     /// because this reads the canonical table directly, before <c>paytableScaleFactor</c>
     /// (<see cref="Paytables.PaytableSolver.Solve"/>) turns it into real millicents.
-    /// Summing across lines here — and <see cref="RealizedBaseRtp"/> doing the same
-    /// on the scaled table — is what fixes the basis for every RTP number this
-    /// pipeline produces: relative to the TOTAL spin wager, not a single line's
-    /// share of it.
+    /// Summing across lines here, and in <see cref="RealizedBaseRtp"/> on the scaled
+    /// table, fixes the basis for every RTP number this pipeline produces: the total
+    /// spin wager, not one line's share of it.
     /// </summary>
     public static double BaseEvMultiplier(StripReelSet reels, IReadOnlyList<Payline> lines, Paytable canonical)
     {
@@ -487,8 +489,8 @@ public static class AnalyticMath
     /// <summary>
     /// Variance of the total per-spin return (base + features), per unit wagered.
     /// Base: Var(Σ lines) = Σ Var + 2 Σ Cov over line pairs.
-    /// Features trigger independently of the window and of each other (v1 model,
-    /// RT-5 resolution), so their variances simply add.
+    /// Features trigger independently of the window and of each other in the v1
+    /// model, so their variances simply add.
     /// </summary>
     public static double SigmaPerUnitWagered(
         StripReelSet reels,
@@ -675,9 +677,8 @@ The class comment states the split the whiteboard just made: marginals are enoug
 expected value because a line touches each reel once, and variance needs joint row-pair
 distributions because two lines share reels and rows within a reel are correlated.
 
-- "This is the shape of a good file comment. It does not describe the methods. It
-  states the mathematical claim the methods depend on, so a reviewer can disagree with
-  the claim rather than reverse-engineering it from loops."
+- "The comment states the mathematical claim the methods depend on, so a reviewer can
+  disagree with the claim rather than reverse-engineering it from loops."
 - The last line names sigma's role: the analytic value is the band source, and the
   empirical estimate is a cross-check that never becomes the authority.
 
@@ -687,14 +688,13 @@ Put the board and the method on screen together if the layout allows.
 
 - A product over the matching reels, one guard for the trailing mismatch factor, and a
   return. Six lines.
-- "When the math and the code correspond line for line, review becomes reading. That is
-  worth more than any cleverness the method could have contained."
+- "When the math and the code correspond line for line, review becomes reading."
 - `BaseEvMultiplier` and `RealizedBaseRtp` are the same double loop over lines and pays,
   one reading the canonical table and one reading the scaled table. The duplication is
-  two lines and the alternative — a shared generic helper over two different value
-  types — would be harder to read than either copy.
+  two lines, and a shared generic helper over two different value types would be harder
+  to read than either copy.
 
-### Beat 13 — `SigmaPerUnitWagered`, in three movements
+### Beat 13 — `SigmaPerUnitWagered`, in three parts
 
 Walk the method as three sections rather than line by line.
 
@@ -720,12 +720,12 @@ wagered and the band works at any bet size.
   reel over a few dozen stops. Tiny, and exact.
 - **The edge case that handles itself:** when `rowA` equals `rowB` the two cells are the
   same cell, and the enumeration produces a diagonal table without a special case.
-  "There is no branch for it because the counting cannot produce two different symbols
-  in one cell. The math takes care of its own boundary."
+  "There is no branch for it: the counting cannot produce two different symbols in one
+  cell."
 - The build is O(S × rows²) per reel and runs once per configuration change, so the
   cost never reaches the spin loop.
 
-### Beat 15 — the switch expression that is the whole case analysis
+### Beat 15 — the switch expression over the three conditions
 
 **Scene:** RIDER, zoomed on `Probability`.
 
@@ -735,17 +735,14 @@ wagered and the band works at any bet size.
 - Read two cases and say the rest are the same idea. Match/Match reads the joint
   directly. Mismatch/Mismatch is one minus each marginal plus the joint back, because
   subtracting both marginals removed the overlap twice.
-- **Cognitive-complexity reading:** "The alternative is nested ifs with early returns.
-  Same seven outcomes, spread over thirty lines, and no way to see at a glance that
-  every combination is covered. The switch expression makes exhaustiveness visible, and
-  the compiler helps."
+- The alternative is nested ifs with early returns: the same seven outcomes spread over
+  thirty lines, with no way to see at a glance that every combination is covered.
 
 > **Illustration (45 seconds, BROWSER).** Chapter 4 page, analytic lab. Toggle
 > "covariance on" and "covariance off" against the same game. The mean stays fixed to
 > the digit and the band width changes visibly. Then run a short simulation over the top
 > and it tracks the wider band. "Ignore the correlation and you get a band that is the
-> wrong width around a mean that is right. That is the failure mode that survives every
-> sanity check you would think to run." Cut back.
+> wrong width around a mean that is right." Cut back.
 
 ## 25:00–25:45 — Flash the feature schedule
 
@@ -775,16 +772,16 @@ wagered and the band works at any bet size.
   margin is where a real regression shows up before it becomes a failure anyone argues
   about.
 - **`BaseRtp_ScalesLinearlyWithTheBaseTarget`** doubles the target and expects the
-  realized base RTP to very nearly double. **Why "very nearly" is honest here:** the
-  comment does the arithmetic — each realized RTP carries its own rounding residual, so
+  realized base RTP to very nearly double. **Why "very nearly" is right here:** the
+  comment does the arithmetic: each realized RTP carries its own rounding residual, so
   the ratio can drift by a few parts in ten thousand. A solver that renormalized or
   re-solved per symbol would miss by percent rather than by that. "The budget is derived
-  from the rounding, rather than picked until the test went green."
+  from the rounding, rather than picked until the test went green.
 - **`ZeroEvCanonicalPaytable_ThrowsInsteadOfDividingByZero`** is beat 7's guard, tested
   from the outside.
 - **`EveryScaledPay_IsAWholePositiveMillicentCount`** pins the type promotion from beat
   1: after the solver runs, nothing on the pay path is fractional.
-- **`FractionalPayUnitTests`** covers the other direction — a game that needs 2.25 times
+- **`FractionalPayUnitTests`** covers the other direction: a game that needs 2.25 times
   the bet declares it in hundredths, and
   **`PayUnitHundredths_TwoAndAQuarterXPay_RealizesExactMillicentsOnAForcedWin`** proves it
   realizes as exactly 225,000 millicents at a one-credit wager with nothing to round.
@@ -793,12 +790,11 @@ wagered and the band works at any bet size.
 - **`AnalyticLineRtp_AgreesWithSimulatedLineRtp_ForFractionalPays`** builds a synthetic
   game where a disagreement between the analytic and simulated readings of a hundredths
   pay would show up as a large, unmistakable factor rather than a rounding-sized drift.
-  "The fixture is designed so the failure would be loud."
 - **`StatisticalConvergenceTests.Coverage_32Seeds_3MSpins_LandInThe99PercentBand`** is
   the test of the band itself. Thirty-two independent seeds, and the assertion is on how
   many land inside. **Why coverage rather than a single run:** "One run landing in the
   band proves almost nothing. This assertion fails when the game is biased and it also
-  fails when the analytic sigma is wrong, which is the property we actually want."
+  fails when the analytic sigma is wrong, which is the property we want."
 - Run the suites. Green.
 
 ## 27:45–28:30 — Wrap
@@ -808,9 +804,9 @@ wagered and the band works at any bet size.
 - Three claims to carry forward: expected value is a closed form over marginals, the
   target is hit by one scalar and then verified against the table that shipped, and the
   band comes from an exact sigma with covariance in it.
-- "All of this could have been approximated by a billion spins. Simulation checking
-  simulation is circular. Simulation checking a closed form derived by counting stops is
-  evidence."
+- "All of this could have been approximated by a billion spins, but simulation checking
+  simulation is circular. A closed form derived by counting stops is an independent
+  check."
 - Next: "The engine. Ten million spins, every core busy, and the same answer bit for bit
   every time you run it."
 
@@ -829,7 +825,7 @@ wagered and the band works at any bet size.
 - Do not derive the covariance algebra on camera. Point at the variance-of-a-sum identity
   and move to the code; the companion article carries the derivation.
 - The three paste blocks are the finished files verbatim. If a paste lands wrong, cut and
-  re-paste rather than hand-fixing — the file has to match the repo.
+  re-paste rather than hand-fixing: the file has to match the repo.
 - Running long? Show only the Match/Match and Mismatch/Mismatch cases of the switch and
   say inclusion and exclusion covers the rest. Drop the feature-schedule flash. Keep beat
   5 (invariant R1), beat 8 (rounding), and the test section whole.

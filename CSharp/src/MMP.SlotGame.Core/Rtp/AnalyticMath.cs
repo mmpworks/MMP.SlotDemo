@@ -10,14 +10,13 @@ namespace MMP.SlotGame.Core.Rtp;
 ///
 ///  - Line EV uses the closed form over per-reel marginals. Rows of one line sit on
 ///    different reels, and reels are independent, so marginals suffice for EV.
-///  - Line VARIANCE needs more: two lines share reels, and rows within a reel are
-///    correlated by strip adjacency (RT-1). Cov(line i, line j) therefore uses the
-///    per-reel JOINT row-pair distribution, obtained by enumerating the S stops per
-///    reel (RT-2's method). Joint probability across reels still factorizes, because
-///    reels are independent.
+///  - Line variance needs more: two lines share reels, and rows within a reel are
+///    correlated by strip adjacency. Cov(line i, line j) therefore uses the per-reel
+///    joint row-pair distribution, obtained by enumerating the S stops per reel. Joint
+///    probability across reels still factorizes, because reels are independent.
 ///
-/// σ here is the analytic, configuration-derived band source for AC-1 (RT-7). The
-/// empirical Welford estimate is a cross-check, never the authority.
+/// σ here is the analytic, configuration-derived source of the convergence band; the
+/// empirical Welford estimate cross-checks it.
 /// </summary>
 public static class AnalyticMath
 {
@@ -26,10 +25,9 @@ public static class AnalyticMath
     /// payout, summed across every payline, in wager-multiplier units. "Unscaled"
     /// because this reads the canonical table directly, before <c>paytableScaleFactor</c>
     /// (<see cref="Paytables.PaytableSolver.Solve"/>) turns it into real millicents.
-    /// Summing across lines here — and <see cref="RealizedBaseRtp"/> doing the same
-    /// on the scaled table — is what fixes the basis for every RTP number this
-    /// pipeline produces: relative to the TOTAL spin wager, not a single line's
-    /// share of it.
+    /// Summing across lines here, and in <see cref="RealizedBaseRtp"/> on the scaled
+    /// table, fixes the basis for every RTP number this pipeline produces: the total
+    /// spin wager, not one line's share of it.
     /// </summary>
     public static double BaseEvMultiplier(StripReelSet reels, IReadOnlyList<Payline> lines, Paytable canonical)
     {
@@ -78,8 +76,8 @@ public static class AnalyticMath
     /// <summary>
     /// Variance of the total per-spin return (base + features), per unit wagered.
     /// Base: Var(Σ lines) = Σ Var + 2 Σ Cov over line pairs.
-    /// Features trigger independently of the window and of each other (v1 model,
-    /// RT-5 resolution), so their variances simply add.
+    /// Features trigger independently of the window and of each other in the v1
+    /// model, so their variances simply add.
     /// </summary>
     public static double SigmaPerUnitWagered(
         StripReelSet reels,

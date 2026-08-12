@@ -6,24 +6,24 @@ using MMP.SlotGame.Core.Reels;
 
 namespace MMP.SlotGame.Core.Simulation;
 
-/// <summary>Per-spin diagnostic hook (architecture §4). Null by default and therefore free; NOT for 10M-spin runs.</summary>
+/// <summary>Per-spin diagnostic hook. Null by default and therefore free. Avoid it on 10M-spin runs.</summary>
 public delegate void SpinObserver(in SpinOutcome outcome);
 
 /// <summary>The seeding policy as a one-behaviour seam: tests inject scripted streams with one lambda.</summary>
 public delegate SpinRng SpinRngFactory(int workerId);
 
 /// <summary>
-/// Plays ONE spin: draw, evaluate, award. RNG arrives by ref (invariant R3), so the
-/// stream advances in the caller's worker.
+/// Plays one spin: draw, evaluate, award. RNG arrives by ref, so the stream advances in
+/// the caller's worker.
 /// </summary>
 public delegate SpinOutcome SpinPlay(ref SpinRng rng);
 
 /// <summary>
-/// Builds one <see cref="SpinPlay"/> per worker. This is the seam that lets a game with
-/// its own evaluation rules — wilds, scatter-triggered bonuses, honest pick simulation —
-/// reuse the determinism, quota partitioning, batching and telemetry below instead of
-/// re-implementing them (OrcaDive is the first such game). A worker's play owns its
-/// own scratch buffers, which is why this is a factory and not one shared instance.
+/// Builds one <see cref="SpinPlay"/> per worker. A game with its own evaluation rules
+/// (wilds, scatter-triggered bonuses, picks simulated round by round) reuses the
+/// determinism, quota partitioning, batching and telemetry below through this seam.
+/// OrcaDive is the first such game. Each worker's play owns its own scratch buffers, so
+/// this is a factory and not one shared instance.
 /// </summary>
 public delegate SpinPlay SpinPlayFactory();
 

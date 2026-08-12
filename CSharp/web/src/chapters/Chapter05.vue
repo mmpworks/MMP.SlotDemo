@@ -69,10 +69,19 @@ async function runTelemetry(): Promise<void> {
     <section class="chapter-brief">
       <h3>What the episode builds</h3>
       <p>
-        Workers get fixed spin quotas up front instead of stealing work, so the RNG
-        partition never depends on scheduling luck. Totals are integer counters fed by one
-        batched atomic add per 4,096 spins. Telemetry rides a bounded drop-oldest channel
-        carrying absolute snapshots, so a dropped sample is simply superseded by the next one.
+        Think of it as a factory floor. Each worker is handed a fixed stack of spins at the
+        start of the shift, so the same worker always plays the same spins and a run
+        replays. Each keeps a private tally and posts it to the shared board every 4,096
+        spins, because the shared board is the slow part. The progress readout is a
+        whiteboard: a worker writes its current total over the old one, so a missed reading
+        costs a chart point.
+      </p>
+      <p>
+        In the engine's own terms: workers get fixed spin quotas up front instead of stealing
+        work, so the RNG partition never depends on scheduling luck. Totals are integer
+        counters fed by one batched atomic add per 4,096 spins. Telemetry rides a bounded
+        drop-oldest channel carrying absolute snapshots, so a dropped sample is superseded by
+        the next one.
       </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Simulation/SimulationEngine.cs</code>,
@@ -93,7 +102,7 @@ async function runTelemetry(): Promise<void> {
         <label>
           Subject
           <select v-model="useOrca">
-            <option :value="true">Orca Dive (real game)</option>
+            <option :value="true">Orca Dive (full game)</option>
             <option :value="false">Preset below</option>
           </select>
         </label>
@@ -150,9 +159,8 @@ async function runTelemetry(): Promise<void> {
           </tbody>
         </table>
         <p class="lab-note">
-          Read the returned column. Integer money (M2), fixed quotas, and seeded streams
-          (R3) together make an N-worker run reproducible. Wall time varies between runs;
-          the totals do not.
+          Read the returned column. Integer money (M2), fixed quotas, and seeded per-worker
+          streams (the R3 discipline) together make an N-worker run reproducible.
         </p>
       </div>
     </section>
@@ -212,9 +220,8 @@ async function runTelemetry(): Promise<void> {
           </div>
         </div>
         <p class="lab-note">
-          Dropped samples are absolute snapshots, so losing them costs chart points and
-          nothing else. The finale page uses the same design: the browser sees a
-          consolidated curve while the integer counters stay lossless.
+          Dropped samples are absolute snapshots, so losing one costs a chart point. The
+          proving ground works the same way.
         </p>
       </div>
     </section>

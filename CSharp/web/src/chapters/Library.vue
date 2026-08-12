@@ -109,7 +109,7 @@ const shelves: Shelf[] = [
         free: true,
         url: 'https://www.stoppredatorygambling.org/wp-content/uploads/2012/12/PAR-Sheets-Probabilities-and-Slot-Machine-Play-Implications-for-Problem-and-Non-Problem-Gambling.pdf',
         about: 'The landmark paper: real PAR sheets obtained through freedom-of-information requests, dissected in public. Reel weights, near-miss engineering, and the gap between displayed and actual odds.',
-        series: 'The only peer-reviewed look at documents like the one Orca Dive is reconstructed from.',
+        series: 'The only peer-reviewed look at real PAR sheets, and the model for the summary table on the PAR page.',
       },
       {
         title: 'The Design of Slot Machine Games (presentation)',
@@ -211,7 +211,7 @@ const shelves: Shelf[] = [
         free: true,
         url: 'https://www.gaming.nv.gov/siteassets/content/home/features/TechnicalStandard1.pdf',
         about: 'Nevada\'s own device standards: randomness, minimum return, fraud prevention. Shorter than GLI-11 and interesting for what a state chooses to pin down in law.',
-        series: 'The 99% aggregate cap in our SimulationConfig is a homage to rules like these.',
+        series: 'The 99% aggregate cap in our SimulationConfig follows the shape of rules like these.',
       },
     ],
   },
@@ -286,9 +286,9 @@ const kindLabel: Record<Entry['kind'], string> = {
     <section class="chapter-brief">
       <h3>A note on sources</h3>
       <p>
-        Orca Dive is an original fictional game whose numbers were reconstructed from
-        public statistical analysis; no manufacturer materials were used anywhere in this
-        project. The shelves above are the public literature that teaches the same
+        Orca Dive is a fictional game. Its math reproduces a published PAR deconstruction
+        of a real commercial machine (wizardofodds.com); no manufacturer materials were
+        used anywhere in this project. The shelves above are the public literature that teaches the same
         techniques. Everything a PAR sheet encodes can be built and checked from open
         sources.
       </p>

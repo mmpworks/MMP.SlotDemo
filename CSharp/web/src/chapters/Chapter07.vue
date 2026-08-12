@@ -97,7 +97,7 @@ async function runReferee(): Promise<void> {
             <span class="mono">{{ enumeration.stopCombinations?.toLocaleString() }}</span>
           </div>
           <div>
-            <span class="verdict__label">Hit frequency</span>
+            <span class="verdict__label">Line hit frequency</span>
             <span class="mono">{{ ((enumeration.hitFrequency ?? 0) * 100).toFixed(4) }}%</span>
           </div>
           <div>
@@ -136,7 +136,8 @@ async function runReferee(): Promise<void> {
       <p class="lab__lede">
         Play real spins with real randomness, then set the measurement beside the exact
         figures. The band is z·σ/√N at the 99% level, computed from the enumerator's own
-        sigma.
+        sigma. Hit frequency here counts line wins only, the same convention the PAR sheet
+        uses.
       </p>
 
       <div class="controls">
@@ -190,7 +191,7 @@ async function runReferee(): Promise<void> {
               <td>{{ (referee.exact.bonusRtp * 100).toFixed(4) }}%</td>
             </tr>
             <tr>
-              <td>Hit frequency</td>
+              <td>Line hit frequency</td>
               <td>{{ (referee.measured.hitFrequency * 100).toFixed(4) }}%</td>
               <td>{{ (referee.exact.hitFrequency * 100).toFixed(4) }}%</td>
             </tr>

@@ -4,7 +4,7 @@ using MMP.SlotGame.Core.Reels;
 
 namespace MMP.SlotGame.Core.Simulation;
 
-/// <summary>Raw, untrusted input from the API/SPA. RTP terms are integer basis points (RT-12).</summary>
+/// <summary>Raw, untrusted input from the API/SPA. RTP terms are integer basis points.</summary>
 public sealed record ConfigDraft(
     string PresetName,
     int BaseRtpBasisPoints,
@@ -15,25 +15,24 @@ public sealed record ConfigDraft(
     long TargetSpins);
 
 /// <summary>
-/// A validated simulation configuration. THE single validation boundary (architecture
-/// §8): the only constructor path is <see cref="TryCreate"/>, so a SimulationConfig
-/// that EXISTS is one satisfying the aggregate cap — the invariant rides on the type.
-/// Immutable per run (RT-17): changing anything means a new config, a new run, fresh
-/// counters.
+/// A validated simulation configuration. <see cref="TryCreate"/> checks the aggregate cap
+/// before constructing an instance, and it is the only constructor path. The values stay
+/// fixed for the life of a run: changing one means a new config, a new run, fresh counters.
 /// </summary>
 public sealed record SimulationConfig
 {
-    /// <summary>The aggregate RTP cap in basis points. Integer comparison — the 99.00% boundary is exact (RT-12).</summary>
+    /// <summary>The aggregate RTP cap in basis points. Integer comparison — the 99.00% boundary is exact.</summary>
     public const int MaxAggregateBasisPoints = 9_900;
 
     /// <summary>
-    /// The PRD's default RTP split for a new config: 75% base + 13% free spins + 10%
+    /// The default RTP split for a new config: 75% base + 13% free spins + 10%
     /// pick bonus = 98% total, comfortably under <see cref="MaxAggregateBasisPoints"/>.
     /// The Server's /api/config/limits suggests these to a new SPA session, and the
     /// test harness (TestGame) derives its own defaults from these same three values,
     /// so a "default config" test exercises the same numbers a real session starts
-    /// with. Changing any one of the three changes the suggested total; nothing
-    /// enforces the sum stays under the cap, so re-check that by hand.
+    /// with. Keep these three below <see cref="MaxAggregateBasisPoints"/> when changing
+    /// them. TryCreate catches an invalid sum, but the SPA would still open with defaults
+    /// it cannot run.
     /// </summary>
     public const int DefaultBaseRtpBasisPoints = 7500;
 
@@ -44,10 +43,10 @@ public sealed record SimulationConfig
     public const string DefaultPresetName = "Video5x64";
 
     /// <summary>
-    /// The TOTAL amount staked per spin — every payline and every feature scales against
-    /// this SAME value; the engine has no concept of a per-line share of it. See
-    /// <see cref="Games.WinEvaluator.EvaluateWindow"/> and <see cref="Paytables.PaytableSolver.Solve"/>
-    /// for where that basis is load-bearing.
+    /// The total amount staked per spin. Every payline and every feature scales against this
+    /// value; the engine has no concept of a per-line share of it.
+    /// <see cref="Games.WinEvaluator.EvaluateWindow"/> and
+    /// <see cref="Paytables.PaytableSolver.Solve"/> both depend on that basis.
     /// </summary>
     public static readonly Millicents Wager = Millicents.FromCredits(1);
 

@@ -30,9 +30,8 @@ public static class ChapterSevenEndpoints
     public sealed record EnumerateRequest(string GameFile);
 
     /// <summary>
-    /// The exhaustive census: every stop combination counted, every category priced. This is
-    /// the third implementation - no randomness, no sampling, an integer count over the
-    /// whole outcome space.
+    /// The exhaustive census visits every stop combination and counts the wins in each
+    /// category. It provides an independent check on the analytic and simulated results.
     /// </summary>
     private static IResult Enumerate(EnumerateRequest request, StructuredLogger log)
     {

@@ -26,11 +26,11 @@ public static class ChapterFourEndpoints
     }
 
     /// <summary>
-    /// A non-empty <see cref="GameFile"/> solves the shipped game instead of a preset:
+    /// A non-empty <c>GameFile</c> solves the shipped game instead of a preset:
     /// its published pays become the canonical ratios, its enumerated probabilities
     /// (wilds, groups, and tie-breaks included) price every row, and the target scales
-    /// the line RTP. The bonus is left as shipped, the way approved payback versions of
-    /// a real cabinet vary the line table.
+    /// the line RTP. The bonus is left as shipped: a real cabinet ships several approved
+    /// payback versions that vary the line table and share one bonus.
     /// </summary>
     public sealed record SolveRequest(
         string PresetName, int TargetBaseRtpBasisPoints, string GameFile = "");
@@ -38,9 +38,8 @@ public static class ChapterFourEndpoints
     /// <summary>
     /// Solve a preset's canonical table to a target base RTP and show the whole path:
     /// canonical ratios, the single scale factor, the rounded integer paytable, and the
-    /// realized RTP with its drift from the target. The drift is the lesson - rounding
-    /// each pay independently means the target is a target, and only the analytic
-    /// recomputation is authoritative.
+    /// realized RTP with its drift from the target. Each pay rounds independently, so
+    /// the response reports the RTP recomputed from the rounded table.
     /// </summary>
     private static IResult Solve(SolveRequest request, StructuredLogger log)
     {
@@ -171,9 +170,8 @@ public static class ChapterFourEndpoints
         int PickBonusRtpBasisPoints);
 
     /// <summary>
-    /// The confidence band, priced from the strips alone: sigma per unit wagered and the
-    /// half-width at a ladder of spin counts. The funnel the finale page draws live is
-    /// this table - z times sigma over root N, nothing more.
+    /// The confidence band calculated from the strips: sigma per unit wagered and the
+    /// half-width at a ladder of spin counts. The finale page plots this table.
     /// </summary>
     private static IResult Band(BandRequest request, StructuredLogger log)
     {

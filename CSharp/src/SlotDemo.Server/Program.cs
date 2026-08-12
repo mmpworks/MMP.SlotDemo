@@ -11,10 +11,10 @@ using SlotDemo.Server.Runs;
 // per line — extension drives the format) for the structured record. The sys.* levels
 // carry framework noise (routed there by SystemAwareHeraldProvider); the plain
 // levels carry application signal. See SlotDemoLevels for the ordering rationale.
-// The relay sink posts to this server's own ingest route. A host that is not listening
-// on it (the in-process test host, for one) leaves the sink posting into nothing, which
-// backs up the async drain and keeps request-time lines out of the file. Setting the
-// variable to an empty string drops the sink and leaves console + file intact.
+// The relay sink posts to this server's own ingest route. A host without that route (the
+// in-process test host) leaves the sink posting into a void. That backs up the async drain
+// and holds request-time lines out of the file. Setting the variable to an empty string
+// drops the sink and leaves console + file intact.
 var ingestUrl = Environment.GetEnvironmentVariable("SLOTDEMO_LOG_INGEST_URL")
                 ?? "http://localhost:5090/api/logs/ingest";
 

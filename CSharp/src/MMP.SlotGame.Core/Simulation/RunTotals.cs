@@ -2,8 +2,8 @@ namespace MMP.SlotGame.Core.Simulation;
 
 /// <summary>
 /// The lossless side of the pipeline: integer millicent counters, batched
-/// Interlocked adds (architecture §7). Reset (RT-18) is done by swapping in a fresh
-/// instance, never by zeroing live fields.
+/// Interlocked adds. Reset is done by swapping in a fresh instance, never by zeroing
+/// live fields.
 /// </summary>
 public sealed class RunTotals
 {
@@ -22,9 +22,9 @@ public sealed class RunTotals
     }
 
     /// <summary>
-    /// Counter reads are individually atomic, not atomic as a set (RT-20): a mid-run
+    /// Counter reads are individually atomic, not atomic as a set: a mid-run
     /// snapshot can straddle a batch and is display-only. Acceptance assertions read
-    /// AFTER the run quiesces (post-WhenAll), where this is exact.
+    /// after the run quiesces (post-WhenAll), where the set is consistent.
     /// </summary>
     public RunSnapshot Snapshot() => new(
         Interlocked.Read(ref _spins),
@@ -40,7 +40,7 @@ public readonly record struct RunSnapshot(long Spins, long WageredMillicents, lo
 }
 
 /// <summary>
-/// One telemetry message. Carries ABSOLUTE snapshots, never deltas (RT-19): a dropped
-/// sample costs one chart point, not accuracy.
+/// One telemetry message carrying cumulative totals. If the channel drops a sample,
+/// the next sample still contains the current totals.
 /// </summary>
 public readonly record struct TelemetrySample(string RunId, RunSnapshot Totals);

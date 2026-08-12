@@ -25,7 +25,7 @@ defineProps<{ title: string; blurb: string }>()
       <dl class="invariants">
         <div>
           <dt>M1</dt>
-          <dd>No floating point in money paths. There is no conversion to <code>double</code> to reach for, so the compiler enforces it on every build.</dd>
+          <dd>Money stays integer end to end. <code>Millicents</code> offers no conversion to <code>double</code>, so the rule holds at compile time rather than by discipline.</dd>
         </div>
         <div>
           <dt>M2</dt>

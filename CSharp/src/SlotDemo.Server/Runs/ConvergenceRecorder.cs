@@ -14,11 +14,10 @@ namespace SlotDemo.Server.Runs;
 /// run and none of them redundant.
 ///
 /// Every point carries its own confidence half-width, because the band narrows as the
-/// square root of N: the funnel shape IS the claim the page is making, and computing it
-/// server-side keeps the SPA from reimplementing the statistics.
+/// square root of N. Computing it server-side leaves the SPA one statistic to draw.
 ///
-/// The full curve is kept in memory (a 10M run costs about 200 records), so a browser
-/// that connects late gets the whole history rather than joining mid-stream.
+/// The full curve is kept in memory (a 10M run costs about 200 records), so a browser that
+/// connects late still receives every point from the start of the run.
 /// </summary>
 public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitWagered, long stride)
 {
@@ -68,8 +67,8 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
     }
 
     /// <summary>
-    /// The end of the run always earns a point, whether or not it landed on a boundary.
-    /// The last point is the one a viewer reads the verdict from.
+    /// The end of the run always earns a point, whether or not it landed on a boundary,
+    /// because the page reads its final verdict off the last point.
     /// </summary>
     public CurvePoint Complete(RunSnapshot finalSnapshot)
     {

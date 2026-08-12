@@ -10,18 +10,16 @@ public enum FeatureKind
 }
 
 /// <summary>
-/// A side game as an independent RTP term (RT-5 resolution, binding): the preset kind
-/// fixes trigger probability p; the target contribution c derives the mean award
-/// m = c · wager / p. The feature pays from its OWN 3-point award table — it never
-/// re-runs the base game and never retriggers (PRD NG-2). The kind is a *skin*
-/// (FreeSpins presents its award as a spin session; PickBonus as picks) — the money
-/// contract is identical, which is why there is ONE class, not an interface with two
-/// near-identical implementations (DRY; merging their internals would need no flag
-/// because there is no divergent internal to merge).
+/// A side game as an independent RTP term: the preset kind fixes trigger probability p;
+/// the target contribution c derives the mean award m = c · wager / p. The feature pays
+/// from its own 3-point award table. It never re-runs the base game and never retriggers.
+///
+/// The kind is a skin: FreeSpins presents its award as a spin session, PickBonus as picks.
+/// Both settle the same money contract, so one class covers both.
 ///
 /// Award table {½m, m, 2m − ½m}: the mean is the middle value in integer
 /// millicents, so the realized contribution is p·M/wager with no distribution
-/// rounding drift beyond M itself (RT-10 discipline).
+/// rounding drift beyond M itself.
 /// </summary>
 public sealed record FeatureSchedule(
     FeatureKind Kind,
@@ -32,7 +30,7 @@ public sealed record FeatureSchedule(
     Millicents AwardMid,
     Millicents AwardHigh)
 {
-    /// <summary>Preset trigger probabilities per kind (popular shapes: rare-ish, chunky awards).</summary>
+    /// <summary>Preset trigger probabilities used by the stock games.</summary>
     public const double FreeSpinsTriggerP = 1.0 / 120;
     public const double PickBonusTriggerP = 1.0 / 150;
 
@@ -45,7 +43,7 @@ public sealed record FeatureSchedule(
         var mid = new Millicents((long)Math.Round(
             contributionBp / 10_000.0 * wager.Value / p, MidpointRounding.ToEven));
         var low = new Millicents((long)Math.Round(mid.Value * 0.5, MidpointRounding.ToEven));
-        var high = new Millicents(2 * mid.Value - low.Value); // keeps the mean exactly mid
+        var high = new Millicents(2 * mid.Value - low.Value); // keeps the three-point mean at mid
 
         return new FeatureSchedule(kind, name, p, contributionBp, low, mid, high);
     }
@@ -59,14 +57,14 @@ public sealed record FeatureSchedule(
     {
         double low = AwardLow.Value, mid = AwardMid.Value, high = AwardHigh.Value;
         var p = TriggerProbability;
-        var mean = p * mid;                                  // table mean is exactly mid
+        var mean = p * mid;                                  // table mean is mid, so E[award] = p·mid
         var meanSq = p * (low * low + mid * mid + high * high) / 3.0;
         return meanSq - mean * mean;
     }
 
     /// <summary>
     /// Play the feature for one base spin: Bernoulli(p) trigger, then one uniform pick
-    /// from the 3-point table. RNG only ever arrives by ref (invariant R3).
+    /// from the 3-point table. This method advances the caller's RNG stream.
     /// </summary>
     public Millicents Play(ref SpinRng rng)
     {

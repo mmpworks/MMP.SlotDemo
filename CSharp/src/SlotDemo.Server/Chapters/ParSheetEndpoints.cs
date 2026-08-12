@@ -13,7 +13,7 @@ namespace SlotDemo.Server.Chapters;
 /// example in Muir's "Elements of Slot Design" ch. 8: geometry and cycle, reel census,
 /// paytable with hits/probability/hit-rate/RTP slice per rule, the feature block, and
 /// the volatility block (sigma, VI, confidence bands). Every number comes from the
-/// exhaustive enumerator, so the sheet IS the game rather than a description of it.
+/// exhaustive enumerator, so the sheet reports what the shipped game pays.
 /// </summary>
 public static class ParSheetEndpoints
 {
@@ -27,9 +27,9 @@ public static class ParSheetEndpoints
 
     /// <summary>
     /// The Harrigan &amp; Dixon Table-1 view: one summary row per shipped game, in the
-    /// column set their published study of 23 real PAR sheets used. Their table is the
-    /// only peer-reviewed look at what manufacturers actually summarize; ours adds
-    /// nothing and hides nothing, so the two read side by side.
+    /// column set their published study of 23 real PAR sheets used. Their table is a rare
+    /// peer-reviewed look at what manufacturers summarize; ours uses the same columns, so
+    /// the two read side by side.
     /// </summary>
     private static IResult Summary(StructuredLogger log)
     {
@@ -67,8 +67,8 @@ public static class ParSheetEndpoints
                 cycle = analysis.StopCombinations,
                 paybackPercent = analysis.TotalRtp * 100,
                 // Line hits only. Harrigan-style sheets often count any credit-awarding
-                // outcome (bonus triggers included), a higher figure; the name says which
-                // event this measures so the two are never set side by side unlabeled.
+                // outcome (bonus triggers included), a higher figure. The field name says
+                // which event this one measures.
                 lineHitFrequencyPercent = analysis.HitFrequency * 100,
                 playsPerJackpot = top.hits > 0 ? (double)analysis.StopCombinations / top.hits : 0,
                 jackpotCredits = top.pay,

@@ -3,15 +3,15 @@
 *Part 7, the last in a series on building a slot game engine in C#. The engine is
 built and it loads data-defined games. This article is about trusting its results: a test
 architecture where independent computations referee each other, an overflow budget
-that was measured rather than assumed, and a shared constant that closed a real
-drift bug before it shipped.*
+that was measured rather than assumed, and one shared home for a constant that would
+otherwise drift without failing a test.*
 
 A simulator that verifies itself is a circular argument. The engine says 98.01%;
 the analytic calculator says 98.00% ± band; they agree, but both were written by
 the same person against the same understanding of the game, and a shared
 misunderstanding agrees with itself perfectly. Breaking the circle takes a referee
-that shares *data* with both sides but *code* with neither. That referee is
-exhaustive enumeration, and it anchors everything in this article.
+that shares *data* with both sides and *code* with neither. That referee is
+exhaustive enumeration.
 
 Four kinds of evidence appear here:
 
@@ -40,14 +40,11 @@ for (var s2 = 0; s2 < 22; s2++)
 ```
 
 The test's window construction and line evaluation are *written independently* in
-the test project. That's deliberate duplication, and it would be a DRY violation
-in production code. In a test, the independent route is what gives the comparison
-value. This duplication is not a knowledge leak that should be consolidated. DRY
-says knowledge should have one
-authoritative home, but a referee, by definition, must not share its authority
-with the thing it referees. Two implementations, one built from the strips and one
-built from the probability formulas, and if they disagree in the fourteenth
-decimal place, the test says so.
+the test project. That duplication would be a DRY violation in production code;
+here it is what gives the comparison its value, because a referee that shared code
+with the thing it referees would inherit the same mistake. Two implementations, one
+built from the strips and one built from the probability formulas, and if they
+disagree in the fourteenth decimal place, the test says so.
 
 Against this anchor, two independent claims are checked:
 
@@ -61,11 +58,10 @@ Against this anchor, two independent claims are checked:
 
 The same pattern scales up through the symbol-tuple enumeration from article 6:
 `Analyser_MatchesAnIndependentExhaustiveEnumeration` holds the weighted-tuple
-analyzer against a raw stop-by-stop walk. Nothing statistical anywhere; these
-tests are deterministic and cannot fail because of a newly unlucky random sample.
-Integer combination counts can be compared exactly; floating-point RTP and sigma
-are compared with tight stated tolerances. When one fails, something changed or is
-wrong rather than the test merely drawing a different sample.
+analyzer against a raw stop-by-stop walk. Integer combination counts are compared
+exactly; floating-point RTP and sigma are compared with tight stated tolerances.
+Nothing here samples, so when one of these tests fails, something changed or is
+wrong.
 
 <!-- EXPORT: render this Mermaid block to PNG before publishing -->
 ```mermaid
@@ -92,8 +88,8 @@ flowchart TB
 An integer has a ceiling. The type behind every millicent count in this engine is a
 signed 64-bit integer, and its largest value is 9,223,372,036,854,775,807: 9.22
 quintillion. At 100,000 millicents to the credit, that ceiling sits at roughly 92
-trillion credits, which at a dollar a credit is about 92 trillion dollars. Here is
-what actually uses that headroom, at a 1-credit wager:
+trillion credits, which at a dollar a credit is about 92 trillion dollars. What uses
+that headroom, at a 1-credit wager:
 
 | Quantity | Millicents | Fraction of the ceiling |
 |---|---|---|
@@ -101,7 +97,6 @@ what actually uses that headroom, at a 1-credit wager:
 | 10M-spin soak, total wagered | 1.0 × 10¹² | 0.00001% |
 | 10M-spin soak, total paid (86.1% RTP) | ~8.6 × 10¹¹ | 0.000009% |
 | 100M spins, total paid | ~8.6 × 10¹² | 0.00009% |
-| Overflow point at 86.1% RTP | 9.22 × 10¹⁸ | ~107 trillion spins |
 
 For the documented one-credit wager, current award limits, and intended run sizes,
 the running money totals have enormous headroom. Reaching the ceiling at an average
@@ -128,12 +123,12 @@ long ceiling / that square = 9.22 × 10¹⁸ / 2.5 × 10¹⁷ ≈ 37
 
 Thirty-seven jackpot hits, squared and added into an unchecked `long`, is all it
 takes to wrap the counter. No exception is guaranteed in the default unchecked
-arithmetic context; the resulting variance would be invalid. Thirty-seven hits sounds safely distant until you check how often
-this jackpot actually lands: 4 of 14,781,416 possible outcomes, about 2.7 hits per
-10 million spins. At that rate, expecting 37 hits means expecting somewhere near
-137 million spins. The stress suite configures a much larger target for its
-cancellation test, although it cancels early rather than completing that many
-spins. The hypothetical accumulator therefore deserves an explicit bound.
+arithmetic context; the resulting variance would be invalid. That jackpot lands on
+4 of 14,781,416 possible outcomes, about 2.7 hits per 10 million spins, so 37 hits
+means somewhere near 137 million spins. The stress suite's cancellation test
+configures a target well past that mark, but it cancels before completing the run,
+so no build has accumulated 37 jackpot squares. The hypothetical accumulator still
+needs an explicit bound.
 
 `GameAnalyzer` avoids that particular overflow by squaring the *scaled pay
 multiplier* instead of the millicent award. It converts units only after its
@@ -173,45 +168,26 @@ _paySquareUnits += (long)win.Multiplier * win.Multiplier * weight;
 _payTriggerUnits += (long)win.Multiplier * triggerWeight;
 ```
 
-Every one of those five fields is `long`, a signed 64-bit integer, not `ulong`.
-That might look like a missed opportunity: `ulong` covers the same 64 bits but
-starts its range at 0 instead of a large negative number, so it could seem to
-offer more headroom for a counter that should never go negative in the first
-place. The reason `long` is the right choice anyway is what these fields are
-actually money-adjacent counts of: spins, weighted hits, weighted pay units. Every
-arithmetic operation touching them, including `Millicents.Value` itself throughout
-the engine, is signed `long`, so a `ulong` field here would force a cast at every
-boundary where this accumulator meets the rest of the money-typed codebase, and a
-cast at a boundary is a common place for a silent truncation bug to hide. `long`'s headroom, checked against the game's real numbers in the comment
-above, is already enormous; trading type consistency across the whole codebase for
-one extra bit of range nobody needs is not a trade worth making.
+Every one of those five fields is `long`, a signed 64-bit integer. These fields are
+money-adjacent counts — spins, weighted hits, weighted pay units — and every
+arithmetic operation touching them, including `Millicents.Value` throughout the
+engine, is signed `long`. A `ulong` field here would force a cast at every boundary
+where this accumulator meets the rest of the money-typed codebase, and a cast at a
+boundary is a common place for a silent truncation bug to hide. `long`'s headroom,
+checked against the game's real numbers in the comment above, is already enormous.
 
-That comment is worth reading as its own worked example: the impossible worst case
-(every one of the game's 14,781,416 stop combinations paying the top 5000X prize)
-still lands under long's ceiling by a factor of about 2.5, and the real
-accumulation, where only 4 combinations actually pay that prize, is nowhere close.
-The margin is quadratic in `ScaleFactor`: raising the scale from 100 to 1,000
-wouldn't cost 10× the headroom, it would cost 100×, which is why the comment asks
-the next person to re-check the arithmetic before changing that constant.
+The conversion at the boundary is also a speed decision, and it shows in the
+function shapes. `Accumulate` runs once per enumerated symbol tuple and adds whole
+integers into the tallies above. `Summarise` runs once at the end and does every
+division: by `ScaleFactor`, by the count of weighted outcomes. A version of
+`Accumulate` that divided each contribution down to a per-unit-wagered value first
+would do a floating-point division once for every symbol combination in the game
+instead of once for the whole enumeration, and would have to construct a millicent
+award for every enumerated tuple.
 
-The conversion at the boundary is also a speed decision, and it's a function-shape
-choice, not just a formula. `GameAnalyzer` splits the work into two functions on
-purpose: `Accumulate` runs once per enumerated symbol tuple and only ever adds
-whole integers into the four tallies above, and a separate function, `Summarise`,
-runs exactly once at the very end and does every division: by `ScaleFactor`, by
-the count of weighted outcomes, everything. Nothing stops a version of
-`Accumulate` that divided each contribution down to a per-unit-wagered value
-before adding it in, but that would mean doing a floating-point division inside
-the loop that runs once for every symbol combination in the game, instead of once
-for the whole enumeration. Because this analyzer reports returns per unit
-wagered, it divides the accumulated scaled multipliers by `ScaleFactor` and the
-number of weighted outcomes in `Summarise`, not before, so it never needs to
-construct a millicent award for every enumerated tuple, only once, for the
-finished total.
-
-And the spin simulator, on the other road, sidesteps the whole question. Its
-running counters, in `RunTotals`, hold exactly four numbers: spins, millicents
-wagered, millicents returned, and hits.
+The spin simulator avoids the question entirely. Its running counters, in
+`RunTotals`, hold exactly four numbers: spins, millicents wagered, millicents
+returned, and hits.
 
 ```csharp
 public sealed class RunTotals
@@ -238,27 +214,23 @@ representation approximations already discussed in articles 2 and 4. The “squa
 the multiplier” argument therefore applies specifically to `GameAnalyzer`, not to
 every variance calculation in the codebase.
 
-## The constant that was drifting before anyone noticed
+## One confidence quantile
 
 The confidence band in this engine, on the dashboard and in the statistical test
 suite, is built from a two-sided normal quantile: `z` in `z·σ/√N`. That quantile is
 a mathematical constant, the same value every time, for a given confidence level.
-It should need exactly one definition.
+The code defines it once as `NormalQuantile.TwoSided99`. The live verdict and the
+statistical tests both read `2.5758293035489004` from that definition. A result near
+the edge of the band is judged against the same value in both places.
 
-It had two. `RunCoordinator`'s live "within band" verdict carried the 99% quantile
-as `2.575829`. Three separate statistical test files carried the same quantile as
-`2.5758293035489004`. Both numbers are the 99% two-sided normal quantile; one is
-just rounded to six decimal places and the other isn't. The difference between them
-is about one part in ten million, far below anything either site's band tolerance
-could ever distinguish, which is why nobody had caught it: the two values never
-disagreed loudly enough to fail a test, they just quietly weren't the same symbol.
+Two independently declared copies of a quantile, say `2.575829` in one place and the
+full `2.5758293035489004` in another, differ by about one part in ten million. That
+is far below anything either site's band tolerance can distinguish, so the two never
+disagree loudly enough to fail a test.
 
 ```csharp
 /// <summary>
-/// Two-sided normal quantiles for convergence-band assertions. ONE home because
-/// both values were independently declared, at different precisions, in production
-/// code and in test code: the silent-drift risk a shared statistical constant
-/// should never carry.
+/// Two-sided normal quantiles used by convergence-band assertions.
 /// </summary>
 public static class NormalQuantile
 {
@@ -267,25 +239,18 @@ public static class NormalQuantile
 }
 ```
 
-Both quantiles are declared `const double`, not `static readonly` the way
-`Millicents.ScaleFactor` is in article 2. That's the opposite choice from
-`ScaleFactor`, and for the opposite reason. `ScaleFactor` is a tuning value this
-engine could reasonably change between versions, so it's read fresh at run time
+Both quantiles are `const double` values. They are mathematical constants embedded
+at compile time; no runtime code changes them. `Millicents.ScaleFactor`, by contrast,
+is a `static readonly` implementation setting read at run time
 rather than baked into every consumer at compile time. The 99% and 99.9% two-sided
-normal quantiles are not a setting this project owns at all; they're properties of
-the normal distribution itself, the same value in every statistics textbook,
-forever. A `const` is the correct home for a number whose value is settled by
-mathematics rather than by a design decision this codebase could revisit, and
-declaring it that way also means the compiler bakes the literal in wherever it's
-read, which costs nothing because there is nothing to keep in sync: 2.5758293035489004
-is 2.5758293035489004 in every version of every consumer, always.
+normal quantiles belong to the normal distribution, the same value in every
+statistics textbook, so a `const` is the right home: mathematics settles the value,
+and there is nothing for a deployed build to keep in sync.
 
 `RunCoordinator` and every statistical test now read `NormalQuantile.TwoSided99`
-or `NormalQuantile.TwoSided999`. This is the same failure shape article 1 documents
-for the RTP cap: a comment that promises one source of truth is not the same thing
-as one source of truth. The promise has to be a shared symbol, or the two call
-sites can drift apart at a precision too small for any single test to notice, and
-stay drifted indefinitely.
+or `NormalQuantile.TwoSided999`. Article 1 documents the same failure shape for the
+RTP cap: a comment promising one source of truth is not one source of truth. The
+promise has to be a shared symbol.
 
 ## Tier by cost, gate by category
 
@@ -298,10 +263,16 @@ $env:SLOTGAME_SLOW_TESTS = '1'
 dotnet test
 ```
 
-In Bash, the opt-in form is `SLOTGAME_SLOW_TESTS=1 dotnet test`. The long-running
-classes carry the `Category=Slow` or `Category=Stress` trait, and their custom fact
-attributes skip unless the environment variable is enabled. Runtime depends on
-the machine, so the article should not promise a fixed number of seconds. A team's
+In Bash:
+
+```bash
+dotnet test
+SLOTGAME_SLOW_TESTS=1 dotnet test
+```
+
+The long-running classes carry the `Category=Slow` or `Category=Stress` trait, and
+their custom fact attributes skip unless the environment variable is enabled. Runtime
+depends on the machine, so this chapter doesn't quote a figure in seconds. A team's
 CI policy decides which tiers gate a merge or release; the test code itself only
 defines how they are selected.
 
@@ -342,10 +313,10 @@ reconstruction, not an official manufacturer PAR sheet or certification report.
 
 ## Determinism you can assert with ==
 
-Most concurrency tests wave at correctness: run threads, hope races surface,
-assert nothing crashed. This codebase's invariants (article 2's M2, integer
-addition is order-independent, and article 5's fixed quotas) upgrade the whole
-category, because they license *exact* assertions:
+A concurrency test often can't assert much: run threads, hope a race surfaces, check
+that nothing crashed. This codebase's invariants (article 2's M2, integer
+addition is order-independent, and article 5's fixed quotas) let these tests assert
+*exact* equality instead:
 
 ```csharp
 [Theory]
@@ -368,11 +339,8 @@ achieved by silently ignoring the seed), and
 `DifferentWorkerCounts_AllConvergeOnTheSameAnalyticRtp`: partitions differ, so
 totals may differ, but every partition must converge on the same math.
 
-What made these tests possible was decided five articles ago, not in the test
-project. Integer money made bit-for-bit a theorem; `ref`-only RNG made replay
-trivial; fixed quotas made "sequential replication" well-defined. Testability
-wasn't sprinkled on at the end; it fell out of invariants chosen up front, which is
-the CUPID *Predictable* property measured in assertions.
+Integer money, `ref`-passed RNG, and fixed quotas were each decided five articles
+ago. Together they are what lets a test here use `==`.
 
 ## Boundary tests as executable examples
 
@@ -387,7 +355,7 @@ UnknownPreset_IsRejected_WithTheValidListInTheMessage()
 MalformedJson_FailsWithASlotMessageNotAParserStackTrace()
 ```
 
-Read those names top to bottom and you can infer important requirements: the cap
+Those names carry the requirements: the cap
 is inclusive at exactly 9,900 basis points; rejection never silently clamps;
 errors arrive as a complete list; messages tell the user what *would* work. The
 game-definition loader gets the same treatment: every malformed-file scenario
@@ -398,7 +366,7 @@ document.
 
 ## What each ring of tests catches
 
-Step back and the suite is four rings, each catching what the previous can't:
+The suite is four rings, each catching what the one before it misses:
 
 | Ring | Answers | Fails when |
 |---|---|---|
@@ -414,15 +382,11 @@ an official certification authority.
 > 🧪 **Try it live.** The companion site closes with the proving ground at
 > <http://localhost:5090>, then `#/finale`: configure a run, start it, and watch ten
 > million spins land on one chart as the measured RTP walks into the analytic band
-> and the band itself narrows with √N. It is every article in this series running at
-> once, on the code they describe.
+> and the band itself narrows with √N.
 
-The finished system combines a fixed-point money type, replayable RNG streams,
-ordered reel strips, analytic paytable math, lossless run totals, deliberately
-lossy telemetry, data-loaded games, and independent test calculations. The public
-Orca Dive reconstruction supplies an external comparison, not certification.
-The strength of the design comes from these pieces agreeing on the same rules while
-checking them through different calculation paths.
+Nothing in this system is trusted because it agrees with itself. The money type, the
+RNG, the strips, the analytic math and the simulator each get checked by something
+that shares their data and none of their code.
 
 *Source files: `tests/MMP.SlotGame.Tests/`, especially
 `ExhaustiveGroundTruthTests.cs`, `ConcurrencyTests.cs`, `GameConvergenceTests.cs`,

@@ -4,8 +4,8 @@ import { runMoneyLab, type MoneyResponse } from '../../api/chapters'
 import BitStrip from '../../components/BitStrip.vue'
 
 const wagerCredits = ref(1)
-// 1.10× by default: 1.1 has no exact binary form, so the double column drifts on camera.
-// 2.25× is the counter-example worth trying live — it is exact in binary and drift stays 0.
+// 1.10× by default: 1.1 has no exact binary form, so the double column drifts.
+// 2.25× is the counter-example worth trying — it is exact in binary and drift stays 0.
 const scaledMultiplier = ref(110)
 const repeats = ref(1_000_000)
 // 0 means "use the credit wager above"; any other value goes in raw.
@@ -112,8 +112,8 @@ function formatCredits(value: number): string {
         <BitStrip :bits="result.wager.bits" :fraction-bits="FRACTION_BITS" label="wager, 64 bits" />
         <BitStrip :bits="result.pay.bits" :fraction-bits="FRACTION_BITS" label="pay, 64 bits" />
         <p class="bits__note">
-          Outlined bits sit below one credit. There is no mantissa or exponent here. It is
-          one integer, and every bit of it counts money.
+          Outlined bits sit below one credit. This is one integer laid out end to end, with
+          no mantissa or exponent dividing it up.
         </p>
       </div>
 

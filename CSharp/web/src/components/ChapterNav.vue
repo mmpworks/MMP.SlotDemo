@@ -18,6 +18,7 @@ const emit = defineEmits<{ (e: 'navigate', id: string): void }>()
       type="button"
       :aria-current="chapter.id === current ? 'page' : undefined"
       :title="chapter.title"
+      :aria-label="chapter.title"
       @click="emit('navigate', chapter.id)"
     >
       {{ chapter.label }}

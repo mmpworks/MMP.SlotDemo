@@ -10,7 +10,7 @@ namespace SlotDemo.Server.Chapters.Simulation;
 /// Each worker starts from a distinct value derived from the master seed and worker id;
 /// SplitMix64 expands that value into the four xoshiro state words.
 ///
-/// Simulation-grade RNG. NOT certified-gaming RNG (PRD NG-1).
+/// Simulation-grade RNG. Real-money play requires a certified gaming RNG; this is not one.
 /// </summary>
 public struct SpinRng
 {
@@ -85,8 +85,9 @@ public struct SpinRng
     }
 
     /// <summary>
-    /// Demo seam: the modulo reduction the episode rejects. Same stream, biased mapping,
-    /// so the demo page can chart both from one seed.
+    /// Demo seam: the modulo reduction the episode rejects, kept as the named counterpart
+    /// to NextInt. The bias lab narrows the draw space itself, so this method currently has
+    /// no callers.
     /// </summary>
     public int NextIntModulo(int bound) => (int)(NextUInt64() % (ulong)bound);
 

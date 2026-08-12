@@ -9,7 +9,7 @@ namespace SlotDemo.Server.Chapters;
 /// <summary>
 /// Episode 3's lab — reels and paylines. A strip is an ordered cycle, a window is a
 /// contiguous slice of it, and a payline is a row path across the window. Sources are
-/// the stock presets plus the shipped games; Orca Dive is the one viewers relate to,
+/// the stock presets plus the shipped games; Orca Dive is the series' worked example,
 /// and its ragged strips (26/29/26/29/26) show a shape the presets cannot.
 /// </summary>
 public static class ChapterThreeEndpoints
@@ -66,8 +66,8 @@ public static class ChapterThreeEndpoints
 
     /// <summary>
     /// One spin, fully exploded: the window cells and every payline's read of them. The
-    /// page can replay indexes forward and backward because the stream is deterministic -
-    /// same seed, same spin, same window.
+    /// page can replay indexes forward and backward because the stream is deterministic:
+    /// the same seed and spin index reproduce the same window.
     /// </summary>
     private static IResult Spin(SpinRequest request, StructuredLogger log)
     {
@@ -80,8 +80,10 @@ public static class ChapterThreeEndpoints
         var reels = source.Reels;
         var rng = SpinRng.ForWorker(request.Seed, 0);
 
-        // Deterministic replay: advance the stream past the earlier spins. Each spin
-        // consumes exactly ReelCount draws, so the offset is a walk, not a log.
+        // Deterministic replay: re-run DrawWindow past the earlier spins rather than storing
+        // them. Replaying the same calls in the same order reproduces the same window.
+        // Seeking by a draw count would land elsewhere: NextInt uses rejection sampling, so
+        // a spin consumes ReelCount draws or more.
         var window = new Symbol[reels.WindowSize];
         for (var skip = 0; skip < request.SpinIndex; skip++)
             reels.DrawWindow(ref rng, window);
@@ -126,9 +128,9 @@ public static class ChapterThreeEndpoints
 
     /// <summary>
     /// The strip-versus-weighted-die argument, measured: draw N windows and count how
-    /// often the chosen symbol lands in the centre row per reel, next to the exact strip
-    /// probability. On Orca the per-reel expectations DIFFER - Wild Orca sits at 2/26 on
-    /// reel 0 and 1/29 on reel 1 - because each reel is its own strip.
+    /// often the chosen symbol lands in the center row per reel, next to the exact strip
+    /// probability. Each reel is its own strip, so the per-reel expectations differ: on
+    /// Orca, Wild Orca sits at 2/26 on reel 0 and 1/29 on reel 1.
     /// </summary>
     private static IResult Census(CensusRequest request, StructuredLogger log)
     {

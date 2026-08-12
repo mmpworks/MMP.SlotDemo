@@ -6,6 +6,8 @@ walk it. The typing is a jump cut; the walkthrough is the episode.
 minutes total, and only to make an engine claim visible.
 **Companion article:** `docs/articles/05-simulation-engine.md`
 **Companion site:** MMP.SlotDemo, branch `main`, page `#/ch05`
+**Files created on camera:** `CSharp/src/MMP.SlotGame.Core/Simulation/RunTotals.cs`,
+`SimulationEngine.cs`.
 
 > **Discipline note for this recording.** The labs illustrate; they do not carry the
 > episode. If a beat can be made in Rider, make it in Rider. Cut to the browser only
@@ -17,7 +19,7 @@ minutes total, and only to make an engine claim visible.
 ## Prep checklist
 
 **Repo — the subject**
-- [ ] Rider on `MMP.SlotGame.slnx`, tree expanded to `MMP.SlotGame.Core`
+- [ ] Rider on `CSharp/MMP.SlotDemo.slnx`, tree expanded to `MMP.SlotGame.Core`
 - [ ] `Simulation/` folder present with `SpinRng.cs` and `SimulationConfig.cs`; the two
       target files moved aside so they get created on camera
 - [ ] Test runner loaded: `ConcurrencyTests`, `DeterminismTests`, `StressTests`
@@ -44,9 +46,9 @@ minutes total, and only to make an engine claim visible.
 
 - "Ten million spins across every core, and the total comes out the same every single
   time, down to the last millicent."
-- "That sentence is the episode. It sounds like it should require locks and careful
-  ordering, and it turns out to require the opposite: no coordination at all, because
-  episodes 2 and 4 already removed the reasons to coordinate."
+- "It sounds like it should require locks and careful ordering. It requires no
+  coordination at all, because episodes 2 and 4 already removed the reasons to
+  coordinate."
 - "Two files. One holds the counters, one holds the schedule. About 240 lines together,
   and half of that is delegates and doc comments."
 - Set the format: "Each file goes in finished, then we walk it and I tell you why every
@@ -75,19 +77,18 @@ Write three problems and their answers before any code appears.
 **Scene:** RIDER.
 
 - New file in `Simulation`. **Path on screen and said out loud:**
-  `src/MMP.SlotGame.Core/Simulation/RunTotals.cs`
-- Paste **Block A**. "Forty-six lines, and it is the entire lossless side of the
-  pipeline."
+  `CSharp/src/MMP.SlotGame.Core/Simulation/RunTotals.cs`
+- Paste **Block A**. "Forty-six lines, and it is the lossless side of the pipeline."
 
-### Block A — `src/MMP.SlotGame.Core/Simulation/RunTotals.cs`
+### Block A — `CSharp/src/MMP.SlotGame.Core/Simulation/RunTotals.cs`
 
 ```csharp
 namespace MMP.SlotGame.Core.Simulation;
 
 /// <summary>
 /// The lossless side of the pipeline: integer millicent counters, batched
-/// Interlocked adds (architecture §7). Reset (RT-18) is done by swapping in a fresh
-/// instance, never by zeroing live fields.
+/// Interlocked adds. Reset is done by swapping in a fresh instance, never by zeroing
+/// live fields.
 /// </summary>
 public sealed class RunTotals
 {
@@ -106,9 +107,9 @@ public sealed class RunTotals
     }
 
     /// <summary>
-    /// Counter reads are individually atomic, not atomic as a set (RT-20): a mid-run
+    /// Counter reads are individually atomic, not atomic as a set: a mid-run
     /// snapshot can straddle a batch and is display-only. Acceptance assertions read
-    /// AFTER the run quiesces (post-WhenAll), where this is exact.
+    /// after the run quiesces (post-WhenAll), where the set is consistent.
     /// </summary>
     public RunSnapshot Snapshot() => new(
         Interlocked.Read(ref _spins),
@@ -124,8 +125,8 @@ public readonly record struct RunSnapshot(long Spins, long WageredMillicents, lo
 }
 
 /// <summary>
-/// One telemetry message. Carries ABSOLUTE snapshots, never deltas (RT-19): a dropped
-/// sample costs one chart point, not accuracy.
+/// One telemetry message carrying cumulative totals. If the channel drops a sample,
+/// the next sample still contains the current totals.
 /// </summary>
 public readonly record struct TelemetrySample(string RunId, RunSnapshot Totals);
 ```
@@ -142,8 +143,7 @@ The whole shared mutable state of a ten-million-spin run is four 64-bit integers
   contention on an object header.
 - **Why this is available at all:** integer addition is order-independent, so sixteen
   workers arriving in any order produce the same total. "A lock would have made the
-  order deterministic. Not needing the order to be deterministic is better than making
-  it so."
+  order deterministic. Nothing here needs the order at all."
 - Say the counterfactual out loud: with a `double` total, `Interlocked` has no
   `Add(ref double)` that helps, and even a lock would only serialize the additions
   without making them associative. "The concurrency problem was solved in episode 2 by a
@@ -162,10 +162,9 @@ spins rather than four adds per spin.
   the cancellation granularity. Bigger batches make the chart coarser and cancellation
   slower to respond. "The number is a three-way trade, and it is a named constant so
   the trade has one place to be revisited."
-- **The general lesson:** "The fix for atomic contention is usually fewer atomics rather
-  than faster ones."
+- "The fix for atomic contention is usually fewer atomics rather than faster ones."
 
-### Beat 3 — the honest comment on `Snapshot`
+### Beat 3 — the partial-guarantee comment on `Snapshot`
 
 Read it aloud. The four reads are individually atomic and they are not atomic as a set.
 
@@ -177,9 +176,8 @@ Read it aloud. The four reads are individually atomic and they are not atomic as
   around all four counters, taken on every batch, to make a chart frame slightly
   prettier. "The cost lands on the hot path and the benefit lands on a picture nobody is
   measuring."
-- "This is the kind of comment that separates a design from an accident. Somebody knew
-  the guarantee was partial, wrote down where it holds, and pointed at the place the
-  strong guarantee is actually needed."
+- "Somebody knew the guarantee was partial, wrote down where it holds, and pointed at
+  the place the strong guarantee is needed."
 
 ### Beat 4 — reset by replacement
 
@@ -191,9 +189,8 @@ live fields.
 - A new `RunTotals` has no relationship to the old one, so there is nothing to
   coordinate. The old instance keeps its numbers, and anyone still holding it sees a
   consistent past.
-- **The immutability rule, applied to a mutable object:** "The object is mutable by
-  necessity. Its lifetime is not. Replacing beats resetting whenever the reset would
-  need a lock the mutation does not."
+- **The immutability rule at a mutable object:** "Replacing beats resetting whenever the
+  reset would need a lock the mutation does not."
 
 ### Beat 5 — snapshots are absolute, and that is what makes dropping safe
 
@@ -202,27 +199,30 @@ live fields.
 - A dropped delta corrupts every number after it, forever. A dropped snapshot costs one
   chart point, and the next sample is already correct.
 - **The line:** "The lossy lane is only safe because of what it carries. Change the
-  payload to deltas and every other telemetry decision in this system becomes wrong at
-  once."
+  payload to deltas and every other telemetry decision in this system becomes wrong."
 - `RunSnapshot` is a `readonly record struct` with two computed properties. Measured RTP
   and hit frequency are derived on read rather than stored, so a snapshot cannot carry a
   total and a ratio that disagree.
+- **One thing to be careful about:** `IsHit` is true when *anything* paid, base game or
+  feature. The published hit frequency for a real machine is usually line pays only.
+  Same word, two quantities: episode 6's check against the published Orca Dive numbers
+  uses the line-only one, and this counter is the any-award one.
 
 > **Illustration (40 seconds, BROWSER).** Chapter 5 page, telemetry lab. Run with the
 > consumer throttled hard. The drop counter climbs into the thousands while the spin
 > total stays on pace, and the chart keeps its shape. Then point at the final row: after
 > the run quiesces, the last sample matches the counters. "Thousands of dropped frames,
-> and the number at the end is still the number." Cut back.
+> and the final counters are unchanged." Cut back.
 
 ## 9:30–10:15 — Create the second file
 
 **Scene:** RIDER.
 
-- New file. **Path on screen:** `src/MMP.SlotGame.Core/Simulation/SimulationEngine.cs`
-- Paste **Block B**. "Five delegates, three constructors, and two methods that do the
+- New file. **Path on screen:** `CSharp/src/MMP.SlotGame.Core/Simulation/SimulationEngine.cs`
+- Paste **Block B**. "Four delegates, three constructors, and two methods that do the
   work."
 
-### Block B — `src/MMP.SlotGame.Core/Simulation/SimulationEngine.cs`
+### Block B — `CSharp/src/MMP.SlotGame.Core/Simulation/SimulationEngine.cs`
 
 ```csharp
 using System.Threading.Channels;
@@ -233,24 +233,24 @@ using MMP.SlotGame.Core.Reels;
 
 namespace MMP.SlotGame.Core.Simulation;
 
-/// <summary>Per-spin diagnostic hook (architecture §4). Null by default and therefore free; NOT for 10M-spin runs.</summary>
+/// <summary>Per-spin diagnostic hook. Null by default and therefore free. Avoid it on 10M-spin runs.</summary>
 public delegate void SpinObserver(in SpinOutcome outcome);
 
 /// <summary>The seeding policy as a one-behaviour seam: tests inject scripted streams with one lambda.</summary>
 public delegate SpinRng SpinRngFactory(int workerId);
 
 /// <summary>
-/// Plays ONE spin: draw, evaluate, award. RNG arrives by ref (invariant R3), so the
-/// stream advances in the caller's worker.
+/// Plays one spin: draw, evaluate, award. RNG arrives by ref, so the stream advances in
+/// the caller's worker.
 /// </summary>
 public delegate SpinOutcome SpinPlay(ref SpinRng rng);
 
 /// <summary>
-/// Builds one <see cref="SpinPlay"/> per worker. This is the seam that lets a game with
-/// its own evaluation rules — wilds, scatter-triggered bonuses, honest pick simulation —
-/// reuse the determinism, quota partitioning, batching and telemetry below instead of
-/// re-implementing them (OrcaDive is the first such game). A worker's play owns its
-/// own scratch buffers, which is why this is a factory and not one shared instance.
+/// Builds one <see cref="SpinPlay"/> per worker. A game with its own evaluation rules
+/// (wilds, scatter-triggered bonuses, picks simulated round by round) reuses the
+/// determinism, quota partitioning, batching and telemetry below through this seam.
+/// OrcaDive is the first such game. Each worker's play owns its own scratch buffers, so
+/// this is a factory and not one shared instance.
 /// </summary>
 public delegate SpinPlay SpinPlayFactory();
 
@@ -431,26 +431,25 @@ Before the class, four one-line contracts. Read each and say what it buys.
   2, still visible in the type system.
 - `SpinPlayFactory` — builds one play per worker.
 
-**The CUPID reading:** composable. Each of these is one behaviour with no identity and
-no lifetime, so each is a delegate rather than an interface. "Four interfaces, four
-files, four implementations, and a registration would express the same four ideas and
-give the reader four more things to open."
+Each of these is one behaviour with no identity and no lifetime, so each is a delegate
+rather than an interface. "Four interfaces, four files, and a registration would express
+the same ideas and give the reader more to open."
 
 ### Beat 7 — the factory, and the reason it is a factory
 
-This is the seam worth the most in the whole file, so slow down.
+Slow down at `SpinPlayFactory`. Each worker gets its own play and scratch buffers here.
 
-- A worker's play owns scratch buffers — a window array, an evaluator. Sharing one play
+- A worker's play owns scratch buffers: a window array, an evaluator. Sharing one play
   across sixteen workers would mean sixteen threads writing the same window.
 - So the engine takes a factory and calls it once per worker inside the worker loop.
   Each worker gets its own play with its own buffers, and nothing is shared that is
   written.
-- **What the seam buys:** a game with its own rules — wilds, scatter-triggered bonuses,
-  an honest pick simulation — supplies a play and inherits determinism, quota
-  partitioning, batching, and telemetry unchanged. "Episode 6's real game walks through
-  this door. The engine does not learn a single thing about scatters."
-- **AIF reading:** the factory is a one-line shape choice made before there was a second
-  game. It cost nothing and it saved the retrofit.
+- **What that gives a loaded game:** a game with its own rules (wilds, scatter-triggered
+  bonuses, picks simulated round by round) supplies a play and inherits determinism,
+  quota partitioning, batching, and telemetry unchanged. "Episode 6's game supplies its
+  own play. The engine never learns what a scatter is."
+- The factory is a one-line shape choice made before there was a second game, and it
+  saved the retrofit.
 
 ### Beat 8 — three constructors, chaining inward
 
@@ -491,8 +490,8 @@ Walk it as four layers.
    atomic, nothing shared, nothing allocated.
 4. **After the batch:** four atomic adds and one `TryWrite`.
 
-**The shape to name out loud:** "Everything expensive is outside the inner loop and
-everything shared is outside it too. The inner loop touches worker-local memory only."
+**Then name the shape:** "Everything expensive and everything shared sits outside the
+inner loop. The inner loop touches worker-local memory only."
 
 ### Beat 11 — `observer is not null`, and a hook that is free when unused
 
@@ -502,11 +501,11 @@ when nobody passes one.
 - "The alternative shapes are a no-op observer instance, which pays an indirect call ten
   million times, or an event, which pays an invocation-list walk. Nullable costs a
   branch the predictor gets right every time."
-- The doc comment says it plainly: null by default and therefore free, and not for
+- The doc comment says it: null by default and therefore free, and not for
   ten-million-spin runs when it is set. "The hook exists for a diagnostic run of a few
-  thousand spins. Saying so in the comment is how the next person avoids using it wrong."
+  thousand spins, and the comment says so."
 
-### Beat 12 — `TryWrite`, and the direction the pressure flows
+### Beat 12 — `TryWrite`, and who waits for whom
 
 The one line that keeps a laptop from slowing down a simulation.
 
@@ -514,8 +513,8 @@ The one line that keeps a laptop from slowing down a simulation.
   never awaits.
 - The channel is caller-owned and bounded with drop-oldest, so the newest picture wins
   and the buffer never grows.
-- "Await here and the browser gets a lever on the simulation. That is backpressure
-  flowing the wrong direction: the lossy lane would be throttling the exact lane."
+- "Await here and the browser gets a lever on the simulation: the lossy lane would be
+  throttling the exact one."
 - The final write after `WhenAll` is the one that matters, and it goes out after every
   worker has joined, so it is the quiesced total.
 
@@ -529,10 +528,9 @@ Read the doc comment, then the closure.
 - The window array is per worker, created inside the factory lambda and reused for every
   spin. One allocation per worker for the whole run.
 - The comment explains why there is no `stackalloc`: `Symbol` carries a string, so the
-  array is managed. "The comment answers the question a reader would otherwise spend ten
-  minutes on."
+  array is managed.
 - Then the play itself, four statements: draw the window, evaluate the lines, play each
-  feature in schedule order, return the outcome. **The order is part of the contract** —
+  feature in schedule order, return the outcome. **The order is part of the contract:**
   swap the draw and the features and every stream desynchronizes while nothing looks
   wrong.
 
@@ -540,8 +538,8 @@ Read the doc comment, then the closure.
 > at 1, 4, and 16 workers and put the three final snapshots side by side. The one-worker
 > and sixteen-worker totals differ, because the partition differs and each worker draws
 > its own stream. Then run each configuration twice: every configuration reproduces
-> itself exactly. "The contract is the pair — seed and worker count — and the lab is
-> showing both halves of it." Cut back.
+> itself exactly. "The contract is the pair, seed and worker count, and the lab shows
+> both halves." Cut back.
 
 ## 20:30–21:15 — Prove it in the terminal
 
@@ -557,15 +555,14 @@ Read the doc comment, then the closure.
 
 **Scene:** RIDER test runner, then TERMINAL.
 
-This section is the payoff for every decision above, so give it real time.
+Give this section real time.
 
 - **`ConcurrencyTests.ParallelRun_EqualsSequentialReplication_BitForBit`** is invariant
-  M2 collecting. The test replicates the engine's contract by hand — the same quota
-  rule, the same per-worker seeding, and the same RNG consumption order — then asserts
-  exact equality against a real parallel run. **Why exact rather than approximate:** the
-  class comment says it. If this ever passes only within a tolerance, floating point has
-  leaked into the accumulation path and invariant M1 is broken. "The assertion operator
-  is the alarm."
+  M2 collecting. The test replicates the engine's contract by hand (the same quota rule,
+  the same per-worker seeding, the same RNG consumption order) and then asserts exact
+  equality against a real parallel run. **Why exact rather than approximate:** the class
+  comment says it. If this ever passes only within a tolerance, floating point has leaked
+  into the accumulation path and invariant M1 is broken.
 - **`ParallelRun_IsRaceFreeUnderRepetition`** runs the eight-worker equivalence several
   times. **Why repetition:** a torn accumulator is intermittent by nature, and one green
   run is not evidence that the atomics did their job under contention.
@@ -580,7 +577,7 @@ This section is the payoff for every decision above, so give it real time.
   one."
 - **`DifferentWorkerCounts_AllConvergeOnTheSameAnalyticRtp`** is the subtle one. The suite
   deliberately declines to assert that different worker counts give identical totals,
-  because they should not — repartitioning changes which spins exist. What must hold is
+  because they should not; repartitioning changes which spins exist. What must hold is
   that every partition converges on the same game, and that is what this asserts, with a
   band wide on purpose. **Why the wide band:** this test is asking "same game", rather
   than "converged". Episode 7 asks the second question.
@@ -614,12 +611,12 @@ This section is the payoff for every decision above, so give it real time.
   test runner; under three in the browser. If a take runs long, browser time goes first.
 - Strongest visuals in order: the CPU meter pegged during a ten-million-spin run, the
   two identical totals side by side in the terminal, and the drop counter climbing while
-  the final number stays correct. Give each a beat of silence.
+  the final number stays correct. Hold on each for a beat.
 - Zoom hotkey belongs on: the four `Interlocked.Add` lines, the quota and remainder
   calculation, the `TryWrite` line with its comment, and the four statements inside the
   play closure.
 - The two paste blocks are the finished files verbatim. If a paste lands wrong, cut and
-  re-paste rather than hand-fixing — the file has to match the repo.
+  re-paste rather than hand-fixing: the file has to match the repo.
 - Running long? Compress beat 8 (the constructor chain) to one sentence and drop the
   terminal proof, since the tests cover it. Keep beat 7 (the play factory), beat 9
   (fixed quotas), beat 12 (`TryWrite`), and the test section whole.

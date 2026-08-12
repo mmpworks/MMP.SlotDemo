@@ -3,17 +3,15 @@ using MMP.SlotGame.Core.Simulation;
 namespace MMP.SlotGame.Core.Reels;
 
 /// <summary>
-/// A reel is an ORDERED CYCLIC STRIP (RT-1). A spin draws one uniform stop index per
-/// reel; the visible window shows adjacent strip positions {s, s+1, ... s+Rows-1} mod S.
-/// Rows within a reel are therefore correlated by strip adjacency; different reels are
-/// independent. A weighted multiset is NOT equivalent once a multi-row window exists,
-/// which was red-team BLOCKER RT-1, and this type is its resolution.
+/// A reel is an ordered cyclic strip. A spin draws one uniform stop index per reel; the
+/// visible window shows adjacent strip positions {s, s+1, ... s+Rows-1} mod S. Rows within
+/// a reel are therefore correlated by strip adjacency, while different reels are
+/// independent. A weighted multiset loses that adjacency, so it stops being equivalent the
+/// moment a multi-row window exists.
 ///
-/// GEOMETRY IS DATA. Reel count, per-reel stop count and window height all arrive as
-/// arguments; nothing here assumes 3 reels, 5 reels, equal-length strips or a 3-row
-/// window. Strips of differing lengths on the same machine are normal; the public Orca
-/// Dive reconstruction used by this project has 26/29/26/29/26 stops, so each reel's
-/// length is read separately.
+/// Reel count, per-reel stop count and window height all arrive as arguments. Strips of
+/// differing lengths on the same machine are normal; Orca Dive, the fictional game this
+/// project ships, has 26/29/26/29/26 stops, so each reel's length is read separately.
 /// </summary>
 public sealed class StripReelSet
 {

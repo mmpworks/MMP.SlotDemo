@@ -3,22 +3,25 @@
 **Target:** 26–28 min. **Format:** create the file, paste the finished source, then
 walk it. Today the file that goes in is a test, because the tests are the product.
 **Subject:** the engine. This is the one episode where the companion site gets a real
-segment — the closing ten-million-spin run is the series payoff, and it runs on camera.
+segment: the closing ten-million-spin run, and it runs on camera.
 **Companion article:** `docs/articles/07-proving-the-machine.md`
 **Companion site:** MMP.SlotDemo, branch `main`, pages `#/ch07` and the finale run
+**Files created on camera:**
+`CSharp/tests/MMP.SlotGame.Tests/ExhaustiveGroundTruthTests.cs`.
+**Shown, not created:** `CSharp/src/MMP.SlotGame.Core/Games/GameAnalyzer.cs`.
 
 > **Discipline note for this recording.** Every earlier episode capped the browser at
 > three minutes. This one budgets about four, and all of it lands at the end. The
-> walkthrough is still the episode; the finale is the reward for having watched it.
+> walkthrough is still the episode; the finale is what it builds to.
 
 ---
 
 ## Prep checklist
 
 **Repo — the subject**
-- [ ] Rider on `MMP.SlotGame.slnx`, tree expanded to `MMP.SlotGame.Tests`
+- [ ] Rider on `CSharp/MMP.SlotDemo.slnx`, tree expanded to `MMP.SlotGame.Tests`
 - [ ] `ExhaustiveGroundTruthTests.cs` moved aside so it gets created on camera
-- [ ] `src/MMP.SlotGame.Core/Games/GameAnalyzer.cs` open in a background tab
+- [ ] `CSharp/src/MMP.SlotGame.Core/Games/GameAnalyzer.cs` open in a background tab
 - [ ] `ConcurrencyTests.cs`, `NoAmbientRngTests.cs`, `DomainDataImmutabilityTests.cs`,
       `GameConvergenceTests.cs` open in background tabs
 - [ ] Test runner loaded with the whole suite, run once so nothing pays a cold start
@@ -44,14 +47,14 @@ segment — the closing ten-million-spin run is the series payoff, and it runs o
 
 **Scene:** RIDER, the test project tree.
 
-- "Six episodes built a slot machine. This one asks the only question that matters:
-  how do you know it is right?"
-- "The answer is not a test suite in the usual sense. It is three separate
-  implementations of the same game, written to disagree if any of them is wrong."
+- "Six episodes built a slot machine. This one asks how you know it is right."
+- "The answer is three separate implementations of the same game, written to disagree if
+  any of them is wrong."
 - Name them: the analytic closed form from episode 4, the simulator from episode 5, and
-  a third one we write today that visits every outcome the game can produce.
-- "One file goes in on camera, and it is a test file. That is deliberate. In this
-  project the tests are the product, and the engine is what they are about."
+  a third one we write today that visits every outcome the game can produce: the
+  *preset* three-reel game, so the enumeration is a clean 22 cubed.
+- "One file goes in on camera, and it is a test file. In this project the tests are the
+  product."
 
 ## 1:30–4:00 — Why one implementation cannot check itself
 
@@ -61,33 +64,33 @@ Draw three boxes and the sentence that connects them.
 
 1. **The analytic path** counts probabilities and never plays a spin.
 2. **The simulator** plays spins and never computes a probability.
-3. **The enumerator** walks every stop combination and does neither — it just adds
-   everything up and divides.
+3. **The enumerator** walks every stop combination and does neither; it adds everything
+   up and divides.
 
 The failure mode this structure exists for:
 
 - "Every other RTP assertion in this project compares an analytic number against an
   empirical number. If both of them came from the same evaluation routine, a bug in that
   routine cancels itself out, and every convergence test passes green on a wrong game."
-- "That is the trap. Two numbers agreeing is only evidence when the two numbers were
-  produced independently."
+- "Two numbers agreeing is only evidence when the two numbers were produced
+  independently."
 - So the third implementation shares data with the engine and shares no behaviour. Same
   strips, same paylines, same integer paytable. Its own window construction, its own run
   matching, its own averaging.
 
-**The line to land:** "The agreement between three independent implementations is the
-product. Everything else in this repo is plumbing around that agreement."
+**Close the section with:** "The three paths share the game definition, but they do not
+share payout code. Their agreement is the check."
 
 ## 4:00–4:45 — Create the file
 
 **Scene:** RIDER.
 
 - New file. **Path on screen and said out loud:**
-  `tests/MMP.SlotGame.Tests/ExhaustiveGroundTruthTests.cs`
+  `CSharp/tests/MMP.SlotGame.Tests/ExhaustiveGroundTruthTests.cs`
 - Paste **Block A**. "Two hundred and fifty lines. Three assertions, and about half the
   file is the independent implementation those assertions check against."
 
-### Block A — `tests/MMP.SlotGame.Tests/ExhaustiveGroundTruthTests.cs`
+### Block A — `CSharp/tests/MMP.SlotGame.Tests/ExhaustiveGroundTruthTests.cs`
 
 ```csharp
 using MMP.SlotGame.Core.Money;
@@ -351,18 +354,16 @@ public sealed class ExhaustiveGroundTruthTests
 
 ### Beat 1 — the class comment states the contract of independence
 
-Read the two lists aloud, because they are the whole design.
+Read the two lists aloud.
 
 - **Shared:** the data. Strip symbol ids, payline row vectors, and the integer paytable
   dictionary.
 - **Not shared:** window construction, run matching, probability weighting, expected-value
   summation, variance summation. All re-derived here.
 - "Sharing the data is required, because otherwise the two implementations are analysing
-  different games. Sharing any behaviour would defeat the point. The comment draws that
-  line so the next person editing this file knows which side they are standing on."
-- The horizontal rule further down says the same thing at the boundary: nothing below
-  that line calls Core evaluation code. "A comment that is also a rule, placed where the
-  rule applies."
+  different games. Sharing any behaviour would defeat the point."
+- The horizontal rule further down draws the same line at the boundary: nothing below it
+  calls Core evaluation code.
 
 ### Beat 2 — deliberately unclever code
 
@@ -371,19 +372,18 @@ Point at the triple-nested loop and the run matching.
 - Three `for` loops, a modulo, and an if-chain that counts to three. No abstraction, no
   helper, no generality over reel count.
 - "In production code this would be a smell. Here it is the requirement. Every
-  abstraction is a place a bug can hide, and this file's job is to have nowhere for one
-  to hide."
+  abstraction is a place a bug can hide."
 - The run matching is written the long way on purpose: check whether the second reel
   matches the first, and only then the third. It is the definition of a left-to-right
   run, transcribed rather than factored.
 
-### Beat 3 — no probabilities anywhere, and why that is the point
+### Beat 3 — no probabilities anywhere
 
 Read the `Enumerate` doc comment.
 
 - Every stop combination is equally likely, so the unweighted average over all
   combinations is the expected payout, exactly.
-- **The sentence that matters:** no probabilities are multiplied anywhere in this
+- **Then:** no probabilities are multiplied anywhere in this
   method, and that is deliberate, because multiplying marginals is precisely what the
   analytic path does and what this test exists to check.
 - "If the enumerator multiplied marginals too, it would reproduce the analytic path's
@@ -396,8 +396,7 @@ Sums are `Int128` because the sum of squared payouts over 10,648 combinations ov
 `Int64`.
 
 - The overflow would be silent. The test would pass or fail on a number that wrapped.
-- "One line of comment answering the question 'why the exotic type'. That is the whole
-  job of a comment: state the thing the code cannot say about itself."
+- "The comment records why this accumulator is wider than the values added to it."
 
 ### Beat 5 — the per-window test, and why the average is not enough
 
@@ -408,7 +407,7 @@ Read its doc comment, then say why it exists beside the RTP test.
 - The enumerator and the engine's evaluator must agree on every single window, rather
   than on the mean.
 - "An averaging test can hide two errors that cancel. Overpay one window, underpay
-  another, and the average is perfect. Ten thousand equalities have nowhere to hide."
+  another, and the average is perfect. Ten thousand equalities catch both."
 - Integer millicents make it an exact equality, which is invariant M1 from episode 2
   collecting for the last time. "If this ever needed a tolerance, floating point got
   into the pay path."
@@ -427,9 +426,9 @@ sigma.
   1e-12 is near the limit of double precision, which is what the comparison should
   allow.
 - Sigma involves a subtraction of two large nearly equal numbers, which loses precision
-  by construction. 1e-9 is the honest budget for that computation.
-- "Three different numbers, each derived from what the arithmetic can actually deliver.
-  None of them chosen by running the test and picking a value that passed."
+  by construction. 1e-9 is the budget the arithmetic supports.
+- "Three different numbers, each derived from what the arithmetic can deliver. None of
+  them chosen by running the test and picking a value that passed."
 
 ### Beat 7 — the sanity assertions inside the test
 
@@ -458,7 +457,7 @@ the feature list is empty.
 
 ## 14:00–17:30 — The enumeration referee for real games
 
-**Scene:** RIDER, `src/MMP.SlotGame.Core/Games/GameAnalyzer.cs`, walked rather than
+**Scene:** RIDER, `CSharp/src/MMP.SlotGame.Core/Games/GameAnalyzer.cs`, walked rather than
 pasted.
 
 The exhaustive test covers a 10,648-outcome classic. A five-reel game with ragged strips
@@ -472,19 +471,19 @@ Read the class comment's first paragraph.
   rather than every individual stop.
 - For Orca Dive that is tens of thousands of tuples instead of fourteen million, for the
   same exact answer.
-- **Why it works:** a payline reads exactly one cell per reel. "The optimisation falls
-  out of the domain rather than out of a trick. That is the kind that stays correct."
+- **Why it works:** a payline reads exactly one cell per reel. "The optimisation follows
+  from that rule, so a change to the domain will also change the count."
 
 ### Beat 10 — the scatter rides through as a second weight
 
-The paragraph that makes this analysis honest.
+The paragraph that makes this analysis correct.
 
 - The scatter does not read a single cell, so it cannot be a plain symbol in the tuple.
 - Beside each reel's plain symbol counts sits a second count: stops that show that symbol
   on the payline *and* the scatter somewhere in the window. Multiply the second weight on
   the required reels and the first everywhere else.
-- **Say why it matters:** line pay and the feature are not independent, because a scatter
-  in the window costs that reel a payline symbol. A sigma built by adding their variances
+- **Then the consequence:** line pay and the feature are correlated, because a scatter in
+  the window costs that reel a payline symbol. A sigma built by adding their variances
   would be wrong.
 - "Episode 6 said the scatter bonus breaks the independence assumption. This is the code
   that stopped leaning on it."
@@ -497,20 +496,18 @@ out of reels.
 - Symbols absent from a reel are skipped, so a game whose reels carry different symbol
   sets costs nothing for the ones it does not use.
 - The `Enumeration` class exists because the descent carries eight accumulators, and the
-  comment says so: threading those through a recursive signature would be the least
-  readable thing in the codebase. "A class chosen for readability rather than for
-  ceremony, with the reasoning written down."
+  comment says so: a recursive signature would have to thread all eight through every
+  call. "A class chosen for readability, with the reasoning written down."
 
 ### Beat 12 — two guards, both loud
 
 - `Analyse` refuses a multi-payline game by name, and the message says multi-line games
   simulate correctly and are not analysed here yet.
 - `GuardEnumerationSize` refuses anything past 200 million symbol combinations, because a
-  definition that large is almost certainly a mistake and failing loudly beats appearing
+  definition that large is likely a mistake and the analyzer throws instead of appearing
   to hang.
-- **The class comment calls the first one a known limit, stated rather than hidden.**
-  "That phrase is worth stealing. A limitation in a doc comment is a design decision. The
-  same limitation discovered at runtime is a bug report."
+- **The class comment calls the first one a known limit.** "A limitation in a doc comment
+  is a design decision. The same limitation discovered at runtime is a bug report."
 
 > **Illustration (40 seconds, BROWSER).** Chapter 7 page, enumeration lab. Run the
 > analyzer over the classic three-reel game and over Orca Dive, side by side, with the
@@ -533,7 +530,7 @@ it is shaped the way it is.
   the answer should be rather than only that two runs agree. The class comment says the
   order is part of the contract, and swapping the window draw with the feature play
   desynchronizes every stream while nothing looks wrong.
-- **The operator is the alarm.** `Assert.Equal` on integers, at 300,000 spins, at 1, 2,
+- **Why the operator matters.** `Assert.Equal` on integers, at 300,000 spins, at 1, 2,
   and 8 workers. "The day this needs a tolerance is the day invariant M1 broke, and the
   test will say so by failing rather than by being edited."
 - **`NoAmbientRngTests.CoreSourceContainsNoAmbientRandomnessOrClock`** reads the assembly
@@ -541,7 +538,7 @@ it is shaped the way it is.
   should write, and the only reliable enforcement of that is a machine checking, rather
   than everyone remembering.
 - **`SpinRng_IsAMutableStruct_SoRefPassingIsLoadBearing`** is the strangest test in the
-  repo and one of the most valuable. It asserts a property that looks like a defect,
+  repo. It asserts a property that looks like a defect,
   because the whole determinism design depends on it. "Somebody will try to make this
   readonly to be tidy. This is what stops them, with a name that explains why."
 - **`DomainDataImmutabilityTests`** — three tests, one per shared type, each asserting the
@@ -555,11 +552,9 @@ it is shaped the way it is.
   of the band itself, and it fails both when the game is biased and when the analytic
   sigma is wrong.
 - **"A healthy generator lands in the tail about one run in a hundred."** A one-seed test
-  either flakes or gets tuned until it stops flaking, and a tuned test proves whatever it
-  was tuned to.
-- **`GameConvergenceTests.OrcaDive_TenMillionSpins_ReproduceThePublishedReturns`** is the
-  strongest single assertion in the project, because the number on the right-hand side was
-  printed by somebody who has never heard of this code.
+  either flakes or gets tuned until it stops flaking.
+- **`GameConvergenceTests.OrcaDive_TenMillionSpins_ReproduceThePublishedReturns`** checks
+  the run against numbers printed outside this project. The finale segment reads them.
 
 ## 21:00–22:00 — Run everything
 
@@ -570,11 +565,10 @@ it is shaped the way it is.
   episode 2, the geometry from episode 3, the closed forms from episode 4, the
   determinism from episode 5, the validation boundary from episode 6, and today's three
   independent implementations agreeing."
-- "Nothing in that list is a test of a getter."
 
 ## 22:00–26:00 — The finale run
 
-**Scene:** BROWSER, the finale page. This is the payoff and it gets four minutes.
+**Scene:** BROWSER, the finale page. This is the finale and it gets four minutes.
 
 - Start a ten-million-spin run on camera and let it go. Talk over it rather than
   narrating each frame.
@@ -585,14 +579,18 @@ it is shaped the way it is.
   toward the analytic target. Point at both together. "The line is the simulator. The band
   is the closed form. Neither one is watching the other."
 - **Point at the telemetry counters:** dropped samples in the thousands, and the spin
-  counter dead on pace. Episode 5's lossy lane, working exactly as designed, at full
-  speed.
+  counter dead on pace. Episode 5's lossy lane, working as designed, at full speed.
 - **At completion:** the final verdict, inside the band. Read the measured RTP against the
   analytic target and against the enumerated ground truth. Three numbers, three
-  implementations.
+  implementations. Name which hit-frequency the on-screen counter is showing before
+  reading it: it counts any award, base or feature, and the published figure is line
+  pays only.
+- **Put the Orca Dive card up while the numbers are on screen:** total return 86.111%,
+  line pay 59.601%, bonus 26.510%, line hit frequency 10.258%. "Those four were printed
+  by somebody who has never heard of this code, and the run just reproduced them."
 - Then rerun the same seed and worker count and let the final total come out identical.
   "Ten million spins, sixteen cores, and the same total to the last millicent. That is
-  invariant M2 in the one place where a viewer can watch it happen."
+  invariant M2, where a viewer can watch it happen."
 
 ## 26:00–27:30 — Wrap the series
 
@@ -608,8 +606,7 @@ it is shaped the way it is.
 - "None of the individual pieces were clever. The design was making each piece so strict
   that the next one got to be ordinary."
 - Close on the three implementations. "One counts probabilities, one plays spins, one
-  visits every outcome. They agree. That agreement is the machine proving itself, and it
-  is the only kind of proof a simulator can offer."
+  visits every outcome. They agree."
 
 ---
 
@@ -620,12 +617,12 @@ it is shaped the way it is.
   segment at 17:30, not from the finale.
 - Strongest visuals in order: the finale band narrowing around the settling line, the two
   identical ten-million-spin totals from the same seed, and the full suite going green in
-  the terminal. Give each real silence.
+  the terminal. Hold on each.
 - Zoom hotkey belongs on: the shared-versus-not-shared lists in the class comment, the
   horizontal rule that says nothing below calls Core evaluation code, the three tolerance
   budgets, and the final RTP comparison on the finale page.
 - The paste block is the finished file verbatim. If a paste lands wrong, cut and re-paste
-  rather than hand-fixing — the file has to match the repo.
+  rather than hand-fixing: the file has to match the repo.
 - Warm the finale page before recording. A cold first run on camera is the one demo
   failure this series cannot absorb, because it is the last thing viewers see.
 - Running long? Compress beat 11 and beat 12 into one minute and drop the enumeration lab

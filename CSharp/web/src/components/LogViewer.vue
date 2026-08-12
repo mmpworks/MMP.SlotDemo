@@ -2,8 +2,8 @@
 // Live SSE log viewer. Virtualizes a 25k-row ring buffer at a fixed row
 // height (LogRow.vue is 22px) using the top/bottom-spacer technique so only
 // the rows in view ever touch the DOM. Filtering is view-side (hidden levels
-// stay in the buffer), and Follow re-engages on scroll-to-bottom, disengaging
-// the moment the operator scrolls up to read history.
+// stay in the buffer). Follow disengages the moment the operator scrolls up to
+// read history, and comes back only via the Follow or Jump-to-live button.
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import { useLogStream } from '../composables/useLogStream'
 import { LEVEL_FAMILIES, LEVEL_META, LEVEL_ORDER, levelColor, normalizeLevelKey, type LevelKey } from '../logviewer/levels'
@@ -132,9 +132,9 @@ function isLevelVisible(key: LevelKey | null): boolean {
   return key !== null && visibleLevels.value.has(key)
 }
 
-// bufferedCount changes exactly once per stream flush (see useLogStream's
-// rAF batching), so watching it is the cheapest correct signal for "new
-// rows landed" — no separate polling loop needed.
+// bufferedCount changes once per stream flush (see useLogStream's rAF
+// batching) until the buffer hits its cap, after which the length holds
+// steady at cap. Watching it is the cheapest signal for "new rows landed".
 watch(bufferedCount, maybeFollowScroll)
 
 onMounted(() => {
@@ -216,7 +216,9 @@ onUnmounted(() => {
       <div class="log-spacer" :style="{ height: `${spacers.topPx}px` }" />
       <LogRow v-for="(evt, i) in visibleEvents" :key="range.start + i" :event="evt" />
       <div class="log-spacer" :style="{ height: `${spacers.bottomPx}px` }" />
-      <p v-if="totalRows === 0" class="log-empty">No log events yet.</p>
+      <p v-if="totalRows === 0" class="log-empty">
+        Run any lab above and its log lines land here, streamed live from the server.
+      </p>
     </div>
   </section>
 </template>

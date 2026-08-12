@@ -427,14 +427,13 @@ internal sealed class GameDefinitionBuilder(GameDocument document)
     /// multiplier × <see cref="Millicents.ScaleFactor"/> regardless of <see cref="_payUnit"/>: a
     /// "units" pay of 5, a "tenths" pay of 50 and a "hundredths" pay of 500 all compile to the
     /// same value at the current ScaleFactor of 100, so the evaluator and the analyser read one
-    /// representation. The route is always "declared value -> real multiplier (a decimal, exact
-    /// for a whole number of units/tenths/hundredths) -> x ScaleFactor": ScaleFactor is the only
-    /// named scale constant in the engine, and "tenths" and "hundredths" are converted to a real
-    /// multiplier by their own definition (/10, /100) rather than by a second scale constant.
-    /// Hundredths is the finest unit the engine supports (the smallest real-money denomination,
-    /// one cent, is 1,000 millicents — three orders finer — so a hundredth-of-the-total-spin-bet
-    /// multiplier always lands on a whole millicent); a pay that would need more precision than
-    /// that to state exactly is rejected here, in every mode.
+    /// representation. ScaleFactor is the engine's one named scale constant; "tenths" and
+    /// "hundredths" convert to a real multiplier by their own definition (/10, /100).
+    ///
+    /// Hundredths is the finest unit the engine supports. One cent, the smallest real-money
+    /// denomination, is 1,000 millicents — three orders finer — so a hundredth of the total
+    /// spin bet always lands on a whole millicent. A pay needing finer precision than
+    /// hundredths is rejected here, in every mode.
     /// </summary>
     private int[]? BuildPays(Dictionary<int, decimal>? declared, string label, int reelCount)
     {

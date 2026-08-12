@@ -121,7 +121,8 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
       <h3>Lab 1 — The window over the strip</h3>
       <p class="lab__lede">
         Pick a source, draw a window, and step through the deterministic spin stream. The
-        same seed and index always produce the same window. That is invariant R3.
+        same seed and index always produce the same window, because the generator is passed
+        explicitly the way episode 2 set it up.
         On Orca Dive, ★ marks the Wild Orca and ◆ the Penguin scatter.
       </p>
 
@@ -190,7 +191,7 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
           <span class="mono">{{ spin.lines[activeLine]?.cells.map((c) => c.symbol).join(' · ') }}</span>
           on row path <span class="mono">[{{ spin.lines[activeLine]?.rows.join(', ') }}]</span>.
           The evaluator scores the leading run from reel 0; on Orca the Wild Orca extends
-          any run it joins.
+          a run of any of the four fish; other symbols it leaves alone.
         </p>
       </div>
     </section>

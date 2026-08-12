@@ -36,9 +36,9 @@ public sealed record Paytable
         Pays.GetValueOrDefault((symbolId, count));
 
     /// <summary>
-    /// Canonical multipliers per symbol set. One table per set (DRY); the shape is
-    /// "premiums pay steep, commons pay shallow", scaled later to hit target RTP —
-    /// so only the RATIOS here matter.
+    /// Canonical multipliers per symbol set: premiums pay steep, commons pay shallow.
+    /// <see cref="PaytableSolver"/> scales the whole table to hit target RTP, so the
+    /// ratios between these entries are what carry over.
     /// </summary>
     public static Paytable CanonicalFor(int reelCount, int symbolCount)
     {
@@ -64,9 +64,8 @@ public sealed record Paytable
 public delegate Millicents PayoutScaler(double rawPayMultiplier);
 
 /// <summary>
-/// The realized game: integer-millicent pays. INVARIANT R1: the analytic calculator
-/// and the spin evaluator both read THIS instance — rounding residual is shared, never
-/// a divergence between the two computations.
+/// The realized game: integer-millicent pays. The analytic calculator and the spin
+/// evaluator both read this instance, so they share one rounding residual.
 /// </summary>
 public sealed record ScaledPaytable
 {

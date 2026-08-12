@@ -20,23 +20,20 @@ public sealed record Payline
 
     /// <summary>
     /// Standard line patterns used by the stock presets: 1 center, 3 horizontals,
-    /// 5 adds V/Λ, and 9 adds zig-zags. This is a project convention, not a universal
-    /// slot-game payline set. v1
-    /// supports 5 or 9 lines and windows of <see cref="StripReelSet.MinRows"/>..
-    /// <see cref="StripReelSet.MaxRows"/> rows (validated by the caller, not here).
+    /// 5 adds V/Λ, and 9 adds zig-zags. This is a project convention rather than a
+    /// universal slot-game payline set. v1 supports 5 or 9 lines and windows of
+    /// <see cref="StripReelSet.MinRows"/>..<see cref="StripReelSet.MaxRows"/> rows
+    /// (validated by the caller, not here).
     ///
-    /// Row geometry, derived from <paramref name="rows"/> every call — never a fixed
-    /// constant, so a 4- or 5-row preset gets correct shapes without touching this method:
+    /// Row geometry is derived from <paramref name="rows"/> on every call:
     /// top = 0, bottom = rows - 1, middle = rows / 2 (integer division).
     ///
-    /// For an ODD row count the middle is the true center (5 rows: 0, 2, 4 — a V/hat spans
-    /// the full window height and both zig-zags swing by the same 2 rows). For an EVEN row
-    /// count there is no exact center; integer division rounds toward the BOTTOM half (4
-    /// rows: middle = 2, not 1). A V/hat still spans the full height (0 to rows-1) because
-    /// it only uses middle as an intermediate ramp point, but the zig-zags become
-    /// asymmetric: ZigTop/ZagTop swing 2 rows (0 to 2) while ZigBottom/ZagBottom swing 1 row
-    /// (2 to 3). That asymmetry is a documented consequence of the rounding choice, not a
-    /// bug — the alternative (rounding up) would just move the asymmetry to the other side.
+    /// An odd row count puts the middle at the true center: 5 rows give 0, 2, 4, a V/hat
+    /// spans the full window height, and both zig-zags swing by 2 rows. An even row count
+    /// has no center, and integer division rounds toward the bottom half: 4 rows put the
+    /// middle at index 2. A V/hat still spans 0 to rows-1, since middle is only an
+    /// intermediate ramp point, but the zig-zags become asymmetric. In a four-row window
+    /// ZigTop/ZagTop swing two rows (0 to 2) and ZigBottom/ZagBottom swing one (2 to 3).
     /// </summary>
     public static IReadOnlyList<Payline> For(int reels, int lineCount, int rows)
     {
@@ -69,17 +66,16 @@ public sealed record Payline
         };
     }
 
-    /// <summary>The single centre-row line — the whole payline set of a classic one-line game.</summary>
+    /// <summary>The center-row payline used by classic one-line games.</summary>
     public static Payline Center(int reels, int rows) => new("Center", Repeat(reels, rows / 2));
 
     private static int[] Repeat(int reels, int row) =>
         [.. Enumerable.Repeat(row, reels)];
 
     /// <summary>
-    /// V-shape: start row, dip/peak to the far row at the middle reel, back. Row-count
-    /// agnostic by construction — it only ever interpolates between the two row values it
-    /// is given, so <see cref="For"/> generalizing to a new window height needs no change
-    /// here, only correctly-derived <paramref name="edgeRow"/>/<paramref name="midRow"/>.
+    /// V-shape: start row, dip/peak to the far row at the middle reel, back. It interpolates
+    /// between the two row values it is given, so it works at any window height. The caller
+    /// derives <paramref name="edgeRow"/> and <paramref name="midRow"/>.
     /// </summary>
     private static int[] Bend(int reels, int edgeRow, int midRow)
     {

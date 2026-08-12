@@ -79,8 +79,8 @@ public static class ChapterSixEndpoints
 
     /// <summary>
     /// The loader as a teaching surface: paste any JSON, get back either the compiled
-    /// game or every problem at once. Collecting the full list instead of stopping at
-    /// the first is the design decision on display - a author fixes a file in one pass.
+    /// game or every problem at once. Reporting the full list saves the author from
+    /// repeating an edit-and-run cycle for each error.
     /// </summary>
     private static IResult Validate(ValidateRequest request, StructuredLogger log)
     {

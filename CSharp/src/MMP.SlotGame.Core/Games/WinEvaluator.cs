@@ -5,10 +5,9 @@ namespace MMP.SlotGame.Core.Games;
 
 /// <summary>
 /// The winning interpretation of one payline: which pay category, how long a run, what it
-/// pays. <paramref name="Multiplier"/> is in hundredths of the TOTAL SPIN BET (225 =
-/// 2.25X of the whole wager, not of this line's share of it — see
-/// <see cref="EvaluateWindow"/>'s doc comment for why); see
-/// <see cref="Definition.PayCategory.PayFor"/>.
+/// pays. <paramref name="Multiplier"/> is in hundredths of the total spin bet (225 =
+/// 2.25X of the whole wager, not of this line's share of it; <see cref="EvaluateWindow"/>
+/// documents the basis). See <see cref="Definition.PayCategory.PayFor"/>.
 /// </summary>
 public readonly record struct LineWin(int CategoryIndex, int Count, int Multiplier)
 {
@@ -18,23 +17,23 @@ public readonly record struct LineWin(int CategoryIndex, int Count, int Multipli
 }
 
 /// <summary>
-/// Turns one payline into one win, for ANY game definition. It has no idea what a wild, a
-/// seven or a fruit is; it walks the compiled pay categories and takes the best.
+/// Turns one payline into one win, for any game definition. It walks the compiled pay
+/// categories and takes the best; the definition supplies every symbol meaning.
 ///
-/// Two engine-wide rules, and they are the only game knowledge in here:
+/// Two engine-wide rules live here, and they are the whole of this class's game knowledge:
 ///
 ///  1. A run is left-aligned and continues while the category says the symbol continues it.
-///     A run only counts if at least one symbol in it satisfies the category. That second
-///     clause is what keeps an all-substitute line with the substitute rather than with the
-///     symbol it was standing in for, and it is vacuous for games without wilds.
-///  2. Best win per line: highest pay wins, and equal pays go to the LONGER run. The tie
-///     rule is not decoration. In Orca Dive a Red-7 four-of-a-kind and a Mixed-7
-///     five-of-a-kind both pay 100, and the public reconstruction assigns that line to Mixed 7.
-///     Ties are otherwise a coin flip, and a coin flip is not reproducible.
+///     A run counts only if at least one symbol in it satisfies the category. That second
+///     clause keeps an all-substitute line with the substitute rather than the symbol it
+///     stands in for. It matters only where wilds exist.
+///  2. Best win per line: highest pay wins, and equal pays go to the longer run. In Orca
+///     Dive a Red-7 four-of-a-kind and a Mixed-7 five-of-a-kind both pay 100, and the
+///     source combination table assigns that line to Mixed 7. Fixing the tie on run
+///     length keeps the assignment reproducible.
 ///
-/// Minimum run length is not a rule here either. A category pays at a length exactly when
-/// its pay table has a non-zero entry there, which is how Orca Dive pays a lone wild at
-/// one of a kind while everything else needs three.
+/// Run length has no minimum here. A category pays at a length exactly when its pay table
+/// has a non-zero entry there, which is how Orca Dive pays a lone wild at one of a kind
+/// while everything else needs three.
 /// </summary>
 public sealed class WinEvaluator(GameDefinition definition)
 {
@@ -80,21 +79,18 @@ public sealed class WinEvaluator(GameDefinition definition)
     }
 
     /// <summary>
-    /// Total pay multiplier over every payline, in hundredths of the TOTAL SPIN BET. Lines
-    /// are independent pays that add, which is standard and is also what makes the analytic
-    /// EV a plain sum over lines.
+    /// Total pay multiplier over every payline, in hundredths of the total spin bet. Lines
+    /// are independent pays that add, which is also what makes the analytic EV a plain sum
+    /// over lines.
     ///
-    /// BASIS, stated once here because it is load-bearing everywhere else that reads a
-    /// <see cref="LineWin.Multiplier"/>: every payline's compiled multiplier is scaled
-    /// against the SAME total spin wager (<see cref="Money.Millicents.ScaledMultiply"/> is
-    /// always called with this sum, never a per-line share of the wager), and this method
-    /// sums every winning line's multiplier before that one scaling happens. Traditional
-    /// multiline paytables often state pays as multiples of one line's bet; this engine
-    /// does not model that division, so a
-    /// declared multiplier of 5000 always means 5000X the TOTAL spin wager, on every line,
-    /// with no per-line share taken first. For a single-payline game (every shipped game
-    /// today) the two are the same number, which is why this basis has never visibly
-    /// mattered — it will the moment a multi-payline JSON game is authored.
+    /// Every payline's compiled multiplier is scaled against the same total spin wager:
+    /// <see cref="Money.Millicents.ScaledMultiply"/> is always called with this sum, never
+    /// a per-line share. This method sums every winning line's multiplier before that one
+    /// scaling happens. Traditional multiline paytables often state pays as multiples of
+    /// one line's bet; this engine has no such division, so a declared multiplier of 5000
+    /// means 5000X the total spin wager on every line. Every game shipped today has a
+    /// single payline, where the two bases give the same number; a multi-payline JSON game
+    /// would separate them.
     /// </summary>
     public int EvaluateWindow(ReadOnlySpan<Symbol> window, Span<byte> cells)
     {

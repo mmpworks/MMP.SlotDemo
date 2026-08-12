@@ -30,11 +30,13 @@ Dev loop for the SPA: `npm run dev` in `CSharp/web` (Vite on `:5173`, proxies
 |---|---|---|
 | Start | Episode cards + the STAT machine probe (pipeline smoke test) | `/api/stats` |
 | 02 Money | Integer money vs a double twin, bit view, seeded streams, modulo bias | `/api/ch2/money` `/rng` `/bias` |
-| 03 Reels | Strip geometry, deterministic spin walk, payline reads, centre-row census | `/api/ch3/presets` `/spin` `/census` |
+| 03 Reels | Strip geometry, deterministic spin walk, payline reads, center-row census | `/api/ch3/presets` `/spin` `/census` |
 | 04 Math | Paytable solve path with drift, band table at a spin ladder | `/api/ch4/solve` `/band` |
 | 05 Engine | Same-seed triple runs (bit-identical), telemetry starvation | `/api/ch5/determinism` `/telemetry` |
 | 06 Data | Shipped game documents via the real loader, paste-anything validator | `/api/ch6/games` `/validate` |
 | 07 Proof | Exhaustive enumeration census, simulation vs referee verdict | `/api/ch7/enumerate` `/referee` |
+| PAR | The full Probability & Accounting Report for Orca Dive, computed live from every stop combination | `/api/par/sheet` `/api/par/summary` |
+| Books | The slot-math, PAR-sheet, PRNG, and regulation reading behind the series | — |
 | Run | **The proving ground** — a live 10M-spin run converging inside the band | `/api/run/*` |
 
 ## The proving ground
@@ -61,22 +63,22 @@ the worked examples.
 
 ## Chapter → source files (what each episode creates on camera)
 
-| Episode | Files pasted and walked | Why they carry the episode |
+| Episode | Files pasted and walked | What the episode covers |
 |---|---|---|
-| 02 | `Money/Millicents.cs`, `Simulation/SpinRng.cs` | M1/M2/R3 — the invariants everything else stands on |
-| 03 | `Reels/StripReelSet.cs`, `Reels/Payline.cs`, `Reels/Symbol.cs` | A reel is a strip; the strip is the distribution |
+| 02 | `Money/Millicents.cs`, `Simulation/SpinRng.cs` | M1/M2/R3, the invariants the rest of the engine relies on |
+| 03 | `Reels/StripReelSet.cs`, `Reels/Payline.cs`, `Reels/ReelPreset.cs` | A reel is a strip; the strip is the distribution |
 | 04 | `Paytables/Paytable.cs`, `Paytables/PaytableSolver.cs`, `Rtp/AnalyticMath.cs` | One scale factor; sigma priced in closed form |
 | 05 | `Simulation/SimulationEngine.cs`, `Simulation/RunTotals.cs` | Fixed quotas, batched atomics, the two-lane split |
 | 06 | `Games/Definition/*` + `games/*.json` | Games as data; validation that reports everything at once |
 | 07 | `Games/GameAnalyzer.cs` + the ground-truth tests | Enumeration referees simulation |
 
-Recording scripts live in the MMP.SlotGame repo under `docs/scripts/`.
+Recording scripts live in this repo under `docs/scripts/`, one per episode.
 
 ## Tests
 
 ```bash
-cd CSharp && dotnet test MMP.SlotDemo.slnx     # engine (202) + server (77)
-cd web && npm test                              # SPA (43), incl. chart geometry
+cd CSharp && dotnet test MMP.SlotDemo.slnx     # engine + server suites
+cd web && npm test                              # SPA suite, incl. chart geometry
 ```
 
 Server tests include seeded fuzz across every lab route (no request may 5xx),

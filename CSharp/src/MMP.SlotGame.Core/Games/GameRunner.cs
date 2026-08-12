@@ -81,12 +81,11 @@ public sealed class GameRunner(GameDefinition definition, RunPlan plan)
     /// <summary>
     /// One spin: draw the window, pay every payline, and if the feature triggers, play it
     /// for real. Pays are the real multiplier × <see cref="Millicents.ScaleFactor"/>, and
-    /// <see cref="Millicents.ScaledMultiply"/> divides that out exactly, so every award is
-    /// exact millicents with nothing to round.
+    /// <see cref="Millicents.ScaledMultiply"/> divides that out with no remainder.
     ///
-    /// The feature draws from the SAME worker stream as the reels. That keeps the determinism
-    /// contract intact (one stream per worker, advanced in a fixed order) and it is why the
-    /// bonus is played inline rather than batched up for later.
+    /// The feature draws from the same worker stream as the reels: one stream per worker,
+    /// advanced in a fixed order. That is why the bonus is played inline instead of batched
+    /// for later.
     /// </summary>
     private SpinPlay CreatePlay(ConcurrentBag<ComponentTally> tallies)
     {

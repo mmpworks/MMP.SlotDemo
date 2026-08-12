@@ -8,9 +8,8 @@ defineProps<{ title: string; blurb: string }>()
 
 const limits = ref<RunLimits | null>(null)
 
-// The subject: a shipped game by default — Orca Dive is the game the series builds, so
-// the proof people watch is the proof of the game they know. 'preset:' ids switch to the
-// configurable solved game.
+// The subject: a shipped game by default. 'preset:' ids switch to the configurable
+// solved game.
 const subject = ref('game:orca-dive.json')
 const baseBp = ref(7500)
 const freeSpinsBp = ref(1300)
@@ -204,9 +203,9 @@ const verdict = computed(() => {
       </div>
 
       <p v-if="isGameSubject" class="lab-note">
-        A shipped game brings its paytable with it, so there is no RTP to choose. The
-        enumerated reference for Orca Dive is 86.11%, and the run should settle into the
-        band around it.
+        A shipped game brings its paytable with it, so there is no RTP to choose. Its
+        enumerated reference is shown as Analytic RTP below, and the run should settle into
+        the band around it.
       </p>
       <p v-if="overCap" class="lab__error">
         Aggregate {{ aggregateBp }} bp is over the {{ limits?.maxAggregateBasisPoints }} bp cap.
@@ -231,7 +230,7 @@ const verdict = computed(() => {
           <span class="readout__value">{{ ((run?.analytic.totalRtp ?? 0) * 100).toFixed(4) }}%</span>
         </div>
         <div class="readout">
-          <span class="readout__label">Hit frequency</span>
+          <span class="readout__label">Hit frequency (any award)</span>
           <span class="readout__value">{{ (liveHitFrequency * 100).toFixed(2) }}%</span>
         </div>
         <div class="readout">
@@ -295,15 +294,17 @@ const verdict = computed(() => {
         bounded, drop-oldest channel. The server consolidates those into one curve point
         per {{ (run?.stride ?? stride).toLocaleString() }} spins, each carrying its own
         z·σ/√N half-width, and streams the points here over SSE. Ten million spins become
-        a couple hundred points. The browser never receives the full stream, and the workers
-        never wait on the browser. The run also logs to the stream below through Herald.
+        a couple hundred points. The browser gets those points while the workers run flat
+        out. Hit frequency here counts any winning spin, bonus included, so it runs about a
+        point above the PAR sheet's line-only 10.26%. The run also logs to the stream below
+        through Herald.
       </p>
     </section>
   </article>
 </template>
 
 <style scoped>
-/* The dark zone earns its contrast: this is the one place the site goes cinematic. */
+/* The dark zone is the site's only inverted palette. */
 .proving-ground {
   background: #0b0e14;
   border: 1px solid #232a38;

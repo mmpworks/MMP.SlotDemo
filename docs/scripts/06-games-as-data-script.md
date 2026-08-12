@@ -6,6 +6,10 @@ walk it. Today one of the pastes is a game rather than a class.
 minutes total, and only to make an engine claim visible.
 **Companion article:** `docs/articles/06-games-as-data.md`
 **Companion site:** MMP.SlotDemo, branch `main`, page `#/ch06`
+**Files created on camera:** `CSharp/games/classic-three-reel.json`,
+`CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinition.cs`,
+`GameDefinitionLoader.cs`. **Shown, not created:** `GameDefinitionBuilder.cs`,
+`CSharp/games/orca-dive.json`.
 
 > **Discipline note for this recording.** The labs illustrate; they do not carry the
 > episode. If a beat can be made in Rider, make it in Rider. Cut to the browser only
@@ -17,13 +21,13 @@ minutes total, and only to make an engine claim visible.
 ## Prep checklist
 
 **Repo — the subject**
-- [ ] Rider on `MMP.SlotGame.slnx`, tree expanded to `MMP.SlotGame.Core`
+- [ ] Rider on `CSharp/MMP.SlotDemo.slnx`, tree expanded to `MMP.SlotGame.Core`
 - [ ] `Games/Definition/` present with `GameDocument.cs`, `GameDefinitionBuilder.cs`
       and `PickBonus.cs`; `GameDefinition.cs` and `GameDefinitionLoader.cs` moved aside
       so they get created on camera
-- [ ] `games/` folder present but `classic-three-reel.json` moved aside so it gets
+- [ ] `CSharp/games/` folder present but `classic-three-reel.json` moved aside so it gets
       created on camera
-- [ ] `games/orca-dive.json` open in a background tab for the real-par-sheet beat
+- [ ] `CSharp/games/orca-dive.json` open in a background tab for the real-par-sheet beat
 - [ ] A broken copy of a game file staged, with several problems in it at once
 - [ ] Test runner loaded: `GameDefinitionLoaderTests`, `GameDefinitionFuzzTests`,
       `OrcaDiveParSheetTests`
@@ -45,13 +49,16 @@ minutes total, and only to make an engine claim visible.
 
 ## 0:00–1:15 — Cold open
 
-**Scene:** RIDER, `games/orca-dive.json` on screen, scrolled to the strips.
+**Scene:** RIDER, `CSharp/games/orca-dive.json` on screen, scrolled to the strips.
 
-- "This is a real slot machine. Not a preset the code generated, a published machine
-  with strips somebody transcribed off a par sheet, and the engine has never heard of
-  it."
+- "This is a machine reconstructed from a published statistical analysis of a real one.
+  Somebody recorded spins, worked out the combination counts and the returns, and
+  published them. The engine has never heard of any of it."
+- Then the distinction: "The strip *orderings* are ours. Only the counts were published.
+  Line pays depend on counts alone, so the ordering is a free choice. The scatter is the
+  exception, because it reads the whole window, so those we placed deliberately."
 - "Every episode so far built a game out of C#. Today the game is a file, and the code's
-  only job is to refuse the ones that are wrong."
+  job is to refuse the ones that are wrong."
 - "Three things go in on camera. A definition type, a loader, and a game."
 - Set the format: "Same as always. Each one lands finished, then we walk it."
 
@@ -78,10 +85,10 @@ tell them everything they got wrong, all at once."
 **Scene:** RIDER.
 
 - New file in the `games` folder. **Path on screen and said out loud:**
-  `games/classic-three-reel.json`
+  `CSharp/games/classic-three-reel.json`
 - Paste **Block A**. "Ninety-seven lines and it is a complete machine."
 
-### Block A — `games/classic-three-reel.json`
+### Block A — `CSharp/games/classic-three-reel.json`
 
 ```json
 {
@@ -189,13 +196,15 @@ tell them everything they got wrong, all at once."
 
 The second key in the file records where the numbers came from.
 
-- For this game it says hand-built and says what it proves. For Orca Dive it points at
-  the published sheet.
+- For this game it says hand-built and says what it proves. Orca Dive deliberately
+  leaves it out, because its provenance lives in `docs/par-orca-dive.md` and the
+  citation belongs to the project rather than to the artifact. The field being
+  *optional* is part of the design: provenance is carried where it can be maintained.
 - **Why it ships in v1:** a number in a slot game is a claim about money, and a claim
   with no origin cannot be checked. The field costs one line and it is carried all the
   way through to `GameDefinition.Source`.
-- **AIF reading:** provenance before provenance tooling. There is no UI for this field
-  yet. Adding one later needs no change to any file already written.
+- Provenance ships before any tooling for it. There is no UI for this field yet, and
+  adding one later needs no change to any file already written.
 
 ### Beat 2 — symbol ids come from position
 
@@ -204,7 +213,7 @@ so on.
 
 - The engine works in `byte` ids for speed, and a human works in names. This array is the
   one place the two vocabularies meet.
-- **The consequence to say out loud:** reordering the symbols array renumbers the game.
+- **The consequence:** reordering the symbols array renumbers the game.
   Everything downstream reads ids, so it keeps working, and any hand-written test that
   hardcoded an id does not. The names are the stable contract; the ids are an internal
   encoding.
@@ -213,8 +222,8 @@ so on.
 
 `"wild": true` with an explicit `substitutesFor` list.
 
-- Episode 3 shipped the `IsWild` flag on `Symbol` with nothing setting it. This is the
-  door being walked through, and no type changed shape to allow it.
+- Episode 3 shipped the `IsWild` flag on `Symbol` with nothing setting it. Here is the
+  first game that sets it, and nothing changed shape to allow it.
 - The substitution list is explicit rather than "substitutes for everything". This wild
   covers Cherry and Lemon, so a wild does not turn a near-miss on Seven into a jackpot.
 - **Why explicit is right here:** "substitutes for everything" is a rule that has to be
@@ -234,14 +243,13 @@ so on.
 `reelStops` and `symbolCounts` both restate information the `reels` arrays already
 contain.
 
-- This looks like a DRY violation and it is the opposite. The strips are the game; the
-  declarations are the par sheet's own claims about the game.
+- This looks like a DRY violation. The strips are the game; the declarations are the par
+  sheet's own claims about the game.
 - The loader checks one against the other and reports every disagreement. "The
   redundancy is the test. Somebody transcribing 26 stops and typing 25 of them finds out
   from the loader rather than from an RTP that is off by a percent."
-- **The general pattern:** when a human transcribes data, give them a way to state the
-  same fact twice and let the machine compare. It catches the errors people actually
-  make.
+- When a human transcribes data, give them a way to state the same fact twice and let
+  the machine compare.
 
 ### Beat 6 — pays are integers, and the unit is declared
 
@@ -257,21 +265,20 @@ Every pay in this file is a whole number of units of the total spin bet.
   legal in a file and never generated by the preset solver.
 
 > **Illustration (45 seconds, BROWSER).** Chapter 6 page, definition lab. Load this file
-> and the site renders the compiled game — strips, marginals, and the analytic RTP —
+> and the site renders the compiled game (strips, marginals, and the analytic RTP)
 > all from the engine's own loader running server-side. Then edit one strip entry in the
 > page's editor so it disagrees with `symbolCounts`, and reload. The whole error list
-> appears at once. "Nothing here is a schema validator. That is the engine's loader
-> talking." Cut back.
+> appears at once. "That list comes from the engine's own loader." Cut back.
 
 ## 9:30–10:15 — Create the definition type
 
 **Scene:** RIDER.
 
 - New file. **Path on screen:**
-  `src/MMP.SlotGame.Core/Games/Definition/GameDefinition.cs`
+  `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinition.cs`
 - Paste **Block B**.
 
-### Block B — `src/MMP.SlotGame.Core/Games/Definition/GameDefinition.cs`
+### Block B — `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinition.cs`
 
 ```csharp
 using MMP.SlotGame.Core.Reels;
@@ -449,19 +456,17 @@ public sealed class GameDefinition
 
 ### Beat 7 — `internal` constructor, and the invariant riding on the type
 
-The only constructor is `internal`, and the loader is the only thing that calls it.
+The only constructor is `internal`, and the loader is what calls it.
 
 - A `GameDefinition` that exists passed every check. Same shape as
   `SimulationConfig.TryCreate` from episode 1, and the doc comment says so out loud.
 - Nothing downstream re-checks geometry. The analyzer, the evaluator, and the engine all
   assume validity, and that assumption is safe because construction is gated.
-- "Two very different subsystems reached the same shape independently. That is usually a
-  sign the shape is right rather than a coincidence."
+- "Two very different subsystems reached the same shape independently."
 
 ### Beat 8 — `Continues` and `IsRequired`, two questions instead of one
 
-This is the most interesting design decision in the file, so slow down and read the doc
-comment aloud.
+Slow down here and read the doc comment aloud.
 
 - The obvious model is one predicate: does this symbol count toward the run.
 - Wilds break that. A wild keeps a fruit run going, and a line of nothing but wilds is
@@ -470,8 +475,8 @@ comment aloud.
   `IsRequired` decides whether the run counts. An all-wild line continues the fruit
   category and never satisfies it, so it falls through to the wild category, which
   requires the wild.
-- **The general lesson:** "One predicate was hiding two ideas. The bug was not in the
-  evaluation code. It was in the model having one question where the domain has two."
+- "One predicate was hiding two ideas. The model had one question where the domain has
+  two."
 
 ### Beat 9 — compiled lookups, indexed by id
 
@@ -504,12 +509,12 @@ required reel.
 
 - Episode 2's features were independent of the window. This one is not: whether it
   triggers depends on the symbols that came up.
-- **Say the consequence plainly:** episode 4 added feature variances with no covariance
+- **Say the consequence:** episode 4 added feature variances with no covariance
   term because features were independent. A window-coupled bonus is a different model,
   and this game gets its return checked by exhaustive enumeration in episode 7 rather
   than by that closed form alone.
 - "The seam on `Symbol` said scatter-count triggering couples features to the window.
-  This is the coupling arriving, and the design already knew it was coming."
+  Here it is."
 
 ### Beat 12 — `StopCombinations`, a number that sets up episode 7
 
@@ -518,19 +523,18 @@ The product of the per-reel stop counts: the size of the whole outcome space.
 - For this game it is 22 times 24 times 22, about 11,600 combinations. Small enough to
   visit every single one.
 - "That property exists so the next episode can walk the entire space and referee both
-  the simulator and the analytic math. It is one loop and four lines, and it is the seam
-  that makes exhaustive proof possible."
+  the simulator and the analytic math."
 
 ## 16:00–16:45 — Create the loader
 
 **Scene:** RIDER.
 
 - New file. **Path on screen:**
-  `src/MMP.SlotGame.Core/Games/Definition/GameDefinitionLoader.cs`
+  `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinitionLoader.cs`
 - Paste **Block C**. "Seventy-nine lines, and most of the work happens somewhere else on
   purpose."
 
-### Block C — `src/MMP.SlotGame.Core/Games/Definition/GameDefinitionLoader.cs`
+### Block C — `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinitionLoader.cs`
 
 ```csharp
 using System.Text.Json;
@@ -552,11 +556,11 @@ public sealed class GameDefinitionException(string path, IReadOnlyList<string> e
 /// <summary>
 /// Reads a game from JSON and compiles it into a validated <see cref="GameDefinition"/>.
 ///
-/// This is the ONE validation boundary for imported games, in the same spirit as
+/// Imported games are validated here and nowhere else, in the same spirit as
 /// <see cref="Simulation.SimulationConfig.TryCreate"/>: a definition that comes out of here
-/// is one that satisfied every rule, so nothing downstream re-checks geometry. Errors are
-/// COLLECTED, not thrown one at a time, because someone hand-transcribing a PAR sheet wants
-/// the whole list, not a dozen edit-run cycles.
+/// satisfied every rule, so nothing downstream re-checks geometry. Errors are collected
+/// and reported together, so someone hand-transcribing a PAR sheet fixes the file in one
+/// pass.
 ///
 /// The checks are the ones a PAR sheet transcription actually gets wrong: a strip that does
 /// not match its declared length, a symbol count that does not match the published table, a
@@ -619,7 +623,7 @@ public static class GameDefinitionLoader
 ### Beat 13 — errors are collected, not thrown
 
 The class comment gives the reason, so read it out loud: someone hand-transcribing a par
-sheet wants the whole list rather than a dozen edit-and-run cycles.
+sheet fixes the file in one pass.
 
 - `TryLoad` returns a bool and fills an error list. Nothing throws on the first problem.
 - **Demonstrate it on camera.** Load the broken game file staged in the prep checklist.
@@ -648,10 +652,10 @@ a reel that never carries it.
 
 - Every one of those is a transcription error rather than a schema error.
 - "A JSON schema would catch none of these. They are all about the file being internally
-  inconsistent, and internal consistency is exactly the thing a person transcribing
-  numbers gets wrong."
-- This is where beat 5's deliberate redundancy pays. The declared geometry exists so
-  there is something to check the strips against.
+  inconsistent, and internal consistency is the thing a person transcribing numbers
+  gets wrong."
+- The declared geometry from beat 5 exists so there is something to check the strips
+  against.
 
 ### Beat 16 — the parse boundary, and errors that stay in the domain
 
@@ -661,9 +665,8 @@ The `try`/`catch` around deserialization turns a `JsonException` into a domain s
   a serializer stack trace.
 - The null check after it covers a file whose whole content is the literal `null`, which
   parses fine and means nothing.
-- **The reader options are worth a sentence:** case-insensitive properties, comments
-  allowed, trailing commas allowed. All three exist because these files are written by
-  hand. "The format bends toward the human who has to type it."
+- **The reader options:** case-insensitive properties, comments allowed, trailing commas
+  allowed. All three exist because these files are written by hand.
 
 ### Beat 17 — why the builder is a separate class
 
@@ -672,28 +675,27 @@ The loader is seventy-nine lines and the builder is six hundred.
 - The loader owns the boundary: parse, delegate, report. The builder owns the rules.
 - **Why the split:** the boundary is the part every caller reads, and it stays readable
   because the rules live next door. `GameDefinitionBuilder` gets flashed on screen, not
-  walked. "Six hundred lines of validation is the correct size for that job, and it is
-  the wrong thing to put in front of a reader who is trying to learn how loading works."
-- Point at the one line that matters: `builder.TryBuild(out definition)`, then
+  walked. "Six hundred lines of validation is the right size for that job, and it belongs
+  next door rather than in front of a reader learning how loading works."
+- Point at the line that does it: `builder.TryBuild(out definition)`, then
   `builder.Errors`. Every rule in the file reports through one accumulator.
 
 > **Illustration (50 seconds, BROWSER).** Chapter 6 page, validation lab. It shows a
 > game file with several deliberate errors and the loader's full error list beside it,
 > live from the engine's `TryLoad`. Fix one error in the editor and the list shrinks by
 > exactly one line. Fix the strip length and two entries vanish together, because the
-> declared count and the symbol count were both disagreeing with the same strip. "Every
-> line in that list is a sentence, and every one names the fix." Cut back.
+> declared count and the symbol count were both disagreeing with the same strip. Cut
+> back.
 
-## 21:00–21:45 — Flash the builder and the real game
+## 21:00–21:45 — Flash the builder and the shipped game
 
 **Scene:** RIDER, twenty seconds each, no walkthrough.
 
 - `GameDefinitionBuilder.cs`. Scroll it. Point at the `Fail` method that every rule calls
-  and say the shape: check, accumulate, continue. "It never returns early, which is why
-  the list is complete."
-- `games/orca-dive.json`. Point at the ragged `reelStops`, the published paytable, and
-  the penguin scatter. "That is a real machine, and the engine loading it has zero code
-  specific to it."
+  and say the shape: check, accumulate, continue. "It never returns early."
+- `CSharp/games/orca-dive.json`. Point at the ragged `reelStops`, the published paytable, and
+  the penguin scatter. "That is a full commercial-scale machine, and the engine loading it
+  has no code specific to it."
 
 ## 21:45–24:30 — The tests are part of the design
 
@@ -703,8 +705,8 @@ The loader is seventy-nine lines and the builder is six hundred.
   games in the repo load clean, every build.
 - **`EveryProblemIsReportedTogether`** is beat 13 as an assertion. **Why it needs its own
   test:** every other error test would pass against a loader that stops at the first
-  problem. This is the one that pins the whole behaviour.
-- The error suite maps one to one onto beat 15's list —
+  problem. This is the one that pins the behaviour.
+- The error suite maps one to one onto beat 15's list:
   **`StripsReferencingUnknownSymbols_AreReported`**,
   **`DeclaredGeometryThatDisagreesWithTheStrips_IsReported`**,
   **`BadPaylines_AreReported`**, **`BadPaytableEntries_AreReported`**,
@@ -724,12 +726,17 @@ The loader is seventy-nine lines and the builder is six hundred.
   boundaries get.
 - **`BadPayUnitStrings_AreAlwaysReportedByName`** pins beat 10 from the outside: an
   unrecognized unit is named rather than defaulted.
-- **`OrcaDiveParSheetTests`** is the strongest evidence in the episode.
+- **`OrcaDiveParSheetTests`** checks the loaded game against an outside document.
   **`CombinationTable_ReproducesThePublishedCountsExactly`** and
   **`ExpectedReturns_MatchThePublishedPercentages`** check the loaded game against numbers
   printed on somebody else's document. **Why that is different from every other test:**
   "Every other test in this repo checks our code against our expectations. This one checks
   it against an external authority that has never heard of us."
+  **Read the numbers rather than gesturing at them:** total return 86.111%. Line pay
+  59.601%, bonus 26.510%. Line hit frequency 10.258%, which is one paying line in
+  roughly every 9.7 spins. All thirty-two combination counts reproduce exactly, as
+  integers: 1,516,294 winning combinations out of 14,781,416, with no tolerance
+  anywhere.
 - **`PenguinScatter_HasDisjointWindowsAndThePublishedTriggerRate`** is beat 11 measured,
   and **`PickBonus_HonestPicks_ConvergeOnTheClosedForm`** checks the simulated bonus
   against its own closed form.
@@ -739,12 +746,13 @@ The loader is seventy-nine lines and the builder is six hundred.
 
 - A game is a file. The type that holds it can only be built by the loader, the loader
   reports everything wrong at once, and the checks were chosen from the mistakes people
-  actually make transcribing a par sheet.
+  make transcribing a par sheet.
 - Three claims: games as data can be diffed and reviewed, declared geometry is redundancy
   that earns its place, and the seams from episodes 3 and 5 absorbed wilds and a scatter
   bonus with no type changing shape.
-- "This game has about 11,600 possible outcomes. That number is small, and next episode it
-  is the whole point."
+- "This game has about 11,600 possible outcomes. Next episode we walk a space that size
+  end to end. For the preset version of a three-reel game it comes out at 22 cubed,
+  10,648: small enough to visit every one."
 - Next: "Proving the machine. Three independent implementations, one of which visits every
   outcome the game can produce, and the ten-million-spin run that ends the series."
 
@@ -761,7 +769,7 @@ The loader is seventy-nine lines and the builder is six hundred.
   `Continues` and `IsRequired` pair with its doc comment, and the `internal` keyword on the
   `GameDefinition` constructor.
 - The three paste blocks are the finished files verbatim, including the JSON. If a paste
-  lands wrong, cut and re-paste rather than hand-fixing — the file has to match the repo.
+  lands wrong, cut and re-paste rather than hand-fixing: the file has to match the repo.
 - Running long? Drop the builder flash and compress beat 14 to one sentence. Keep beat 8
   (`Continues` versus `IsRequired`), beat 11 (the window-coupled bonus), beat 13 (collected
   errors), and the test section whole.

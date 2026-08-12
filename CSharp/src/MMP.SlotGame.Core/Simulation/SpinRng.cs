@@ -10,7 +10,7 @@ namespace MMP.SlotGame.Core.Simulation;
 /// Each worker starts from a distinct value derived from the master seed and worker id;
 /// SplitMix64 expands that value into the four xoshiro state words.
 ///
-/// Simulation-grade RNG. NOT certified-gaming RNG (PRD NG-1).
+/// Simulation-grade RNG. Real-money play requires a certified gaming RNG; this is not one.
 /// </summary>
 public struct SpinRng
 {
@@ -51,7 +51,7 @@ public struct SpinRng
         return result;
     }
 
-    /// <summary>Uniform integer in [0, <paramref name="bound")) using Lemire's rejection method.</summary>
+    /// <summary>Uniform integer in [0, <paramref name="bound"/>) using Lemire's rejection method.</summary>
     public int NextInt(int bound)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(bound);

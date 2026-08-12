@@ -96,8 +96,9 @@ async function runBand(): Promise<void> {
         Pick a target and watch the whole path: the pay ratios, the single scale factor,
         the rounded pays, and the drift the rounding leaves. On Orca Dive the ratios are
         the published paytable and the probabilities come from the enumeration, wilds and
-        tie-breaks included. Re-pricing it to 65% or 70% is how a real cabinet ships in
-        several approved payback versions.
+        tie-breaks included. Set the target to 6500 or 7000 and re-solve; that is how one
+        cabinet ships in several approved payback versions. The box takes line RTP, so
+        Orca's 5960 line plus its 26.51% bonus gives the 86.11% total.
       </p>
 
       <div class="controls">

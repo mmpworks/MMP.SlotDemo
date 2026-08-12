@@ -7,8 +7,8 @@ namespace MMP.SlotGame.Core.Rtp;
 
 /// <summary>
 /// The analytic verdict for a realized game: what the integer paytable and feature
-/// schedules actually pay (not what was requested), plus the analytic per-spin σ that
-/// AC-1's confidence band is computed from.
+/// schedules actually pay (not what was requested), plus the analytic per-spin σ the
+/// confidence band is computed from.
 /// </summary>
 public sealed record RtpBreakdown(
     double BaseRtp,
@@ -19,8 +19,8 @@ public sealed record RtpBreakdown(
 public sealed class RtpCalculator
 {
     /// <summary>
-    /// Analyse the REALIZED game (RT-9/RT-11): recomputes RTP from integer millicent
-    /// pays via the enumeration path — never by trusting the solver's own scalar.
+    /// Analyse the realized game: recomputes RTP from the integer millicent pays via the
+    /// enumeration path, so the solver's own scalar is never carried forward.
     /// </summary>
     public static RtpBreakdown Analyse(
         StripReelSet reels,

@@ -12,14 +12,14 @@ Orca Dive's numbers are modeled on provides reconstructed reel strips, the visib
 paytable and bonus rules, and calculated returns. (The dated citation lives in
 `docs/par-orca-dive.md`, not here — this article is about the loader, not the source.)
 
-This source must be described accurately: it is **not an official manufacturer PAR
-sheet**. The author says he reconstructed the strips from 212 recorded spins and
-read the awards from the machine's rule screens. Reproducing its combination counts
-and returns is a valuable independent cross-check, but it does not certify every
-Orca Dive version or replace evaluation by a gaming laboratory.
+Orca Dive is a fictional game invented for this series. Its math reproduces a published
+PAR deconstruction of a real commercial machine: the source's author reconstructed the
+strips from 212 recorded spins and read the awards off the machine's rule screens.
+Reproducing that source's combination counts and returns is a valuable independent
+cross-check of this engine; it certifies nothing, and the source itself is **not an
+official manufacturer PAR sheet**.
 
-Getting there forces the design question this article answers: **where does the
-game live, in code, or in data?**
+That raises the design question: **where does the game live, in code, or in data?**
 
 The vocabulary for this chapter:
 
@@ -73,20 +73,18 @@ Several fields deserve explanation:
   strips imply. The loader cross-checks them and rejects the file on any
   disagreement.
 
-This redundancy does not create a second authority. The strips are the one
-authority the evaluator reads at runtime; `reelStops` and `symbolCounts` are a
-cross-check, the way a checksum published next to a download is not a second copy
-of the file, only a way to catch a bad transfer. For hand-transcribed data, that
-checksum catches the typo that would otherwise surface three layers later as a
-fourth-decimal RTP mismatch.
+The evaluator reads the strips at runtime; `reelStops` and `symbolCounts` are a
+cross-check, the way a checksum published next to a download catches a bad transfer
+rather than replacing the file. For hand-transcribed data, that checksum catches the
+typo that would otherwise surface three layers later as a fourth-decimal RTP
+mismatch.
 
 The loader mirrors `SimulationConfig.TryCreate` from article 1: parse, validate
 everything, report **all** errors at once, and only then construct. A
 `GameDefinition` that exists is one that passed every check: unknown symbol names,
 paylines off the window, paytable rows for symbols that don't exist, geometry
 disagreeing with strips, all rejected with slot-domain messages rather than parser
-stack traces. The invariant rides on the type, the same pattern as article 1's
-`SimulationConfig`, its second appearance in the series.
+stack traces.
 
 The JSON is first deserialized into a plain matching shape, `internal sealed
 class GameDocument` (and a handful of smaller classes alongside it for symbols,
@@ -147,23 +145,19 @@ an explicit conversion when imported. Article 2 covers the money-type side of th
 same conversion; the full schema for `payUnit` lives in
 `docs/game-definition-schema.md`.
 
-Two more choices in the loader's paytable-building code are worth pointing at
-directly. The declared pays arrive as `Dictionary<int, decimal>`, `decimal` rather
-than `double`, because a JSON author types a pay as ordinary decimal digits, "1.5"
-or "2.25," and `decimal` is the .NET type built to hold exactly the digits someone
-typed, with no representation error at all for a value like `1.5`. That's the
-right type for a number a human wrote down and a loader needs to check faithfully
-against what was actually written; it's a different job from the accumulation
-path article 2 rules `double` out of, and the loader converts this `decimal` to an
-integer well before the number reaches any hot path.
+Two more choices in the loader's paytable-building code need a note. The declared
+pays arrive as `Dictionary<int, decimal>`, `decimal` rather than `double`, because a
+JSON author types a pay as ordinary decimal digits, "1.5" or "2.25," and `decimal`
+holds those digits with no representation error. That is a different job from the
+accumulation path article 2 rules `double` out of, and the loader converts this
+`decimal` to an integer well before the number reaches any hot path.
 
 That conversion itself is `checked((int)(realMultiplier * Millicents.ScaleFactor))`.
 Ordinarily, casting a value too large for an `int` silently wraps around to a
-meaningless number; `checked` turns that silent wraparound into a thrown
-`OverflowException` instead. A pay large enough to overflow an `int` here would
-already be an absurd paytable entry, and the loader's whole design is to fail
-loudly on a bad file rather than let a bad number slip through disguised as a
-normal one. `checked` is the one-word way to ask the runtime to enforce that.
+meaningless number; `checked` turns that wraparound into a thrown
+`OverflowException` instead. A pay large enough to overflow an `int` would already
+be an absurd paytable entry, and `checked` makes it surface as an exception instead
+of a plausible-looking number.
 
 > 🧪 **Try it live.** The companion site's chapter 6 page (<http://localhost:5090>,
 > then `#/ch06`) hands the real loader whatever you give it. **Lab 1 — The shipped
@@ -171,7 +165,7 @@ normal one. `checked` is the one-word way to ask the runtime to enforce that.
 > `classic-three-reel.json` and shows what came out; **Lab 2 — Feed the loader
 > anything** lets you edit a definition and read back the whole error list at once.
 
-## The evaluator that doesn't assume a game shape
+## An evaluator that reads the game from data
 
 Orca Dive needs things the generated games from earlier articles didn't have: a
 wild that substitutes for the four fish (but not the sevens), a "mixed sevens"
@@ -208,17 +202,15 @@ public sealed record PayCategory
 ```
 
 `PayCategory` is still a `record`, and like article 4's `ScaledPaytable` it spells
-out a constructor rather than taking a one-line positional shape. Here the arrays
-stay `private` as well, and the reason is what a caller could otherwise do with
-them. An array property is still an ordinary reference, and handing a caller the
-actual `bool[]` would let that caller's code flip one entry in place, silently
-changing what the category pays without going through any of the loader's checks.
-The constructor here copies each array on the way in (`[.. continuesRun]`), so a
-category owns its own data from that point on, and it only ever exposes that data
-through `Continues(byte)` and `IsRequired(byte)`, single-symbol lookups with no
-way to reach the backing array at all. Two boolean arrays per category, read
-through those two methods: "Mackerel" has `Continues` true for Mackerel *and*
-WildOrca (the wild extends fish runs), but `IsRequired` true only for Mackerel.
+out a constructor rather than taking a one-line positional shape. The arrays stay
+`private` here too. An array property is an ordinary reference, and handing a caller
+the `bool[]` would let that caller flip one entry in place, changing what the
+category pays without going through any of the loader's checks. The constructor
+copies each array on the way in (`[.. continuesRun]`), and the category exposes its
+data through `Continues(byte)` and `IsRequired(byte)`, single-symbol lookups that
+never reach the backing array. Read through those two methods, "Mackerel" has
+`Continues` true for Mackerel *and* WildOrca (the wild extends fish runs), and
+`IsRequired` true for Mackerel alone.
 
 Two flat `bool[]` arrays, rather than one array of a small object holding both
 flags per symbol, is also a deliberate shape for where this data gets read: the
@@ -266,42 +258,43 @@ public LineWin Evaluate(ReadOnlySpan<byte> cells)
 }
 ```
 
-Twenty lines, and the only game knowledge in them is two engine-wide rules: runs
-are left-aligned, and the best pay wins with ties going to the longer run. Even the
-tie rule is a data-driven necessity, not taste: in the deconstruction's combination
-table, a Red7 four-of-a-kind and a Mixed-7 five-of-a-kind both pay 100, and tied
-cases are assigned to Mixed 7. Choosing the longer run reproduces those category
-counts. Another deterministic precedence rule could avoid randomness too, but it
-would not reproduce that published breakdown.
+The method is short, and its game knowledge is two engine-wide rules: runs are
+left-aligned, and the best pay wins with ties going to the longer run. The source
+combination table settles the tie. A Red7 four-of-a-kind and a Mixed-7
+five-of-a-kind both pay 100 there, and tied cases are assigned to Mixed 7, so
+choosing the longer run reproduces those category counts. Another deterministic
+precedence rule could avoid randomness too, but it would not reproduce that
+published breakdown.
 
-Minimum run length isn't a rule anywhere in this evaluator: a category pays at a
-length exactly when its pay array has a non-zero entry there. That's how a wild
-pays from one-of-a-kind while everything else needs three; the *data* differs, the
-code does not. This supports extension through data rather than through an
-inheritance hierarchy of evaluator subclasses.
+Run length has no minimum in this evaluator: a category pays at a length exactly
+when its pay array has a non-zero entry there. That's how a wild pays from
+one-of-a-kind while everything else needs three; the *data* differs, the code does
+not. This supports extension through data rather than through an inheritance
+hierarchy of evaluator subclasses.
 
 ## The bonus, simulated pick by pick
 
 In Orca Dive, scatters on reels 1, 3, and 5 open a pick
-screen, 24 prizes and 6 "Party Poopers"; pick until a Pooper ends the round.
+screen, 24 prizes and 6 blanks; pick until a blank ends the round.
 
 ```csharp
 /// <summary>
-/// A pick-until-you-lose bonus, configured from data: a bag of prize gifts plus
-/// some number of blanks that end the round for a fixed consolation. Each simulated
-/// gift is drawn in order, without replacement. The analytic
-/// formulas check the simulation rather than replacing its play path.
+/// A pick-until-you-lose bonus, configured from data: a bag of prize gifts plus some number
+/// of blanks that end the round for a fixed consolation. Orca Dive fills it with 24
+/// prizes and 6 blanks, but nothing here knows that.
+///
+/// <see cref="Play"/> draws gifts without replacement. The closed forms below provide an
+/// independent analytic check of that play path.
 /// </summary>
 public sealed class PickBonus { /* … */ }
 ```
 
-The simulation performs each pick without replacement; there's no shortcut sampling from a
-precomputed distribution. Its *expected value* comes from a symmetry argument. In
-a uniformly random ordering of `b` blanks and however
-many prizes, any one prize is collected exactly when it precedes every blank in the
-ordering, which by symmetry happens with probability `1 / (b + 1)`. Sum that over
-every prize in the bag and the expected collected total falls out with no
-permutation enumeration, one line of arithmetic. Orca Dive's 6 blanks put that
+The simulation draws one gift at a time, without replacement. Its *expected value*
+comes from a symmetry argument. In a uniformly random ordering of `b` blanks and
+however many prizes, any one prize is collected exactly when it precedes every blank
+in the ordering, which by symmetry happens with probability `1 / (b + 1)`. Sum that
+over every prize in the bag and the expected collected total falls out with no
+permutation enumeration. Orca Dive's 6 blanks put that
 probability at `1/7` for each of the 24 prizes; a pairwise version of the same
 argument, `2 / ((b+2)(b+1))` for two prizes both preceding the blanks, yields the
 second moment and hence the variance. The two paths answer the same question in
@@ -314,8 +307,7 @@ the engine retains responsibility for scheduling, counters, and telemetry.
 `GameRunner.CreatePlay` below returns a `SpinPlay` for the same reason article 5
 gives: the engine asks every game, generated or loaded from JSON, for the same
 one-behavior shape, so a data-loaded game plugs into the identical worker loop a
-generated preset uses, with no `IGame` interface or game-specific runner method
-for the engine to know about:
+generated preset uses:
 
 ```csharp
 private SpinPlay CreatePlay(ConcurrentBag<ComponentTally> tallies)
@@ -356,16 +348,15 @@ private SpinPlay CreatePlay(ConcurrentBag<ComponentTally> tallies)
 ```
 
 `ComponentTally` is a small class with four plain `long` fields, one instance per
-worker, added to a thread-safe `ConcurrentBag` when a worker starts. Its fields are not
-`Interlocked`, because nothing about it needs to be: each worker owns its own
-instance, and the run sums every tally only after every worker has already joined,
-where the engine has quiesced. The engine's own `RunTotals` (article 5) stays the
-one interlocked, shared counter; the component split rides alongside it,
-per worker without synchronization on the spin path.
+worker, added to a thread-safe `ConcurrentBag` when a worker starts. Its fields need
+no `Interlocked`: each worker owns its own instance, and the run sums every tally
+after every worker has joined, on a quiesced engine. `RunTotals` (article 5) remains
+the interlocked, shared counter; the component split rides alongside it, per worker,
+with no synchronization on the spin path.
 
 `bonusPay = wager * bonus.Bonus.Play(ref rng, scratch)` draws from the *same*
-worker stream as the reels. That gives this implementation one explicit RNG-consumption
-order per worker, so the bonus plays inline. A separately and deterministically
+worker stream as the reels. The bonus plays inline, on the worker's own stream, which
+gives each worker one RNG-consumption order to reason about. A separately and deterministically
 seeded bonus stream could also be replayable, but it would define a different
 contract and require its own documented partitioning rules.
 
@@ -376,7 +367,7 @@ while it draws them, and a function that allocated that array itself, fresh, on
 every call, would allocate on every single spin that triggers the bonus, tens of
 thousands of times across a run. Accepting the buffer as a parameter instead
 means `CreatePlay` allocates it once per worker, when the worker starts, and
-`Play` only ever reuses it. The signature says who owns the memory and when it
+`Play` reuses it. The signature says who owns the memory and when it
 gets created, which is the same reuse-over-allocation reasoning article 3 covers
 for `DrawWindow`'s `Span<Symbol>` parameter, applied here to an `int[]` instead.
 
@@ -408,28 +399,28 @@ produce it: tens of thousands of weighted tuples instead of Orca Dive's
 14,781,416 stop combinations, for the same underlying combinatorial result, because the payline never
 looks at which specific stop landed, only which symbol it carries.
 
-The scatter is the one thing that doesn't read a single cell, so it rides through
+The scatter reads the whole window instead of a single cell, so it rides through
 the enumeration as a second weight per symbol: stops showing this symbol on the
 payline *and* a scatter somewhere in the window. That preserves the joint
-distribution of line pay and bonus trigger, which are *not* independent, since a
+distribution of line pay and bonus trigger, which are correlated, since a
 scatter occupying the window costs that reel a payline symbol. Article 7 covers
 the accumulator this enumeration uses and the overflow arithmetic behind it in
-full; the shape worth knowing here is that a single-payline game's analytic enumeration
-scales with distinct symbols per reel, not with stops per reel.
+full. A single-payline game's analytic enumeration scales with distinct symbols per
+reel, not with stops per reel.
 
-One limit, stated in the XML docs rather than discovered by a user: this
-analyzer covers single-payline games. Multi-line expected value is a plain sum,
-but multi-line variance with wilds *and* a window-coupled scatter needs line-pair
-covariance machinery this codebase hasn't built yet. Multi-line definitions still
-simulate correctly; they just can't be analyzed by `GameAnalyzer` yet. A documented boundary
-beats an approximation pretending otherwise.
+One limit: this analyzer covers single-payline games. Multi-line expected value is a
+plain sum, but multi-line variance with wilds *and* a window-coupled scatter needs
+line-pair covariance machinery this codebase hasn't built yet. Multi-line definitions
+still simulate correctly; `GameAnalyzer` cannot check them yet.
 
-## The verdict
+## What the tests show
 
 The deterministic analytic tests reproduce the deconstruction's 31 integer
 line-win combination counts and its reported return components. Separately, the
 statistical suite runs ten million spins and checks measured line return, bonus
-return, hit frequency, trigger frequency, and total RTP against analytic bands.
+return, **line** hit frequency (10.26% for Orca Dive — line wins only, rather than the
+any-award union, which also counts bonus triggers and comes out at 11.45%), trigger
+frequency, and total RTP against analytic bands.
 Those are different claims: exact integer agreement for enumerated combination
 counts, and probabilistic agreement for sampled simulation results.
 

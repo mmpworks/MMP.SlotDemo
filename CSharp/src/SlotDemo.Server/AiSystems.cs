@@ -32,8 +32,6 @@ public static class AiSystemProbe
 {
     private sealed record CatalogEntry(string Id, string Name, string[] VersionCommands, string[] ProcessKeys);
 
-    // A flat row per system is the whole extension mechanism: adding a system is one
-    // line here, with no registry or plugin interface to wire up.
     private static readonly CatalogEntry[] Catalog =
     [
         new("claude",  "Claude Code",     ["claude --version"],                          ["claude"]),

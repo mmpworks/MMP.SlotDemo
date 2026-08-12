@@ -134,9 +134,9 @@ async function validate(): Promise<void> {
     <section class="lab">
       <h3>Lab 2 — Feed the loader anything</h3>
       <p class="lab__lede">
-        Paste a definition and the loader answers with the compiled game or with every
-        problem at once. The loader collects every problem before it answers, so an author
-        fixes a file in one pass instead of load-fix-load for each error.
+        Paste a definition and the loader answers with the compiled game, or with every
+        problem in the file at once. An author fixes a document in one pass instead of
+        load-fix-load-fix.
       </p>
 
       <div class="controls">

@@ -3,9 +3,9 @@
 *Part 2 of a series on building a slot game engine in C#. Part 1 covered the system
 design. This chapter builds the money and random-number types used by every spin.*
 
-A slot simulator needs exact running totals and reproducible runs. The safest place
-for those rules is in the types and method signatures, where ordinary code follows
-them without remembering a checklist.
+Type this into any C# REPL: `0.1 + 0.2 == 0.3`. It returns `false`. The fix for what
+that hides is a unit change, and the safest place to put it is in the types themselves,
+where ordinary code obeys it without remembering a checklist.
 
 ## Why floating-point money fails quietly
 
@@ -39,8 +39,7 @@ rounds, and rounding twice in a different order rounds to a different place. Tha
 sounds academic until the totals come from parallel workers summing millions of
 spins each. Two runs with the same seeds, the same spins, the same everything, can
 land on two different totals just because the worker threads finished in a
-different order. That is a race condition living inside plain arithmetic, the kind
-of bug that only shows up once in a hundred runs.
+different order. That is a race condition living inside plain arithmetic.
 
 ## The floating point fix is a unit change
 
@@ -61,22 +60,19 @@ those integer awards with probabilities.
 
 ```csharp
 /// <summary>
-/// A monetary quantity as an integer count of millicents (1 credit = 100,000 mc).
-/// INVARIANT M1: no floating point in any accumulation, payout, or comparison path.
-/// This type deliberately has NO implicit conversion to double/float/decimal; that
-/// missing conversion is what makes M1 compiler-enforced. The single named exit,
-/// ToCredits(), is display-only and easy to grep for.
+/// A monetary quantity stored as an integer count of millicents
+/// (1 credit = 100,000 millicents). Run totals use this representation so addition and
+/// comparison do not introduce floating-point rounding. Conversion to credits is reserved
+/// for display and ratio calculations.
 /// </summary>
 public readonly record struct Millicents(long Value) : IComparable<Millicents>
 {
     public const long PerCredit = 100_000;
 
     /// <summary>
-    /// Pay multipliers are carried internally as the real multiplier × ScaleFactor
-    /// (100 means hundredths: 225 = 2.25X). The ONE home for that scale: every
-    /// conversion in the engine derives from this value. static readonly rather
-    /// than const, so if this type ever ships as a package, consumers read the
-    /// live value at runtime instead of inlining a stale copy at compile time.
+    /// Pay multipliers are stored as the real multiplier times this scale. At 100,
+    /// 225 represents 2.25 times the total spin wager. Parsers, analyzers, and payout code
+    /// read the same value so the internal unit has one authority.
     /// </summary>
     public static readonly long ScaleFactor = 100;
 
@@ -96,11 +92,9 @@ public readonly record struct Millicents(long Value) : IComparable<Millicents>
     public int CompareTo(Millicents other) => Value.CompareTo(other.Value);
 
     /// <summary>
-    /// Scales by a pay multiplier expressed in ScaleFactor-ths of the total spin bet
-    /// (at the current ScaleFactor of 100, hundredths: 225 = 2.25X). Integer
-    /// division stays exact only when this amount is itself a multiple of
-    /// ScaleFactor millicents, so a wager that does not divide evenly is a
-    /// configuration mistake.
+    /// Applies a multiplier expressed in <see cref="ScaleFactor"/>ths of the total spin
+    /// wager. At the current scale, 225 means 2.25 times the wager. The wager must be
+    /// divisible by the scale so the conversion has no remainder.
     /// </summary>
     public Millicents ScaledMultiply(int scaledMultiplier)
     {
@@ -114,7 +108,7 @@ public readonly record struct Millicents(long Value) : IComparable<Millicents>
         return new Millicents(Value / ScaleFactor * scaledMultiplier);
     }
 
-    /// <summary>Display-only. The one sanctioned exit to floating point.</summary>
+    /// <summary>The type's only conversion to floating point. Display and ratio math; run totals stay in millicents.</summary>
     public double ToCredits() => (double)Value / PerCredit;
 
     public override string ToString() => $"{ToCredits():0.#####}cr";
@@ -127,7 +121,7 @@ Four choices matter here:
 semantics fit: copying a `Millicents` copies its value, equality compares values,
 and no object allocation is required for an ordinary local. `readonly` also prevents
 the amount from changing after construction. The exact machine code remains a JIT
-decision, so the article does not promise a particular instruction count.
+decision, so this chapter doesn't quote an instruction count.
 
 **`IComparable<Millicents>` gives the type a normal ordering.** Framework methods
 such as sorting, minimum, and maximum can compare two amounts without converting
@@ -139,15 +133,11 @@ fraction is a rounding decision someone should have to make explicitly. Scaling 
 an integer, a payout multiplier or a line count, is the only multiplication the
 domain needs, so it's the only one that compiles by plain `*`.
 
-**The feature that matters most is missing.** There is no implicit conversion to
-`double`. Write `total + spinPayout` and it compiles. Write `total * 0.98` and it
-doesn't. The invariant, no floating point in any accumulation path, is called M1 in
-the architecture document, and it's enforced by the compiler on every build rather
-than by a reviewer on a good day. The one exit, `ToCredits()`, is named, documented
-as display-only, and easy to grep for.
-
-This is CUPID's Predictable property in a small type: the common operations mean
-what a reader expects, and suspicious operations do not compile.
+**The missing conversion.** There is no implicit conversion to `double`. Write
+`total + spinPayout` and it compiles. Write `total * 0.98` and it doesn't. The
+invariant, no floating point in any accumulation path, is called M1 in the
+architecture document, and the compiler enforces it on every build. The one exit,
+`ToCredits()`, is named, documented as display-only, and easy to grep for.
 
 > 🧪 **Try it live.** The companion site's chapter 2 page (<http://localhost:5090>,
 > then `#/ch02`) opens with **Lab 1 — Money as an integer**: type a wager and a
@@ -161,10 +151,9 @@ changes the RNG partition. Chapter 5 separates those two ideas.
 
 ## Fractional multipliers without fractional money
 
-A payout multiplier like 1.25X or 2.25X is a fraction, while
-Millicents is that fractions don't get to exist in the accounting. The fix is not a
-special case. It's the same move as before: when the quantity you're holding isn't a
-whole number, change its unit until it is.
+A payout multiplier like 1.25X or 2.25X is a fraction, and `Millicents` keeps
+fractions out of the accounting. The fix is the same move as before: when the quantity
+you're holding isn't a whole number, change its unit until it is.
 
 A multiplier like 1.25X becomes 125 in a unit called **hundredths of the total
 spin wager**. 1.75X becomes 175. 2.25X becomes 225. The multiplier is now an integer, and
@@ -206,18 +195,16 @@ The `%` operator returns the remainder. Dividing 100,000 by 100 produces a quoti
 of 1,000 and a remainder of zero. That zero proves the division
 that follows will be like breaking a \$100 bill into a hundred \$1 bills, a change of
 form with nothing lost. A nonzero remainder means the wager cannot be cut into 100
-equal millicent pieces, and the guard throws rather than letting the division eat
-the difference. Two outcomes are possible, exact or a loud error, and "silently
-wrong" is not one of them. That is the entire difference from floating point, where
-every operation may be slightly wrong and none of them say so.
+equal millicent pieces. In that case the guard throws. The operation either returns
+an exact amount or reports that the multiplier cannot be represented in millicents.
 
 Dividing first also avoids making the intermediate value larger than necessary.
 Both orders give 125,000 here, but after
 the guard, `Value / 100` is a whole number of millicents, one hundredth of the bet,
-and integer multiplication can never introduce error. It also reads as the proof it
-is: cut the bet into 100 exact pieces, take 125 of them.
+and integer multiplication can never introduce error. In that order it reads as what
+it is: cut the bet into 100 exact pieces, take 125 of them.
 
-No fraction is ever formed, so there is nothing to round. `MillicentsTests` pins this exact case:
+No fraction is ever formed, so there is nothing to round. `MillicentsTests` pins this case:
 `ScaledMultiply_TwoAndAQuarterXAtOneCredit_IsExactMillicents` asserts the
 2.25X result above and stays green.
 
@@ -228,9 +215,8 @@ divisibility rule lives. If scaling were a separate static function, any code
 anywhere could still construct a `Millicents` and add to it, multiply it, compare
 it, without ever routing through the one function that knows the guard clause
 exists. Putting `ScaledMultiply` on the type itself means the rule and the data
-travel together: `Value % ScaleFactor != 0` can only be bypassed by not calling
-this method, not by forgetting to import the right helper class. A type that owns
-its own money arithmetic is a type nobody has to remember to use correctly.
+travel together: the only way around `Value % ScaleFactor != 0` is to skip the
+method entirely.
 
 Games declare their multipliers in whatever unit reads naturally in the source PAR
 sheet, "units" for whole multipliers, "tenths" for something like 1.5X kept mainly
@@ -271,18 +257,16 @@ produce a fraction.
 Floating point exists only outside the type. There is no conversion to `double`
 anywhere in `Millicents` (invariant M1), so external systems receive accurate
 integer values and convert to floats only at the last moment, usually when a
-payout is being formatted for display through `ToCredits()`. A reviewer never has
-to ask "did someone sneak a float into this calculation." The compiler already
-asked.
+payout is being formatted for display through `ToCredits()`.
 
-## Banker's rounding, the one boundary
+## Banker's rounding at the paytable boundary
 
 Millicents refuses fractions everywhere except one place: building the paytable
 itself. `PaytableSolver` starts from a canonical paytable, whose payouts are
 dimensionless ratios, and scales it by a single factor, `paytableScaleFactor`, toward a target RTP such
 as 86.111%. That scaling step produces a real number before it produces a
-millicent, because the target RTP itself is a fraction. This is the one and only
-spot in the payout-construction path where a fractional value is converted to money.
+millicent, because the target RTP itself is a fraction. It is the only place in the
+payout-construction path where a fractional value becomes money.
 
 ### What the paytable scale factor really means
 
@@ -399,8 +383,7 @@ canonical 2.47  ->  2.47 × 0.3125 × 100,000  =     77,187.5            (a tie!
 ```
 
 The first two land on whole millicents on their own. The third lands between two
-millicents, and something has to decide which one. That decision is the rounding
-rule.
+millicents, and the rounding rule is what decides which.
 
 `PaytableSolver` rounds with `MidpointRounding.ToEven`, better known as banker's
 rounding. The "to even" part controls midpoint ties.
@@ -420,25 +403,21 @@ Round-half-to-even breaks each tie toward whichever neighbor is an even number:
 The tie from the worked example above resolves this way: 77,187.5 rounds to
 77,188, the even neighbor.
 
-Be careful about what this buys. Round-half-to-even removes the built-in upward
-direction; it does NOT guarantee the rounded paytable hits the target RTP. A
-paytable has a handful of entries, and they contribute unequally: rounding a
-frequent small award by one millicent moves RTP far more than rounding a rare
-jackpot by one, so there is no law of averages to lean on. The engine treats
-rounding as a source of a small, known residual and then does the part that
-actually matters: it recomputes the realized theoretical RTP from the final
-rounded table and validates that number. The rounded table is the authority;
-the target was only the aim.
+Round-half-to-even removes the built-in upward direction; it does not guarantee the
+rounded paytable hits the target RTP. A paytable has a handful of entries, and they
+contribute unequally: rounding a frequent small award by one millicent moves RTP far
+more than rounding a rare jackpot by one, so there is no law of averages to lean on.
+The engine treats rounding as a source of a small, known residual, then recomputes the
+realized theoretical RTP from the final rounded table and validates that number.
 
-That one rounding happens in one place, and the rest of the engine reads its
-result rather than repeating it. That's invariant **R1**: the analytic RTP
-calculator and the spin-by-spin evaluator both read the same already-rounded
-paytable, so there is nothing left for the two of them to disagree about on this
-point. Neither one ever re-rounds.
+That one rounding happens in one place, and the rest of the engine reads its result
+rather than repeating it. That's invariant **R1**: the analytic RTP calculator and the
+spin-by-spin evaluator both read the same already-rounded paytable. Neither one
+re-rounds.
 
 Article 7 covers the harder half of this story, the overflow headroom a
 `Millicents` accumulator needs across a long run and the sum-of-squares math behind
-variance. That's a separate argument from the one here and belongs on its own page.
+variance.
 
 ## Randomness that can be replayed
 
@@ -464,7 +443,7 @@ so replay is lost. Invariant R3 makes the dependency visible:
 *randomness enters a function only through its signature*, as a `ref SpinRng`
 parameter. No field stores a generator; no method creates one. Like a card dealer
 who may only deal from the deck handed to them, never from a deck in their
-pocket, a function can only use the dice its caller passed in. And because the
+pocket, a function can only use the deck its caller handed it. And because the
 rule is structural, you can audit the entire assembly with one grep for `Random`.
 
 **Neighboring worker seeds.** Eight workers need eight
@@ -497,15 +476,10 @@ bet, spin, record what came back. A worker's ledger reads like a tally sheet,
 where "wagered" is a running count of assumed bets, never a balance that
 decreases. The workers are pollsters, not gamblers: each is assigned 1.25
 million households, knocks on every door, and writes down the answers. (A study
-that DOES track a player's balance, betting until the money runs out, is
+that does track a player's balance, betting until the money runs out, is
 risk-of-ruin analysis. It would consume this engine's spin results and stop at
 zero; the RTP check wants every spin counted regardless of any streak, because
 it measures the machine, not one player's luck.)
-
-Think of newspaper routes. Assign each carrier a fixed number of houses and the same
-route tomorrow, and the assignments repeat. Let carriers grab whichever street is
-free, and timing changes who delivers where. Fixed quotas give this simulator the
-first behavior.
 
 ### Why this is not a casino RNG
 
@@ -538,7 +512,7 @@ tests can inject a different stream factory at the engine boundary when needed.
 /// <summary>
 /// Deterministic per-worker RNG stream: xoshiro256** seeded via SplitMix64.
 /// SplitMix64 expands masterSeed ^ workerId into the four state words.
-/// Simulation-grade RNG. NOT certified-gaming RNG.
+/// Simulation-grade RNG. Real-money play requires a certified gaming RNG; this is not one.
 /// </summary>
 public struct SpinRng
 {
@@ -613,7 +587,7 @@ flowchart LR
 > charts a plain remainder mapping beside the rejection method so the bias becomes
 > something you can see rather than something you take on faith.
 
-Three details carry most of the design:
+Four details carry most of the design:
 
 **The algorithm lives in the repository.** Tests do not depend on an undocumented
 runtime implementation remaining unchanged. The project owns the sequence it uses
@@ -653,12 +627,11 @@ smaller contracts:
 - Spin logic declares its RNG dependency in its signature.
 - A run can be replayed when its full input record is preserved.
 
-The paytable rounding rule and worker-seeding recipe each have one implementation.
-That is the useful form of DRY here: a policy change has one authoritative place to
-edit.
+The paytable rounding rule and worker-seeding recipe each have one implementation, so
+a policy change has one authoritative place to edit.
 
-Next in the series: what a reel actually is, and the difference between math that
-matches a published slot model and math that uses the wrong probability model.
+Next in the series: what a reel actually is, and the modeling mistake that gets every
+single-symbol probability right and every two-symbol probability wrong.
 
 ## References
 

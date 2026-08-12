@@ -12,23 +12,32 @@ This guide is for the moment right after you clone MMP.SlotDemo for a
 new project. It covers what you get out of the box, how to run it, and how to
 grow it into whatever you're building.
 
-## What this harness is for
+## What this repo is
 
-Most new projects start the same way: a server that serves a single-page app,
-an API under it, a place to add a database or a second service later, and a
-dashboard that already looks finished. Building that skeleton from scratch
-costs a day you'd rather spend on the actual product.
+MMP.SlotDemo is the companion site for the *Building a Slot Machine RTP
+Simulator* series: one interactive page per episode, a live PAR sheet, a
+reading library, and a 10-million-spin proving ground, all running the
+engine's own code on the server.
 
-MMP.SlotDemo is that skeleton, already built. Clone it, rename it, and
-you have a working .NET 10 server, a Vue 3 dashboard, structured logging, a
-docker compose root, and two fuzz test suites, all wired together and all
-passing. The one feature it ships is a **STAT** button that scans the machine
-for installed AI coding tools, and it exists to prove the stack works end to
-end, from browser click to backend probe to rendered card. You'll likely
-replace it with your own first screen.
+It grew out of a general-purpose .NET 10 + Vue 3 harness, and that skeleton is
+still underneath if you want it as a starting point for something else. Most
+new projects start the same way: a server that serves a single-page app, an API
+under it, a place to add a database or a second service later, and a dashboard
+that already looks finished. Building that from scratch costs a day you would
+rather spend on the product. Clone this, strip the chapter
+pages, and you have a working server, SPA, structured logging, a docker
+compose root, and two fuzz test suites, wired together and passing.
 
-This harness also doubles as the base for MMPWorks screen-recorded content.
-The dashboard was designed for camera before the first commit shipped.
+The **STAT** button on the Start page is the surviving piece of that original
+harness: one click exercises the server, the log relay, and the viewer, which
+makes it a fast end-to-end smoke test.
+
+### Adding a page
+
+The chapter registry (`CSharp/web/src/chapters/registry.ts`) is the single list
+the nav and the router both read. A new page is one entry — id, label, title,
+blurb, component — plus the component itself and, if it needs server work, a
+`Map…` extension alongside the others in `CSharp/src/SlotDemo.Server/Chapters/`.
 
 ## Prerequisites
 
@@ -187,26 +196,18 @@ Herald.OSS is open source. The engine behind these call sites is public and
 ready to read at
 [github.com/mmpworks/Herald.OSS](https://github.com/mmpworks/Herald.OSS).
 
-### Two upstream findings, pinned as tests
+### Notes for anyone reusing the logging setup
 
-`HeraldLoggingTests.cs` carries two tests that pin current engine behavior
-the harness works around, both reported upstream to Herald.OSS:
+Two behaviours of the logging engine shape how this repo configures it, and
+both are pinned by tests in `HeraldLoggingTests.cs` marked `PINNED ENGINE
+BEHAVIOR` / `PINNED ENGINE BUG`: custom levels need their own floor re-check
+(`SlotDemoLevels.AtOrAbove(...)`, installed alongside `WithMinimumLevel` in
+`Program.cs` and every test pipeline), and an unclosed template brace is
+handled differently on the native and Serilog-compat surfaces.
 
-- **Custom-level events bypass the minimum-level filter.** Herald's
-  built-in floor check works for the standard level set, but an event
-  logged at a custom level (the `sys.*` set here) currently
-  passes through regardless of the configured minimum. The workaround is
-  `SlotDemoLevels.AtOrAbove(...)`, a `WithCustomFilter` that re-checks
-  the floor using the harness's own rank order. `Program.cs` and every test
-  pipeline install it alongside `WithMinimumLevel`.
-- **The native and Serilog-compat surfaces tokenize templates differently.**
-  An unclosed template brace (`"unmatched { open"`) passes through the
-  native surface used here, and throws `InvalidOperationException` on the
-  Serilog-compat adapter given the same input.
-
-Both tests are marked `PINNED ENGINE BEHAVIOR` / `PINNED ENGINE BUG` in
-comments. If either starts failing, Herald changed the behavior it pins.
-Revisit the workaround; do not weaken the test.
+Read those tests before changing the pipeline. If either starts failing, the
+engine changed the behaviour it pins. Revisit the workaround rather than
+weakening the test.
 
 ## How to extend the harness
 
@@ -240,10 +241,9 @@ substrings to match during the live scan. Add the row, and the probe, the
 API response, and the dashboard card all pick it up automatically. No other
 file changes.
 
-This is the *Unix philosophy* letter of CUPID. The catalog does one job:
-describe a system. Version probing, process scanning, JSON serialization,
-and card rendering all compose off that one flat structure, so no system
-needs its own code path.
+The catalog does one job: describe a system. Version probing, process
+scanning, JSON serialization, and card rendering all compose off that one
+flat structure, so no system needs its own code path.
 
 ### Add a new service to docker compose
 
@@ -277,15 +277,13 @@ There's no scaffolding to tear out. The pattern to follow:
    `CSharp/web/src/api/sanitize.ts` whatever your API returns. Treating
    server responses as untrusted external data is a habit that pays for
    itself the first time a backend field changes form.
-4. Update the fuzz suites (below) to match your new API surface instead of
-   deleting them. A harness with no tests is just an empty folder with extra
-   steps.
+4. Point the existing fuzz suites (below) at your new API surface instead of
+   deleting them. They cost little to keep and a lot to re-derive.
 
 ## Running the test suites
 
 Both ends carry a seeded fuzz suite. The random generator starts from a
-fixed seed, so a failing case replays the same input every run. You debug
-the failure instead of chasing it.
+fixed seed, so a failing case replays the same input every run.
 
 ```bash
 # Backend — xUnit

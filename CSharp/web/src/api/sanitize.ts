@@ -90,7 +90,7 @@ function sanitizeProperties(raw: unknown): Record<string, LogPropertyValue> {
   return out
 }
 
-// A log frame with no message is not useful to render — the SSE parser
+// A log frame needs a message to render — the SSE parser
 // treats a null return as "skip this frame" rather than showing a blank row.
 export function sanitizeLogEvent(raw: unknown): LogEvent | null {
   const e = record(raw)

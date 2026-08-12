@@ -6,7 +6,10 @@ defineProps<{ title: string; blurb: string }>()
   <section class="placeholder">
     <h2>{{ title }}</h2>
     <p>{{ blurb }}</p>
-    <p class="placeholder__note">This lab ships with the episode.</p>
+    <p class="placeholder__note">
+      The interactive lab lands with the episode. Every part it names already has its own
+      page in the nav above.
+    </p>
   </section>
 </template>
 
