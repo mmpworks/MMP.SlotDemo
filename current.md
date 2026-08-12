@@ -1,5 +1,5 @@
 # Current State
-_as of 2026-08-12_
+_as of 2026-08-12 (post editor-pass)_
 
 ## What we're building right now
 MMP.SlotDemo is the companion site for the *Building a Slot Machine RTP Simulator*
@@ -30,16 +30,19 @@ is the episode site, the Orca Dive game, and the proving ground.
   "Blueprint" page (clickable SVG system map that routes into each chapter). No
   `Chapter01.vue` exists — only 02–07 plus `Finale`, `Library`, and `ParSheet`. Whether
   ch1 gets built as a page, and when, is undecided.
-- README's test counts are stale (it says engine 202 / server 77 / SPA 43; actual is
-  197 passing + 9 gated / 80 / 45). Worth deciding whether to keep hand-maintained
-  counts in the README at all.
-
 ## Next action
-Verified green on 2026-08-12: `dotnet test CSharp/MMP.SlotDemo.slnx` → 197 passed,
-9 skipped (long-running tier), 0 failed for the engine and 80/80 for the server;
-`npm test` in `CSharp/web` → 45 passed across 7 files. `main` is clean and in sync
-with `origin/main`. First action for whoever picks this up: correct the stale test
-counts in README.md, then decide the Chapter 1 blueprint page question above.
+2026-08-12 (later): the full editor cycle landed as `6d1811e` (local, unpushed).
+The article series, video scripts, and PAR reference migrated in from MMP.SlotGame
+(`01acaef`; pointer left there); `docs/architecture.md` ported and adapted to the
+shipped system. Four Clancy→Cussler waves ran (findings + dispositions in
+`docs/_editing/`, gitignored): facts/references/register, script navigation
+layer, a 288-site subtraction pass per the MMP.Humanization runbook
+(`E:\dev\MMP.Humanization\RUNBOOK.md` — load it before ANY prose pass), and the
+article-01 rewrite as the series front door with a chapter-by-chapter roadmap.
+README's hand-maintained test counts were removed rather than fixed. Verified
+green after the pass: engine 197+9 gated, server 80, SPA 45, build 0 warnings.
+First action for whoever picks this up: push `main` when Steve says publish, and
+decide the Chapter 1 blueprint page question above.
 
 ## Stop condition
 Halt and return to Steve when: (a) work would add a new chapter page or change the
