@@ -1,0 +1,295 @@
+# A Replayable Parallel Simulation Engine
+
+*Part 5 of a series on building a slot game engine in C#. Part 4 built the analytic
+math. This one builds the machine that checks it: a parallel simulation engine
+whose results are reproducible bit for bit, with live telemetry that never blocks
+the workers.*
+
+The analytic calculator says the game returns 98% with a per-spin standard
+deviation σ. The engine's job is to play millions of spins and compare the
+measured number with the predicted band: fast enough to watch, lossless in its
+money totals, and deterministic enough to replay. Those three requirements pull in
+different directions, and this article is about the small set of decisions that
+satisfy all three at once.
+
+The main pieces, before the code:
+
+| Term | Plain-language meaning |
+|---|---|
+| **Worker** | One logical helper assigned part of the total spin count |
+| **Quota** | The exact number of spins assigned to that worker |
+| **Batch** | A small group of spins totaled privately before publishing a subtotal |
+| **Snapshot** | A read of the totals at one moment |
+| **Telemetry** | Progress information sent to the dashboard; it is not the accounting record |
+
+## Determinism is also a scheduling problem
+
+"Same seed, same result" sounds like it lives in the random number generator.
+Mostly it lives somewhere else: *which spin runs on which worker*. The obvious
+parallel loop,
+
+```csharp
+Parallel.For(0, targetSpins, i => PlayOneSpin());   // don't
+```
+
+would be nondeterministic **if each thread consumed its own mutable RNG stream**,
+because dynamic partitioning decides at runtime which thread executes which
+iteration. Which stream plays which spin could then vary from run to run, changing
+the totals. `Parallel.For` itself is not inherently nondeterministic: an iteration
+whose random input is derived solely from its iteration index could replay. This
+engine instead chooses fixed worker streams and quotas because that contract is
+simple to reproduce efficiently.
+
+So the engine uses **N logical workers with fixed, pre-assigned quotas**, one task
+and one RNG stream per worker, decided before the first spin runs. `Task.Run` uses
+.NET's thread pool; this is not a promise of permanently dedicated operating-system
+threads. Article 2 covers why a fixed quota beats a scheduler
+that steals work, with the newspaper-route comparison; this article is the
+mechanics of that decision:
+
+```csharp
+var spinsPerWorker = _plan.TargetSpins / _plan.WorkerCount;
+var remainder = _plan.TargetSpins % _plan.WorkerCount;
+
+for (var w = 0; w < _plan.WorkerCount; w++)
+{
+    var workerId = w;
+    // Deterministic quota: worker 0 absorbs the remainder.
+    var quota = spinsPerWorker + (workerId == 0 ? remainder : 0);
+    workers[workerId] = Task.Run(
+        () => WorkerLoop(workerId, quota, telemetry, observer, ct), ct);
+}
+await Task.WhenAll(workers).ConfigureAwait(false);
+```
+
+Worker *i* owns its quota, RNG state, and scratch buffers,
+`SpinRng.ForWorker(masterSeed, i)`, the SplitMix64-mixed stream from article 2
+(which also covers why `SpinRng` is a mutable struct advanced by `ref` rather than
+a class).
+Read-only game data is shared, and workers publish batches to shared atomic totals,
+but no worker shares mutable RNG or scratch state with another. For a fixed game
+definition, code version, target spin count, master seed, and worker count, the
+result is reproducible. The run header records the seed and worker count. Change
+the worker count and the RNG partition changes with it, so
+the totals legitimately differ; the system reports that rather than pretending the
+run is somehow the same experiment.
+
+Two rules provide replayability: no ambient randomness, and fixed assignment of
+each seeded stream to a quota. SplitMix64 serves a different purpose: it separates
+nearby worker seeds to improve statistical stream quality. Poorly separated seeds
+could still replay exactly; they would weaken the statistical experiment rather
+than its determinism.
+
+## The hot loop and the two-tier counter
+
+Each worker runs batches of up to 4,096 spins, accumulating into **plain local
+`long`s**, no synchronization of any kind inside a batch:
+
+```csharp
+private void WorkerLoop(int workerId, long quota, /* … */)
+{
+    var rng  = _streamFactory(workerId);
+    var play = _playFactory();     // per-worker closure with its own scratch buffers
+
+    long done = 0;
+    while (done < quota)
+    {
+        if (ct.IsCancellationRequested) return;   // checked per batch, not per spin
+
+        var batch = (int)Math.Min(BatchSize, quota - done);
+        long batchWagered = 0, batchReturned = 0, batchHits = 0;
+
+        for (var i = 0; i < batch; i++)
+        {
+            var outcome = play(ref rng);
+            batchWagered  += outcome.Wagered.Value;
+            batchReturned += outcome.Total.Value;
+            if (outcome.Total.Value > 0) batchHits++;
+        }
+
+        Totals.AddBatch(batch, batchWagered, batchReturned, batchHits);
+        done += batch;
+        telemetry?.TryWrite(new TelemetrySample(_plan.RunId, Totals.Snapshot()));
+    }
+}
+```
+
+A cancellation request can arrive while a worker is already inside a batch. That
+worker may finish as many as 4,095 more spins before noticing cancellation. With
+several workers, more than one batch may
+be in flight. The exact delay is hardware- and game-dependent, so the design should
+not promise a particular number of microseconds. `BatchSize` is the knob trading
+cancellation responsiveness against the cost of checking the token on every spin;
+4,096 is the current engineering choice and should be benchmarked if workloads
+change.
+
+At the batch boundary, four `Interlocked.Add` calls publish the subtotals (article
+1 covers what "atomic" means for this call; the new fact here is *when* it's
+called, not what it does):
+
+```csharp
+public sealed class RunTotals
+{
+    private long _spins, _wageredMillicents, _returnedMillicents, _hits;
+
+    public void AddBatch(long spins, long wagered, long returned, long hits)
+    {
+        Interlocked.Add(ref _spins, spins);
+        Interlocked.Add(ref _wageredMillicents, wagered);
+        Interlocked.Add(ref _returnedMillicents, returned);
+        Interlocked.Add(ref _hits, hits);
+    }
+}
+```
+
+> 💡 **Quick picture.** A warehouse with sixteen aisles could have every worker
+> radio the head-office clerk after scanning each single box: accurate, but the
+> clerk's radio channel becomes the bottleneck the moment two workers key up at
+> once. Instead, each worker keeps a private tally sheet for their aisle and phones
+> in one subtotal every few hundred boxes. The warehouse total comes out exactly
+> the same either way, because addition doesn't care how the numbers were grouped;
+> only the traffic on the radio channel changes.
+
+Per-spin publication would require four atomic operations for every spin. Batching
+reduces that synchronization frequency by as much as a factor of 4,096 without
+changing the integer sum. This is invariant M2 from article 2: regrouping integer
+additions changes when subtotals are published, not what they add up to.
+
+Batching is not an approximation. The final total is not "close to"
+what per-spin accumulation would have produced; it is the identical sum, because
+`(a + b) + c` and `a + (b + c)` are the same value for integers, unlike the
+floating-point case article 2 opens with. Batching changes how often the addition
+happens, never what it adds up to.
+
+One wrinkle, documented rather than hidden: a mid-run `Snapshot()` reads four
+counters that are individually atomic but not atomic *as a set*; it can pair a
+`wagered` from one batch with a `returned` from the previous one. The skew is
+tied to concurrent updates and is not guaranteed to be bounded to one batch when
+several fast workers publish while the four reads occur. It affects only the live
+display. The final snapshot is
+taken after `Task.WhenAll`, on a quiesced engine, where it's exact, and that's the
+one the acceptance tests read. The tempting fix, a lock around snapshot versus add,
+would put contention on the hot path to improve a number nobody asserts on.
+Knowing which numbers need to be exact is the design.
+
+## Telemetry that never blocks the workers
+
+The engine's constructor takes a `ChannelWriter<TelemetrySample>?`, caller-owned,
+optional, and written with `TryWrite`. Article 1 covers why a `Channel` and not a
+plain queue; here it's enough to know the write side never blocks:
+
+```csharp
+telemetry?.TryWrite(new TelemetrySample(_plan.RunId, Totals.Snapshot()));
+```
+
+The server side creates it as a bounded channel, capacity 1,024, drop-oldest. Under
+load the workers outrun the consumer and old samples vanish. The two rules that
+make that loss harmless, absolute snapshots and never blocking on write, are
+article 1's design, now visible as code:
+
+```mermaid
+flowchart LR
+    subgraph workers["N workers, private RNG and scratch"]
+        B0["local longs<br/>4096-spin batch"]
+        B1["local longs"]
+        BN["local longs"]
+    end
+    B0 & B1 & BN -->|"4 x Interlocked.Add<br/>per batch"| RT[["RunTotals<br/>exact, lossless"]]
+    B0 & B1 & BN -->|"TryWrite<br/>absolute snapshots"| CH[["Channel(1024)<br/>DropOldest, lossy"]]
+    CH --> PUMP["single consumer<br/>coalesce to 10 Hz"]
+    PUMP --> HUB["SignalR to SPA chart"]
+    RT -->|"after Task.WhenAll:<br/>final quiesced snapshot"| VERDICT["measured RTP vs z*sigma/sqrt(N) band"]
+```
+
+> 🧪 **Try it live.** The companion site's chapter 5 page (<http://localhost:5090>,
+> then `#/ch05`) exercises both halves of this design. **Lab 1 — Same seed, same
+> answer, any day** re-runs a configuration and compares the totals down to the
+> millicent, including what changing the worker count does to them. **Lab 2 — Starve
+> the telemetry, keep the truth** throttles the sample consumer so you can drop chart
+> points on purpose and watch the counters stay exact.
+
+## What the engine doesn't know
+
+Look at what `SimulationEngine` *doesn't* contain. There's no reel, no paytable, no
+payline anywhere in it: the spin itself arrives as a pair of delegates.
+
+```csharp
+/// <summary>Plays ONE spin: draw, evaluate, award. RNG arrives by ref (R3), so the
+/// stream advances in the caller's worker.</summary>
+public delegate SpinOutcome SpinPlay(ref SpinRng rng);
+
+/// <summary>Builds one SpinPlay per worker; each play owns its own scratch buffers.</summary>
+public delegate SpinPlay SpinPlayFactory();
+```
+
+The stock game wires them up like this. Notice the per-worker closure owning its
+own scratch window, which is why the factory exists at all:
+
+```csharp
+return () =>                                    // called once per worker
+{
+    var evaluator = new LinePayEvaluator(lines, paytable);
+    var window = new Symbol[reels.WindowSize];  // reused for every spin
+
+    return (ref SpinRng rng) =>                 // called per spin
+    {
+        reels.DrawWindow(ref rng, window);
+        var basePay = evaluator.Evaluate(window, reels.ReelCount, reels.Rows);
+        var featurePay = Millicents.Zero;
+        for (var f = 0; f < features.Count; f++)
+            featurePay += features[f].Play(ref rng);
+        return new SpinOutcome(wager, basePay, featurePay);
+    };
+};
+```
+
+This delegate prevents the scheduling policy from being copied into each game.
+When article 6 loads a reconstructed commercial game (wilds, scatter triggers, a
+pick bonus with its own rules), that game brings its own `SpinPlay` and reuses the
+quota partitioning, seeded streams, batched counters, and telemetry. Keeping one
+worker loop prevents the two game paths from drifting into different scheduling
+behavior.
+
+Notice what the engine asks a game to supply: a function, `SpinPlay`, not an
+object with a `PlayOneSpin` method on some `IGame` interface. The engine's own
+job, scheduling workers, batching counters, coalescing telemetry, has nothing to
+do with what a spin means, so it doesn't need to know a game's shape at all, only
+that handing it a `ref SpinRng` back gets a `SpinOutcome` in return. An interface
+would work too, but it would also imply the engine might call other methods on
+that same object someday, session state, configuration, anything else `IGame`
+grew over time. A delegate states that one thing, and only one thing, is
+expected here, which matches what the engine actually needs from a game: the
+engine supplies the loop, the game supplies what happens inside one turn of it.
+
+The reel strips are built once and shared across workers. `StripReelSet` copies its
+input arrays at construction, so outside mutation cannot change the active game and
+every worker sees byte-identical geometry. Immutable data shares freely; mutable scratch
+stays per-worker. That one distinction is most of multithreaded design.
+
+There's also an optional `SpinObserver` delegate, a per-spin diagnostic hook, null
+by default and therefore costing one branch. It's how the server can inspect
+individual spins during a small diagnostic run while staying logging-free in the
+library itself. It is deliberately *not* the telemetry path; wiring it into a
+10-million-spin run would mean paying for a debugger on every spin of a run built
+to be fast.
+
+## Watching the estimate converge
+
+Run it, and the dashboard draws the story: the measured RTP starts noisy, the
+`±z·σ/√N` band narrows as `√N` grows, and the line settles into the band the math
+predicted before the first spin. The exact width at ten million spins depends on
+the game's σ; wager size alone does not determine it. A correct run is expected to
+fall inside a 99% band about 99% of the time when the normal approximation is
+appropriate, not on every seed without exception.
+
+An out-of-band run is a signal to investigate, not automatic evidence of a bug. The
+determinism contract makes that investigation repeatable: re-run the same complete
+configuration and attach the observer to inspect the payout sequence. The current
+observer receives `SpinOutcome`, not reel-stop coordinates, so deeper diagnosis may
+require an additional opt-in trace at the game layer.
+
+Next: moving compatible game rules into JSON, adding a generic win evaluator, and
+reproducing the figures in a public third-party slot deconstruction.
+
+*Source files: `Simulation/SimulationEngine.cs`, `Simulation/RunTotals.cs`,
+`Simulation/SimulationConfig.cs`.*
