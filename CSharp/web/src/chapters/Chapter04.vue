@@ -80,9 +80,11 @@ async function runBand(): Promise<void> {
     <section class="chapter-brief">
       <h3>What the episode builds</h3>
       <p>
-        The canonical paytable carries only ratios. The solver computes the game's expected
+        A game can be priced before a single spin runs. The canonical paytable carries only
+        ratios, a shape rather than real prizes. The solver computes the game's expected
         value once from the strips, divides the target RTP by it, and scales every pay by
-        that one number. It is a closed form, with no search loop. Each scaled pay then rounds to
+        that one number, the same way you'd multiply every ingredient in a recipe to feed
+        more people. It is a closed form, with no search loop. Each scaled pay then rounds to
         integer millicents independently, so the realized RTP drifts a hair from the
         target, and only the analytic recomputation is authoritative.
       </p>

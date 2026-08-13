@@ -61,7 +61,10 @@ async function validate(): Promise<void> {
     <section class="chapter-brief">
       <h3>What the episode builds</h3>
       <p>
-        A slot game is a document: symbols, strips, paylines, paytable, and optionally a
+        Where does a game live: in code, or in data? Everything so far has run generated
+        games built from a canonical paytable, which proves the engine and the math agree
+        with each other but nothing outside the codebase. This episode answers the question
+        with data. A slot game is a document: symbols, strips, paylines, paytable, and optionally a
         scatter-triggered bonus, all in one JSON file. The loader compiles it into a
         validated <code>GameDefinition</code> or returns the complete list of problems in
         one pass. It checks the declared facts (stop counts, symbol tallies) against the
@@ -175,9 +178,9 @@ async function validate(): Promise<void> {
     </section>
 
     <section class="chapter-brief">
-      <h3>Carried into episode 7</h3>
+      <h3>Carried into episode 8</h3>
       <p>
-        Because the game is data, every stop combination can be walked. Episode 7 does that
+        Because the game is data, every stop combination can be walked. Episode 8 does that
         and uses the exhaustive census to referee the simulation.
       </p>
     </section>

@@ -34,6 +34,14 @@ async function loadStats(): Promise<void> {
 <template>
   <section class="intro">
     <p>
+      A slot game with a 98% RTP does not promise any one spin, or any one player, a 98%
+      return. It promises an average over a very large number of spins. This series builds a
+      teaching engine that scales a paytable toward a target RTP, calculates what that RTP
+      should be, and then checks its own arithmetic by playing millions of spins while a live
+      chart watches the measured return settle toward the prediction. Money stays exact,
+      randomness stays replayable, and an independent exhaustive count referees both.
+    </p>
+    <p>
       Each episode of the build has a page here. Every control runs the episode's own C# on
       the server, the same types the episode walks through. Each step logs through Herald,
       so the log stream at the bottom of the page comes from the code you just ran.

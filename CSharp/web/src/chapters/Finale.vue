@@ -147,6 +147,20 @@ const verdict = computed(() => {
       <p class="chapter-blurb">{{ blurb }}</p>
     </header>
 
+    <section class="chapter-brief">
+      <p>
+        Everything the series built lands here. Article 4 priced this game's RTP before a
+        single spin ran; article 8 counted every possible outcome to check that price without
+        randomness at all. This page is the third leg: real spins, real randomness, watched
+        live. Each point on the chart is the measured RTP after some number of spins, and the
+        shaded funnel is the range probability theory allows around the analytic prediction.
+        As spins climb, the funnel narrows by √N, so the same measured RTP counts as
+        stronger evidence later in a run than it did early. A line that settles inside a
+        narrowing band and stays there is what agreement between two independent methods
+        looks like on a chart.
+      </p>
+    </section>
+
     <section class="lab">
       <h3>Configure the run</h3>
       <div class="controls">

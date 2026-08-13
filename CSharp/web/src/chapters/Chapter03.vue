@@ -123,11 +123,14 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
     <section class="chapter-brief">
       <h3>What the episode builds</h3>
       <p>
-        Each reel owns a separate strip. One random stop on that strip fills the reel's
-        visible column: its top, middle, and bottom symbol positions are neighbors on that
-        strip. A five-reel
-        game therefore draws five stop numbers and reads fifteen cells from them. A payline then
-        chooses one visible symbol position from each reel and reads those five cells left to right.
+        Model a reel as a weighted die and every single-symbol probability comes out right,
+        while every probability that spans two cells on the same reel comes out wrong. A die
+        roll is independent every time; a reel is not. Each reel owns a separate strip, and one
+        random stop on that strip fills the reel's visible column: its top, middle, and bottom
+        symbol positions are neighbors on that strip, riveted together the way charms sit on a
+        bracelet. A five-reel game draws five stop numbers and reads fifteen cells from them. A
+        payline then chooses one visible symbol position from each reel and reads those five
+        cells left to right.
       </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Reels/StripReelSet.cs</code>,

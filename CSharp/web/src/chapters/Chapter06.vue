@@ -229,10 +229,10 @@ async function runTelemetry(): Promise<void> {
     </section>
 
     <section class="chapter-brief">
-      <h3>Carried into episode 6</h3>
+      <h3>Carried into episode 7</h3>
       <p>
         The engine takes a play function, so a game with its own rules (wilds, scatters, a
-        pick bonus) plugs into the same workers, quotas, and telemetry. Episode 6 makes the
+        pick bonus) plugs into the same workers, quotas, and telemetry. Episode 7 makes the
         game itself a document.
       </p>
     </section>

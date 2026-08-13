@@ -59,7 +59,11 @@ async function runReferee(): Promise<void> {
     <section class="chapter-brief">
       <h3>What the episode proves</h3>
       <p>
-        Three implementations share nothing but the game data: closed-form analysis,
+        A simulator that checks its own math is a circular argument: if the engine and the
+        analytic calculator share a misunderstanding of the game, they will agree with each
+        other and both be wrong. Breaking that circle takes a referee that shares data with
+        both sides and code with neither. Three implementations share nothing but the game
+        data: closed-form analysis,
         Monte-Carlo simulation, and exhaustive enumeration. The enumerator walks every stop
         combination with no randomness and no sampling, and counts what each category pays.
         When the simulation's measured RTP lands inside the band around the enumerator's

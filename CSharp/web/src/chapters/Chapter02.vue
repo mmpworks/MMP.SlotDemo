@@ -18,7 +18,10 @@ defineProps<{ title: string; blurb: string }>()
     <section class="chapter__brief">
       <h3>What the episode builds</h3>
       <p>
-        Two small types carry the guarantees the rest of the simulator depends on.
+        Type <code>0.1 + 0.2 == 0.3</code> into any C# REPL and it returns <code>false</code>.
+        A slot simulator that counts millions of spins cannot afford that kind of drift, so
+        this episode fixes it with a unit change instead of a rounding trick. Two small types
+        carry the guarantees the rest of the simulator depends on.
         <code>Millicents</code> keeps money as a count of integers so totals stay exact and
         order-independent. <code>SpinRng</code> gives every worker its own seeded stream so a
         run can be replayed. Because these two types are strict, the code that uses them can
