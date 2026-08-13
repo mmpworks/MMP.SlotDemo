@@ -128,8 +128,13 @@ chapter page to the articles' register (Heather; caught 2 more renumber bugs).
 Verified green: engine 205 + 11 gated, server 88, web 51, build 0 warnings. Steve
 returns to this branch tomorrow; merge is his call. Queued idea: a test that walks
 the scripts' `### Block` listings and diffs each against its named source file, so
-paste-block sync stops depending on agent discipline. The Chapter 1 blueprint page
-question above remains open.
+paste-block sync stops depending on agent discipline — with a pin manifest: six
+blocks in scripts 02/03/04/06 deliberately pin the pre-optimization state
+(episodes teach the initial system; ep9 shows the optimized versions side by
+side), so those diff against the pinned commit, never HEAD. Video assets for
+ep1–3 live in `E:\dev\MMP.Media\generated\slotdemo-series\` (callouts wired into
+scripts 01–03; MMP.Media + slotdemo-series-video repos committed locally,
+unpushed). The Chapter 1 blueprint page question above remains open.
 
 ## Stop condition
 Halt and return to Steve when: (a) work would add a new chapter page or change the
