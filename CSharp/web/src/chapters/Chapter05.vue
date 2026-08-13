@@ -106,7 +106,7 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
         question="The eight weights add to 24. What does that prove?"
         :choices="['Every physical stop outcome is still counted.', 'The game has a 24% RTP.', 'Every symbol is equally likely.']"
         :answer="0"
-        explanation="Grouping repeated symbols changed the amount of work, not the outcomes being counted."
+        explanation="Grouping repeated symbols reduces the work while the weights keep every physical outcome in the count."
       />
     </section>
 

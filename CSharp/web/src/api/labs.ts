@@ -317,7 +317,6 @@ export interface OptimizationBenchmarkView {
   randomSelections: number
   visibleCellWrites: number
   checksum: string
-  outputsMatch: boolean
   baseline: { label: string; samples: number[]; medianSpinsPerSecond: number }
   optimized: { label: string; samples: number[]; medianSpinsPerSecond: number }
   speedup: number

@@ -1,11 +1,5 @@
 <script setup lang="ts">
 defineProps<{ question: string; later: string }>()
-const emit = defineEmits<{ (e: 'open'): void }>()
-
-function open(): void {
-  emit('open')
-  window.location.hash = '/ch09'
-}
 </script>
 
 <template>
@@ -13,7 +7,7 @@ function open(): void {
     <p class="optimization-preview__eyebrow">Optimization notebook</p>
     <h3>{{ question }}</h3>
     <p>{{ later }}</p>
-    <a href="#/ch09" @click.prevent="open">Measure it in episode 9 →</a>
+    <a href="#/ch09">Measure it in episode 9 →</a>
   </aside>
 </template>
 

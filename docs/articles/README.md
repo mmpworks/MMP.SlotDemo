@@ -24,7 +24,7 @@ Each has a matching 20-minute recording script in `docs/scripts/`.
   `<!-- EXPORT -->` comment.
 - **Code blocks.** Medium's editor keeps fenced code blocks; paste as-is or use
   GitHub gists for syntax highlighting.
-- **Order.** The series reads front to back, but articles 2–7 each stand alone.
+- **Order.** The series reads front to back, but articles 2–9 each stand alone.
   Article 1 links forward; articles 2+ open with a one-paragraph recap and a link
   back to article 1.
 - **Repo link.** Add the repository URL to each article's footer once the repo is

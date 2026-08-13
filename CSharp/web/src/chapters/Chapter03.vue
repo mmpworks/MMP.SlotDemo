@@ -25,6 +25,11 @@ const busy = ref(false)
 
 const source = computed(() => sources.value.find((s) => s.id === sourceId.value))
 
+// The API answers "did the snapshot keep its original first symbol"; the lab note asks
+// the opposite question, so the polarity flips once here instead of inside the template.
+const sourceEditChangedSnapshot = computed(() =>
+  reelSnapshots.value !== null && !reelSnapshots.value.shortSnapshotKeptOriginalFirstSymbol)
+
 onMounted(async () => {
   try {
     sources.value = await getJson<SourceView[]>('/api/ch3/sources')
@@ -121,7 +126,7 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
         Each reel owns a separate strip. One random stop on that strip fills the reel's
         visible column: its top, middle, and bottom symbol positions are neighbors on that
         strip. A five-reel
-        game therefore draws five stop numbers, not fifteen cell values. A payline then
+        game therefore draws five stop numbers and reads fifteen cells from them. A payline then
         chooses one visible symbol position from each reel and reads those five cells left to right.
       </p>
       <p class="chapter-source">
@@ -286,7 +291,7 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
         </table>
         <p class="lab-note">
           Run A repeated exactly: <strong>{{ reelSnapshots.shortSnapshotRepeatedExactly ? 'yes' : 'no' }}</strong>.
-          Editing the original 26-stop source array changed the snapshot: <strong>{{ reelSnapshots.shortSnapshotKeptOriginalFirstSymbol ? 'no' : 'yes' }}</strong>.
+          Editing the original 26-stop source array changed the snapshot: <strong>{{ sourceEditChangedSnapshot ? 'yes' : 'no' }}</strong>.
         </p>
       </div>
 

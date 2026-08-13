@@ -220,7 +220,7 @@ async function runReferee(): Promise<void> {
       question="A simulation result is outside the confidence band once. What can you conclude?"
       :choices="['The engine is certainly broken.', 'The exact analyzer is certainly wrong.', 'Investigate; a correct random run can occasionally fall outside the band.']"
       :answer="2"
-      explanation="A confidence band describes expected variation, not a guarantee. Repeated seeds and independent exact checks provide stronger evidence."
+      explanation="A confidence band describes expected variation, so one excursion is a reason to look rather than a conclusion. Repeated seeds and independent exact checks provide stronger evidence."
     />
     <OptimizationPreview
       question="How do we prove a faster implementation still performs the same work?"

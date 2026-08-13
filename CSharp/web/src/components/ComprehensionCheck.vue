@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 
 const props = defineProps<{
   question: string
@@ -8,6 +8,8 @@ const props = defineProps<{
   explanation: string
 }>()
 
+// One name per instance so each block of choices is its own native radiogroup.
+const groupName = useId()
 const selected = ref<number | null>(null)
 const checked = ref(false)
 const correct = computed(() => selected.value === props.answer)
@@ -22,7 +24,7 @@ function check(): void {
     <h4>Check your understanding</h4>
     <p>{{ question }}</p>
     <label v-for="(choice, index) in choices" :key="choice" class="check__choice">
-      <input v-model="selected" type="radio" :value="index" @change="checked = false" />
+      <input v-model="selected" type="radio" :name="groupName" :value="index" @change="checked = false" />
       <span>{{ choice }}</span>
     </label>
     <button type="button" :disabled="selected === null" @click="check">Check my answer</button>

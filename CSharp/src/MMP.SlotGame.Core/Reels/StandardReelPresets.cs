@@ -57,6 +57,8 @@ public static class StandardReelPresets
     private static Symbol[] Spec(params (Symbol Symbol, int Count)[] counts) =>
         EvenlySpacedStripBuilder.Build(counts);
 
+    // Every reel shares one strip reference here, which is safe because ReelPreset's constructor
+    // copies each strip. The two must move together: drop that copy and these reels alias.
     private static ReelPreset Preset(string name, Symbol[] strip, int reelCount, int lineCount) =>
         new(name, Enumerable.Repeat((IReadOnlyList<Symbol>)strip, reelCount).ToArray(),
             StandardPaylines.For(reelCount, lineCount, StripReelSet.DefaultRows));

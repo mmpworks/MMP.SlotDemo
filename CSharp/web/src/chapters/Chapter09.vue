@@ -105,10 +105,10 @@ onMounted(async () => {
       <p v-if="error" class="lab__error">{{ error }}</p>
 
       <div v-if="result" class="results">
-        <div class="verdict" :class="result.outputsMatch ? '' : 'verdict--drift'">
+        <div class="verdict">
           <div>
-            <span class="verdict__label">Correctness gate</span>
-            <span class="mono">{{ result.outputsMatch ? 'MATCH' : 'MISMATCH' }}</span>
+            <span class="verdict__label">Shared checksum</span>
+            <span class="mono">{{ result.checksum }}</span>
           </div>
           <div>
             <span class="verdict__label">Measured speedup</span>

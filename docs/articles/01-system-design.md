@@ -41,8 +41,8 @@ average.
 
 > 🧪 **Try it live.** The series ships a companion site that runs this engine's own
 > code in the browser: start it with `dotnet run` from `CSharp/src/SlotDemo.Server`
-> and open <http://localhost:5090>. Articles 2 through 8 each have a matching lab
-> page at `#/ch02` … `#/ch08`. Three more pages belong to the series as a whole: the
+> and open <http://localhost:5090>. Articles 2 through 9 each have a matching lab
+> page at `#/ch02` … `#/ch09`. Three more pages belong to the series as a whole: the
 > live PAR sheet at `#/par`, the source library at `#/library`, and the proving
 > ground at `#/finale`, which runs ten million spins while the chart watches the
 > measured RTP settle into its band.
@@ -115,7 +115,7 @@ Every structural decision below is an answer to it.
 The system has two kinds of data, and they get opposite treatment:
 
 - **The run totals are exact and lossless within their numeric range.** Totals
-  accumulate in integer counters, every spin counted, nothing dropped. Article 7
+  accumulate in integer counters, every spin counted, nothing dropped. Article 8
   checks the accumulator budget, because even a `long` has a maximum value.
 - **The telemetry is lossy and bounded.** Progress samples flow through a bounded
   queue that drops the oldest entry when full. A dropped sample removes one chart
@@ -279,7 +279,7 @@ if (analytic.TotalRtp > SimulationConfig.MaxAggregateBasisPoints / 10_000.0)
     return (500, new { title = "Solver produced a realized RTP above the cap", status = 500, analytic.TotalRtp });
 ```
 
-There is one 9,900 in the codebase, and both checks read it. Article 7 meets the
+There is one 9,900 in the codebase, and both checks read it. Article 8 meets the
 same hazard in a statistical form, one quantile constant carried at two roundings by
 two call sites, and it takes the same fix. A comment claiming a value has one home
 does not give it one; the constant has to be the same symbol.
@@ -370,7 +370,7 @@ the result by different paths.** One combines probabilities; one plays sampled
 spins. They share the paytable and reel definitions (the *data*) but use different
 calculation code. Agreement is strong evidence that both paths interpret the game
 the same way, short of mathematical proof that every possible bug is absent.
-Article 7 adds exhaustive checks for the game shapes small enough to enumerate.
+Article 8 adds exhaustive checks for the game shapes small enough to enumerate.
 
 ## The sequence, end to end
 
@@ -432,7 +432,7 @@ of up to 4,096 spins" is something a reader can measure and argue with.
 ## What the rest of the series builds
 
 Every box in that diagram gets its own article, in the order a person would build
-them. Articles 2 through 6 stand alone if you want one of them by itself; read front
+them. Articles 2 through 9 stand alone if you want one of them by itself; read front
 to back and each one hands the next its foundation.
 
 **Article 2, *Money You Can Trust*,** starts at the bottom of the stack, with the
@@ -503,6 +503,17 @@ quantile one home, tiers the slow and stress tests by cost, and asserts
 bit-for-bit equality with `==` where a concurrency test can usually only check that
 nothing crashed. Its lab runs the census and shows a simulation walking toward those
 exact counts.
+
+Only once the machine is proven does it make sense to make it faster, and that is
+**article 9, *Optimize the Machine You Proved***. It answers what a correctness-first
+codebase gives up in speed, and how much of that comes back once the window draw stops
+building full `Symbol` values: drawing strips extended by one window so a spin reads a
+contiguous slice instead of computing a remainder per cell, a byte-ID view for the
+workers beside the symbol view the UI still needs, Lemire's rejection threshold computed
+once per reel, and a dense payout array built from the dictionary that stays the public
+source of truth. The failed experiments are itemized alongside the winners. Its lab runs
+both draw implementations from one seed, alternating which goes first, and reports a
+speedup only when the two checksums agree.
 
 Three pages on the companion site belong to no single article. `#/par` computes Orca
 Dive's complete PAR sheet live by walking all 14,781,416 stop combinations, with every
