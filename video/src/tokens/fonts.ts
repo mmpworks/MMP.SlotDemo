@@ -12,9 +12,12 @@ import { loadFont as loadJost } from '@remotion/google-fonts/Jost';
 import { loadFont as loadJetBrainsMono } from '@remotion/google-fonts/JetBrainsMono';
 import { loadFont as loadSourceSerif } from '@remotion/google-fonts/SourceSerif4';
 
-const jost = loadJost();
-const jetBrains = loadJetBrainsMono();
-const sourceSerif = loadSourceSerif();
+// Only the weights and the subset these compositions actually use. The default
+// loads every weight and every subset, which is ~50 requests per family per
+// render and a wall of console warnings for no benefit.
+const jost = loadJost('normal', { weights: ['500', '700'], subsets: ['latin'] });
+const jetBrains = loadJetBrainsMono('normal', { weights: ['500'], subsets: ['latin'] });
+const sourceSerif = loadSourceSerif('normal', { weights: ['400'], subsets: ['latin'] });
 
 export const fonts = {
   /** Wordmark lockup, titles, slide headings. */
