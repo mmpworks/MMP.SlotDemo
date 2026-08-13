@@ -87,8 +87,8 @@ share payout code. Their agreement is the check."
 
 - New file. **Path on screen and said out loud:**
   `CSharp/tests/MMP.SlotGame.Tests/ExhaustiveGroundTruthTests.cs`
-- Paste **Block A**. "Two hundred and fifty lines. Three assertions, and about half the
-  file is the independent implementation those assertions check against."
+- Paste **Block A**. "Two hundred and fifty-three lines. Three assertions, and about half
+  the file is the independent implementation those assertions check against."
 
 ### Block A — `CSharp/tests/MMP.SlotGame.Tests/ExhaustiveGroundTruthTests.cs`
 

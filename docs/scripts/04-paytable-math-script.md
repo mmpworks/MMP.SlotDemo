@@ -33,7 +33,9 @@ minutes total, and only to make an engine claim visible.
 **Companion site — the illustration**
 - [ ] `E:\dev\MMP.SlotDemo`, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
-- [ ] `http://localhost:5090/#/ch04`, the solver lab and the analytic lab each run once
+- [ ] `http://localhost:5090/#/ch04`, all three labs run once — Lab 1 "Solve a paytable,"
+      Lab 2 "The band, priced before any spin," Lab 3 "Orca Dive: the paytable that
+      arrived fixed"
 - [ ] `logs/` cleared so the viewer starts empty
 
 **OBS**
@@ -364,12 +366,19 @@ one the 99% cap is checked against.
 - The delegate still has a name and a doc comment, so the concept stays visible in the
   domain vocabulary.
 
-> **Illustration (50 seconds, BROWSER).** Chapter 4 page, solver lab. Move the target
-> RTP slider and watch the whole integer paytable recompute server-side through the
-> engine's own `PaytableSolver.Solve`. The realized RTP readout tracks the target and
-> sits a hair off it. Toggle the rounding mode to truncation and the realized number
-> drops below target on every setting, in the same direction each time. "One direction
-> every time is a bias. Both directions is a resolution limit." Cut back.
+> **Illustration (50 seconds, BROWSER).** Chapter 4 page, Lab 1 — "Solve a paytable."
+> Leave the subject on Orca Dive and type a target line RTP into the box: solve at 5960,
+> the shipped figure, then re-solve at 6500 and 7000. The whole integer paytable
+> recomputes server-side through the engine's own `PaytableSolver.Solve`, and four
+> readouts move together — unscaled EV, the single scale factor, the realized base RTP,
+> and the drift. "One cabinet, several approved payback versions, one factor between
+> them." Then point at the drift: it lands a hair off the target and it lands on both
+> sides across the three solves. "Both directions is a resolution limit. One direction
+> every time would be a bias — which is what banker's rounding is there to prevent."
+> Cut back.
+>
+> The lab has no rounding-mode control; the endpoint always rounds half-to-even. The
+> bias half of the beat is made on the whiteboard, out of the three solves' drift signs.
 
 ## 17:30–19:30 — Variance on the whiteboard: the strips come due
 
@@ -738,11 +747,17 @@ wagered and the band works at any bet size.
 - The alternative is nested ifs with early returns: the same seven outcomes spread over
   thirty lines, with no way to see at a glance that every combination is covered.
 
-> **Illustration (45 seconds, BROWSER).** Chapter 4 page, analytic lab. Toggle
-> "covariance on" and "covariance off" against the same game. The mean stays fixed to
-> the digit and the band width changes visibly. Then run a short simulation over the top
-> and it tracks the wider band. "Ignore the correlation and you get a band that is the
-> wrong width around a mean that is right." Cut back.
+> **Illustration (45 seconds, BROWSER).** Chapter 4 page, Lab 2 — "The band, priced
+> before any spin." Price it once and read the two figures at the top: total RTP, and
+> sigma per unit wagered. Say that the sigma is the closed-form number, covariance
+> included, and that nothing has spun yet. Then walk the ladder underneath — each factor
+> of a hundred in spins buys one decimal place of certainty, because the square root is
+> in the denominator. "That is why proving an RTP takes millions of spins, and why the
+> band is priced before the run rather than measured after it." Cut back.
+>
+> The lab has no covariance toggle and runs no simulation of its own — it reports the
+> analytic figure. The "ignore the correlation and the band comes out the wrong width"
+> line is made on the whiteboard, above, where the covariance term is derived.
 
 ## 25:00–25:45 — Flash the feature schedule
 

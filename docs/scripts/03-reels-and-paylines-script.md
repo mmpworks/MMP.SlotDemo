@@ -90,7 +90,7 @@ for (var cell = 0; cell < 3; cell++) window[cell] = Draw();
 > for the window slide.
 
 > **Asset (FULL FRAME):** `slotdemo-series/strip/ep03-window-slide-1080p.mp4` — the
-> window travelling down the strip and wrapping past the seam. Runs long by design, so
+> window traveling down the strip and wrapping past the seam. Runs long by design, so
 > start it on "its visible column shows that stop and the next two strip positions" and
 > stay on it through the wrap; it holds two seconds on the wrap for the neighbor-rule
 > line.
@@ -197,7 +197,7 @@ Read the reason out of the comment.
 
 - New file in the same folder. **Path on screen:**
   `CSharp/src/MMP.SlotGame.Core/Reels/StripReelSet.cs`
-- Paste **Block B**. Pause on the constructor, then trace one stop through `SymbolAt`.
+- Paste **Block B**. Pause on the constructor, then trace one stop through `At`.
 
 ### Block B — `CSharp/src/MMP.SlotGame.Core/Reels/StripReelSet.cs`
 
@@ -425,12 +425,18 @@ Slow down here.
   when they leave the mean untouched. "The confidence band in episode 4 is built out of
   this method."
 
-> **Illustration (50 seconds, BROWSER).** Chapter 3 page, reel lab. Load a strip and
-> pick two rows. The lab shows the die model's prediction beside the enumerated joint
-> probability from the engine's own `JointProbabilityOf`, running server-side. The
-> marginals match to the digit; the joint numbers separate. Then it runs both models
-> to a variance estimate and the bands come out visibly different widths. "Same mean,
-> different spread even though the symbol counts match." Cut back.
+> **Illustration (50 seconds, BROWSER).** Chapter 3 page, Lab 2 — "Counting what the
+> strip produces." Pick a symbol and run the census. The table puts the observed
+> center-row rate beside the strip's exact ratio, per reel, with a gap column. Point at
+> the per-reel differences the lede calls out: Wild Orca is 2/26 on reel 1 and 1/29 on
+> reel 2, and Penguin reads zero on reels 2 and 4 because the symbol is absent from
+> those strips. Push the spin count up and the gap column shrinks. "The engine holds no
+> probability table. The strip layout sets the odds." Cut back.
+>
+> The marginals are what this lab measures, and they are the half both models agree on —
+> which is the point being made. The joint half is the die model's failure, and it stays
+> on the whiteboard rather than in a lab, because there is no joint-probability lab on
+> the page today.
 
 ### Beat 9 — `DrawWindow`, the hot path
 
@@ -531,9 +537,10 @@ lines from three position values. Then open the JSON `paylines` list.
   valid game is. A PAR transcription supplies its own path and builds the same
   `Payline` record."
 
-- `topRow`, `bottomRow`, and `middleRow` are derived from the `rows` argument on every
-  call, which is why a four-row or five-row preset gets correct shapes without a code
-  change.
+- `top`, `bottom`, and `middle` are derived from the `visiblePositions` argument on
+  every call, which is why a four-row or five-row preset gets correct shapes without a
+  code change. (The companion article names the same three locals `topRow`, `bottomRow`,
+  and `middleRow` for readability; the source is shorter.)
 - `Bend` interpolates between the two rows it is handed, so a four-reel V comes out
   proportioned without anyone drawing it by hand.
 - Compare the alternative out loud: a hand-written table of nine shapes for three
@@ -542,7 +549,10 @@ lines from three position values. Then open the JSON `paylines` list.
 
 ### Beat 13 — the paragraph about even row counts
 
-Read the doc comment's last paragraph aloud, then show the four-row result.
+Read the even-row-count passage from the companion article aloud
+(`docs/articles/03-reels-and-paylines.md`, the section on window heights), then show the
+four-row result. The source carries the rule in code; the prose explaining it lives in
+the article.
 
 > **Asset (FULL FRAME):** `slotdemo-series/episodes/ep03/ep03-3.4-even-row-asymmetry.png`
 > — the same ZigTop line on a 3-row grid and a 4-row grid, side by side. Up on "show the
@@ -582,10 +592,14 @@ method built around a nine-line convention.
 - "No ways-pays evaluator exists in this repo, because nobody has asked for one. The
   delegate is what makes adding one cheap when somebody does."
 
-> **Illustration (45 seconds, BROWSER).** Chapter 3 page, payline lab. Set the window
-> height to 3, 4, and then 5, and the nine generated shapes redraw over the grid from
-> the engine's own `StandardPaylines.For` running server-side. Stop on 4 rows and point at the
-> asymmetric zig-zags. "The comment said this would happen. Here it is." Cut back.
+> **Asset (FULL FRAME, 45 seconds):**
+> `slotdemo-series/episodes/ep03/ep03-3.3-payline-shapes-1080p.mp4` — the nine real line
+> shapes drawing themselves over the grid, one at a time. Run it under this section and
+> point at the two zigzag pairs. "One method generated all nine. Nobody drew them."
+>
+> The chapter 3 page has no window-height control today, so the shape-redraw beat is
+> this clip rather than a live lab. Lab 1 does show the loaded source's own lines over a
+> real spin, which is the live version of the same idea if you want a browser cut here.
 
 ## 22:30–23:15 — Flash the evaluator
 
@@ -654,10 +668,11 @@ Two suites hold this episode's claims.
 - Engine-to-browser budget: roughly twenty-three minutes in Rider and on the
   whiteboard, under three in the browser. If a take runs long, browser time goes first.
 - Strongest visuals in order: the whiteboard forced-neighbor moment (Seven then Bell,
-  probability one), the ragged `reelStops` line in `orca-dive.json`, and the payline lab
-  redrawing shapes as the window height changes. Rehearse the first one; it is the hook.
+  probability one), the ragged `reelStops` line in `orca-dive.json`, and the payline
+  shapes drawing themselves one at a time. Rehearse the first one; it is the hook.
 - Zoom hotkey belongs on: the `reelStops` array, the `JointProbabilityOf` loop body, the
-  defensive-copy line, and the even-row-count paragraph in the `Payline` doc comment.
+  defensive-copy line, and the `middle = visiblePositions / 2` line in
+  `StandardPaylines.cs`.
 - The three paste blocks are the initial-system files verbatim (the state before the
   episode-9 optimization branch; episode 9 shows the optimized versions side by side).
   If a paste lands wrong, cut and re-paste rather than hand-fixing: the file has to

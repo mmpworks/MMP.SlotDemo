@@ -117,7 +117,9 @@ recursive. Three sentences of restraint buy back months of work.
   hundred nanoseconds.
 - Sixteen cores at roughly a million spins per second each puts ten million spins near
   one second. **Draw a box around the conclusion:** one process, one machine. No queue
-  and no cluster.
+  and no cluster. (That is the conservative back-of-envelope the design was sized
+  against. The finished engine beats it by an order of magnitude — episode 9 measures
+  it.)
 - Then the number that shapes everything: workers can generate ten million events per
   second, and a browser chart wants about ten updates per second. Write both numbers
   and the gap between them. "Seven orders of magnitude. That gap is the design

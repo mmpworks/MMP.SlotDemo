@@ -1,5 +1,12 @@
 # Episode 9 — Optimize the Machine You Proved
 
+**Target:** 29–30 min. **Format:** source first, live comparison lab last.
+**Companion article:** `docs/articles/09-optimization.md`
+**Companion site:** MMP.SlotDemo, branch `main`. `http://localhost:5090/#/ch09`,
+Lab 1 "Race two versions of DrawWindow."
+**Files created on camera:** none. Episode 9 reads and edits files episodes 3 and 6
+already built, and adds the benchmark harness beside them.
+
 ## Recording goal
 
 Show optimization as a measured follow-up to a completed system. Keep the original and
@@ -100,8 +107,10 @@ uses repeated trials and a median.
 ## 25:00-28:00 — Show what lost
 
 List the measured results for unrolling, flattened reel storage, and forced inlining, then the
-one that came back neutral: skipping the positive-bound validation. Open
-`docs/_editing/csharp-performance-audit-2026-08-12.md` for the exact batches.
+one that came back neutral: skipping the positive-bound validation. The measured figures
+for all four are in `docs/articles/09-optimization.md`, in the section on what lost —
+read them from there, since the working audit notes under `docs/_editing/` are gitignored
+and will not be in a fresh clone.
 
 Say: "The JIT declined several suggestions by running them slower. We listened."
 

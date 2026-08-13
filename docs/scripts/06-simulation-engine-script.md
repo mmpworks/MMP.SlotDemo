@@ -545,7 +545,9 @@ Read the doc comment, then the closure.
 
 **Scene:** TERMINAL, CPU meter visible.
 
-- Run ten million spins. Every core pegged, about a second.
+- Run ten million spins. Every core pegged, and it lands inside a second on the
+  recording machine. Time one take before you record and say the number you actually
+  see; the multicore median moved a long way in episode 9.
 - Run it again with the same seed and worker count, and diff the two totals. Identical,
   field for field.
 - Change the seed by one and run again. Different totals. "Determinism that ignores the
