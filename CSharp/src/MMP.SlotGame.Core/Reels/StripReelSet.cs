@@ -209,6 +209,19 @@ public sealed class StripReelSet
         return key;
     }
 
+    /// <summary>
+    /// Draws one stop per reel into a caller-owned buffer. Progressive outcome evaluation
+    /// reads these stop bytes directly and does not construct the visible symbol window.
+    /// </summary>
+    public void DrawStops(ref SpinRng rng, Span<byte> stops)
+    {
+        if (stops.Length < ReelCount)
+            throw new ArgumentException($"The stop buffer needs at least {ReelCount} entries.", nameof(stops));
+
+        for (var reel = 0; reel < _strips.Length; reel++)
+            stops[reel] = (byte)rng.NextInt(_rngRanges[reel], _rngThresholds[reel]);
+    }
+
     /// <summary>The symbol shown at (reel, row) for a given stop, wrapping cyclically.</summary>
     public Symbol At(int reel, int stop, int row)
     {

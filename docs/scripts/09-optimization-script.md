@@ -76,6 +76,27 @@ positive payouts.
 Explain the loader split. `TryLoad` checks candidate data without doing fourteen million
 calculations. `LoadFile` constructs a playable game and builds the table before returning.
 
+Then show the measured correction. The single large dictionary managed 1.97 million
+outcomes per second. The original evaluator managed 13.78 million. Packing the key was
+cheap; fetching random entries from a large dictionary was not.
+
+Open `ProgressiveOutcomeTable`. Start with the 754 reel-0/reel-1 pairs. Only 336 can still
+pay or trigger anything, so 418 prefixes stop evaluation there. The remaining arrays narrow
+the state once per reel.
+
+Put the equal-work medians together:
+
+```text
+rules          16.07M outcomes/second
+packed key      2.14M outcomes/second
+progressive    20.53M outcomes/second
+```
+
+The progressive path beat the rules by 27.7 percent and the dictionary by 9.58 times. Its
+complete multicore simulation median reached 158.64M spins per second after the JIT warmed.
+Show all five samples, including the first two cold samples. They explain why the episode
+uses repeated trials and a median.
+
 ## 25:00-28:00 — Show what lost
 
 List the measured results for unrolling, flattened reel storage, and forced inlining, then the

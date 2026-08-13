@@ -38,6 +38,8 @@ public sealed class WinningOutcomeTable
 
     private readonly Dictionary<ulong, WinningOutcome> _outcomes;
 
+    internal IEnumerable<KeyValuePair<ulong, WinningOutcome>> Entries => _outcomes;
+
     private WinningOutcomeTable(
         Dictionary<ulong, WinningOutcome> outcomes,
         long combinations,

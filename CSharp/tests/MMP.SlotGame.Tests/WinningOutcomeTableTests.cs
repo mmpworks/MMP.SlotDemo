@@ -41,6 +41,7 @@ public sealed class WinningOutcomeTableTests
     {
         var game = GameFiles.Load(GameFiles.OrcaDive);
 
+        Assert.Equal(1, game.MinimumPayingReels);
         Assert.Equal(game.StopCombinations, game.WinningOutcomes.CombinationCount);
         Assert.Equal(1_516_294, game.WinningOutcomes.WinningCombinationCount);
         Assert.Equal(181_656, game.WinningOutcomes.FeatureTriggerCombinationCount);
@@ -53,6 +54,11 @@ public sealed class WinningOutcomeTableTests
         Assert.Equal(0, triggerOnly.TotalMultiplier);
         Assert.Empty(triggerOnly.Paylines);
         Assert.Equal(["PenguinBonus"], triggerOnly.TriggeredFeatures.Select(feature => feature.Name));
+
+        var immediatePayStops = Enumerable.Range(0, game.Reels.StopCount(0))
+            .Where(stop => game.Reels.At(0, stop, game.Paylines[0].Rows[0]).Name == "WildOrca")
+            .ToArray();
+        Assert.Equal([7, 20], immediatePayStops);
     }
 
     [Fact]
@@ -89,6 +95,29 @@ public sealed class WinningOutcomeTableTests
             var windowKey = game.Reels.DrawWindowIdsAndKey(ref windowRng, window);
             var keyOnly = game.Reels.DrawStopKey(ref keyOnlyRng);
             Assert.Equal(windowKey, keyOnly);
+        }
+    }
+
+    [Fact]
+    public void ProgressiveTable_ReturnsTheSameOutcomesAsPackedKeys()
+    {
+        var game = GameFiles.Load(GameFiles.OrcaDive);
+        var stopsRng = Core.Simulation.SpinRng.ForWorker(0x987654UL, 0);
+        var keyRng = Core.Simulation.SpinRng.ForWorker(0x987654UL, 0);
+        var stops = new byte[game.ReelCount];
+
+        Assert.Equal([26, 336, 3_025, 87_725, 1_692_730], game.ProgressiveOutcomes.SurvivingPrefixCounts);
+
+        for (var spin = 0; spin < 100_000; spin++)
+        {
+            game.Reels.DrawStops(ref stopsRng, stops);
+            var key = game.Reels.DrawStopKey(ref keyRng);
+
+            var packedFound = game.WinningOutcomes.TryGetValue(key, out var packed);
+            var progressiveFound = game.ProgressiveOutcomes.TryGetValue(stops, out var progressive);
+
+            Assert.Equal(packedFound, progressiveFound);
+            Assert.Same(packed, progressive);
         }
     }
 

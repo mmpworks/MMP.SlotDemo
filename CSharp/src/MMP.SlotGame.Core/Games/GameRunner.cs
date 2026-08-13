@@ -100,17 +100,18 @@ public sealed class GameRunner(
         tallies.Add(tally);
 
         var reels = definition.Reels;
-        var winningOutcomes = definition.WinningOutcomes;
+        var progressiveOutcomes = definition.ProgressiveOutcomes;
         var bonus = definition.Bonus;
         var wager = SimulationConfig.Wager;
+        var stops = new byte[reels.ReelCount];
         var scratch = new int[bonus?.Bonus.GiftCount ?? 0];
 
         return (ref SpinRng rng) =>
         {
-            var outcomeKey = reels.DrawStopKey(ref rng);
+            reels.DrawStops(ref rng, stops);
 
             var multiplier = 0;
-            if (winningOutcomes.TryGetValue(outcomeKey, out var outcome) && outcome is not null)
+            if (progressiveOutcomes.TryGetValue(stops, out var outcome) && outcome is not null)
                 multiplier = outcome.TotalMultiplier;
             var linePay = wager.ScaledMultiply(multiplier);
 

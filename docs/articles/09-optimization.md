@@ -126,12 +126,48 @@ combinations and recognizes 181,656 feature-triggering combinations. Outcomes wi
 payout, paylines, and feature state share one value object; the table does not allocate a
 new payline list for every key.
 
-The spin loop now draws five stops, packs their bytes, and performs one lookup. It does not
-copy the fifteen visible symbol IDs or run the payline and scatter rules again. A Release
-run of the complete loaded-game path produced a five-sample median of 14.03 million spins
-per second on the development machine. That number includes payout lookup, feature play,
-worker accounting, and telemetry; it is not comparable to the earlier 92.8M measurement,
-which timed window drawing alone.
+The first implementation drew five stops, packed their bytes, and performed one dictionary
+lookup. It was correct and slow. A same-work benchmark measured 1.97 million outcomes per
+second, compared with 13.78 million for the original rule evaluator. The 1.5-million-entry
+dictionary sent the CPU to widely separated memory locations often enough to cost more than
+the arithmetic it removed.
+
+### Narrow the result one reel at a time
+
+The second implementation stores flat transition arrays. After reel 0 and reel 1, their two
+stop numbers index a 754-entry array. The returned state selects the portion of the reel-2
+array to read, and the process repeats through reel 4. A `-1` state means no remaining reel
+can produce a payout or feature trigger from that prefix.
+
+For Orca Dive, 181 of the 754 two-reel prefixes can still produce a line payout. Feature
+geometry keeps another 155 prefixes alive, for 336 useful prefixes in all. The other 418
+prefixes are dead after two reels. The RNG still draws the remaining stops to preserve its
+stream, but outcome evaluation does no more work for them.
+
+Orca Dive can pay after one reel because a single `WildOrca` pays 2x. Reel-0 stops 7 and 20
+put that symbol on the center payline. Those two stops are the immediate-pay list, but they
+cannot be the complete first table: 22 other reel-0 stops can still grow into longer line
+wins, and the remaining two can still begin the Penguin feature. All 26 first-reel stops are
+therefore useful. The first table combines reels 0 and 1, where real pruning begins.
+
+The same-work Release benchmark used ten million outcomes per sample and required identical
+payout/feature checksums:
+
+| Outcome path | Median outcomes/second | Relative to rules |
+|---|---:|---:|
+| Visible window plus rule evaluator | 16.07M | 1.00x |
+| Packed 40-bit key plus dictionary | 2.14M | 0.133x |
+| Progressive transition arrays | 20.53M | 1.277x |
+
+The progressive table was 27.7 percent faster than direct evaluation and 9.58 times faster
+than the packed dictionary in this test.
+
+The complete multicore loaded-game benchmark moved from a 14.03M median with the dictionary
+runner to 158.64M with pair-first progressive narrowing. Its five progressive samples were
+19.1M, 37.6M, 165.5M, 174.4M, and 158.6M spins per second. The first two show tiered JIT and
+dynamic PGO warming the new path; the final three range from 158.6M to 174.4M. This benchmark includes feature
+play, worker accounting, and telemetry, so it must not be compared directly with the earlier
+92.8M window-drawing measurement.
 
 `TryLoad` remains a validation operation. Tests use it thousands of times with damaged PAR
 documents, so it creates a lazy table holder without enumerating the stop cycle. `Load` and
@@ -178,6 +214,7 @@ reverted while their measurements remain in the article and teaching notes.
 Do not create that branch in a worktree containing unrelated active edits. Establish the
 initial-system commit first, then branch from that exact point.
 
-*Source files: `Reels/StripReelSet.cs`, `Games/WinningOutcomeTable.cs`, `Simulation/SpinRng.cs`,
+*Source files: `Reels/StripReelSet.cs`, `Games/WinningOutcomeTable.cs`,
+`Games/ProgressiveOutcomeTable.cs`, `Simulation/SpinRng.cs`,
 `Paytables/Paytable.cs`, `tests/MMP.SlotGame.Tests/PerformanceBaselineTests.cs`, and
 `SlotDemo.Server/Chapters/ChapterNineEndpoints.cs`.*

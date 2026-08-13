@@ -152,6 +152,12 @@ onMounted(async () => {
         but it starts <code>PenguinBonus</code>. The spin path can therefore draw five stops
         and perform one lookup without copying the visible window or reevaluating its rules.
       </p>
+      <p>
+        The single large dictionary turned out to be slow: 2.14M outcomes per second versus
+        16.07M for direct rule evaluation. Progressive arrays narrow the result after each
+        reel and reached 20.53M on the same work, 27.7 percent above the rules. After the
+        first two reels, 418 of Orca Dive's 754 prefixes need no further outcome evaluation.
+      </p>
     </section>
 
     <section class="chapter-brief">

@@ -73,6 +73,19 @@ public sealed record PayCategory
             return 0;
         }
     }
+
+    /// <summary>The first reel count with a non-zero pay for this category.</summary>
+    public int MinPayingCount
+    {
+        get
+        {
+            for (var count = 0; count < _paysByCount.Length; count++)
+            {
+                if (_paysByCount[count] != 0) return count;
+            }
+            return 0;
+        }
+    }
 }
 
 /// <summary>
@@ -108,6 +121,7 @@ public sealed record ScatterPickBonus
 public sealed class GameDefinition
 {
     private readonly Lazy<WinningOutcomeTable> _winningOutcomes;
+    private readonly Lazy<ProgressiveOutcomeTable> _progressiveOutcomes;
 
     internal GameDefinition(
         string name,
@@ -127,6 +141,9 @@ public sealed class GameDefinition
         Bonus = bonus;
         _winningOutcomes = new Lazy<WinningOutcomeTable>(
             () => WinningOutcomeTable.Build(this),
+            LazyThreadSafetyMode.ExecutionAndPublication);
+        _progressiveOutcomes = new Lazy<ProgressiveOutcomeTable>(
+            () => ProgressiveOutcomeTable.Build(WinningOutcomes, Reels),
             LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
@@ -153,7 +170,13 @@ public sealed class GameDefinition
     /// </summary>
     public WinningOutcomeTable WinningOutcomes => _winningOutcomes.Value;
 
+    /// <summary>The same calculated outcomes arranged as reel-by-reel narrowing tables.</summary>
+    public ProgressiveOutcomeTable ProgressiveOutcomes => _progressiveOutcomes.Value;
+
     public int ReelCount => Reels.ReelCount;
+
+    /// <summary>The fewest leftmost payline symbols that can award money in this game.</summary>
+    public int MinimumPayingReels => Categories.Min(category => category.MinPayingCount);
 
     /// <summary>Product of the per-reel stop counts: the size of the exhaustive outcome space.</summary>
     public long StopCombinations

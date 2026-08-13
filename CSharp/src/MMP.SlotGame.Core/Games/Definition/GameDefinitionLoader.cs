@@ -46,6 +46,7 @@ public static class GameDefinitionLoader
         // LoadFile is the deployment construction path, not a validation probe. Complete
         // the PAR-derived lookup now so the first spin never pays its construction cost.
         _ = definition!.WinningOutcomes;
+        _ = definition.ProgressiveOutcomes;
         return definition;
     }
 
@@ -55,6 +56,7 @@ public static class GameDefinitionLoader
             throw new GameDefinitionException("(inline)", errors);
 
         _ = definition!.WinningOutcomes;
+        _ = definition.ProgressiveOutcomes;
         return definition;
     }
 
