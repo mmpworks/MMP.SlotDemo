@@ -140,6 +140,21 @@ onMounted(async () => {
     </section>
 
     <section class="chapter-brief">
+      <h3>Use the stop combination as a key</h3>
+      <p>
+        A loaded PAR game can calculate its useful outcomes during construction. Each reel
+        stop occupies one byte, so five stops such as 12, 28, 4, 17, and 25 become
+        <code>0x0C1C041119</code>. The lookup value contains the total line multiplier,
+        the paylines that won, and any feature that starts.
+      </p>
+      <p>
+        Feature-only results stay in the table. Orca Dive's all-zero key has no line payout,
+        but it starts <code>PenguinBonus</code>. The spin path can therefore draw five stops
+        and perform one lookup without copying the visible window or reevaluating its rules.
+      </p>
+    </section>
+
+    <section class="chapter-brief">
       <h3>Experiments that lost</h3>
       <p>
         Unrolling separate three-, four-, and five-position methods was slower. Flattening

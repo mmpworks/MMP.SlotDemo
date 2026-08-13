@@ -85,6 +85,7 @@ internal sealed class GameDefinitionBuilder(GameDocument document)
         // feature both need a reel count to check anything against.
         VerifyDeclaredStops(strips);
         VerifyDeclaredCounts(strips);
+        VerifyOutcomeTableGeometry(strips);
         var paylines = BuildPaylines(strips.Length);
         var categories = BuildPaytable(strips.Length);
         var bonus = BuildFeatures(strips);
@@ -299,6 +300,32 @@ internal sealed class GameDefinitionBuilder(GameDocument document)
                     Fail($"reel {reel + 1} carries {actual} '{symbolName}' but symbolCounts declares {perReel[reel]}.");
             }
         }
+    }
+
+    /// <summary>
+    /// The runtime key assigns one byte to each reel, and construction enumerates the full
+    /// stop cycle. Reject geometry that cannot be encoded or safely built before allocating
+    /// the outcome table.
+    /// </summary>
+    private void VerifyOutcomeTableGeometry(Symbol[][] strips)
+    {
+        if (strips.Length > WinningOutcomeTable.MaximumReels)
+            Fail($"reels lists {strips.Length} reels; the packed outcome key supports at most {WinningOutcomeTable.MaximumReels}.");
+
+        long combinations = 1;
+        for (var reel = 0; reel < strips.Length; reel++)
+        {
+            if (strips[reel].Length > WinningOutcomeTable.MaximumStopsPerReel)
+                Fail($"reel {reel + 1} has {strips[reel].Length} stops; the packed outcome key supports at most "
+                    + $"{WinningOutcomeTable.MaximumStopsPerReel} stops per reel.");
+
+            if (combinations <= WinningOutcomeTable.MaximumCombinations)
+                combinations = checked(combinations * strips[reel].Length);
+        }
+
+        if (combinations > WinningOutcomeTable.MaximumCombinations)
+            Fail($"the reel strips create {combinations:N0} stop combinations; construction supports at most "
+                + $"{WinningOutcomeTable.MaximumCombinations:N0} in the precomputed outcome table.");
     }
 
     private Payline[] BuildPaylines(int reelCount)

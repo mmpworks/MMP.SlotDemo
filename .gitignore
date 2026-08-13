@@ -3,6 +3,7 @@ obj/
 node_modules/
 dist/
 logs/
+TestResults/
 *.user
 .DS_Store
 .idea/

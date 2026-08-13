@@ -169,14 +169,44 @@ public sealed class StripReelSet
     /// </summary>
     public void DrawWindowIds(ref SpinRng rng, Span<byte> window)
     {
+        DrawWindowIdsAndKey(ref rng, window);
+    }
+
+    /// <summary>
+    /// Draws the byte-id window and returns the exact packed stop key used to draw it. Each
+    /// reel contributes one byte, from left to right. The game-construction lookup uses the
+    /// same packing, so the spin can find its precomputed line result without reevaluating
+    /// every payline.
+    /// </summary>
+    public ulong DrawWindowIdsAndKey(ref SpinRng rng, Span<byte> window)
+    {
+        ulong key = 0;
         for (var reel = 0; reel < _strips.Length; reel++)
         {
             var stop = rng.NextInt(_rngRanges[reel], _rngThresholds[reel]);
+            key = (key << 8) | (byte)stop;
             var drawIds = _drawIds[reel];
             var windowOffset = reel * Rows;
             for (var row = 0; row < Rows; row++)
                 window[windowOffset + row] = drawIds[stop + row];
         }
+        return key;
+    }
+
+    /// <summary>
+    /// Draws one stop per reel and returns only the packed stop key. Loaded games use this
+    /// after construction has already calculated the line pays and feature triggers for
+    /// every useful key. No visible window is copied on this path.
+    /// </summary>
+    public ulong DrawStopKey(ref SpinRng rng)
+    {
+        ulong key = 0;
+        for (var reel = 0; reel < _strips.Length; reel++)
+        {
+            var stop = rng.NextInt(_rngRanges[reel], _rngThresholds[reel]);
+            key = (key << 8) | (byte)stop;
+        }
+        return key;
     }
 
     /// <summary>The symbol shown at (reel, row) for a given stop, wrapping cyclically.</summary>

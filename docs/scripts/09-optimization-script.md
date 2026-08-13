@@ -59,7 +59,24 @@ not a laboratory-grade hardware comparison.
 Show the precomputed range and rejection threshold. Then show the dictionary and dense payout
 view. Both are construction-time transformations; neither changes the game data.
 
-## 21:00-24:00 — Show what lost
+## 21:00-25:00 — Build the PAR outcome table
+
+Put the five stop numbers on screen as bytes: `0C 1C 04 11 19`. Pack them into
+`0x0C1C041119`.
+
+Say: "Those five stop numbers determine the full screen. During construction, we already
+know what that screen pays and whether it starts a feature. During a spin, we only need the
+same five numbers and one lookup."
+
+Open `WinningOutcomeTable`. Show the value's three fields: total multiplier, winning
+paylines, and triggered features. Then use Orca Dive's all-zero key. It pays nothing on the
+line but starts `PenguinBonus`. This is why the table stores useful outcomes, not merely
+positive payouts.
+
+Explain the loader split. `TryLoad` checks candidate data without doing fourteen million
+calculations. `LoadFile` constructs a playable game and builds the table before returning.
+
+## 25:00-28:00 — Show what lost
 
 List the measured results for unrolling, flattened reel storage, and forced inlining, then the
 one that came back neutral: skipping the positive-bound validation. Open
@@ -67,7 +84,7 @@ one that came back neutral: skipping the positive-bound validation. Open
 
 Say: "The JIT declined several suggestions by running them slower. We listened."
 
-## 24:00-25:00 — Branch discipline
+## 28:00-29:00 — Branch discipline
 
 Show the proposed history:
 
@@ -77,7 +94,8 @@ initial-system commit
        ├─ benchmark harness
        ├─ wrapped drawing strips
        ├─ byte-ID windows
-       └─ dense payout lookup
+       ├─ dense payout lookup
+       └─ PAR stop-outcome table
 ```
 
 Create the branch only after the initial-system work is committed cleanly.

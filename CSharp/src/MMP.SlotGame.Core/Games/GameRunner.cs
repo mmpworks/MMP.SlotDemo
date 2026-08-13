@@ -100,23 +100,22 @@ public sealed class GameRunner(
         tallies.Add(tally);
 
         var reels = definition.Reels;
-        var evaluator = new WinEvaluator(definition);
+        var winningOutcomes = definition.WinningOutcomes;
         var bonus = definition.Bonus;
         var wager = SimulationConfig.Wager;
-        var window = new byte[reels.WindowSize];
-        var cells = new byte[definition.ReelCount];
         var scratch = new int[bonus?.Bonus.GiftCount ?? 0];
-        var rows = reels.Rows;
 
         return (ref SpinRng rng) =>
         {
-            reels.DrawWindowIds(ref rng, window);
+            var outcomeKey = reels.DrawStopKey(ref rng);
 
-            var multiplier = evaluator.EvaluateWindowIds(window, cells);
+            var multiplier = 0;
+            if (winningOutcomes.TryGetValue(outcomeKey, out var outcome) && outcome is not null)
+                multiplier = outcome.TotalMultiplier;
             var linePay = wager.ScaledMultiply(multiplier);
 
             var bonusPay = Millicents.Zero;
-            if (bonus is not null && WinEvaluator.IsTriggeredIds(window, rows, bonus))
+            if (bonus is not null && outcome?.TriggeredFeatures.Count > 0)
             {
                 bonusPay = wager * bonus.Bonus.Play(ref rng, scratch);
                 tally.BonusTriggers++;

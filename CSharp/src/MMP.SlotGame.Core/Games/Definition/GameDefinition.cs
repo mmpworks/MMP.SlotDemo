@@ -107,6 +107,8 @@ public sealed record ScatterPickBonus
 /// </summary>
 public sealed class GameDefinition
 {
+    private readonly Lazy<WinningOutcomeTable> _winningOutcomes;
+
     internal GameDefinition(
         string name,
         string? source,
@@ -123,6 +125,9 @@ public sealed class GameDefinition
         Paylines = Array.AsReadOnly([.. paylines]);
         Categories = Array.AsReadOnly([.. categories]);
         Bonus = bonus;
+        _winningOutcomes = new Lazy<WinningOutcomeTable>(
+            () => WinningOutcomeTable.Build(this),
+            LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     public string Name { get; }
@@ -140,6 +145,13 @@ public sealed class GameDefinition
     public IReadOnlyList<PayCategory> Categories { get; }
 
     public ScatterPickBonus? Bonus { get; }
+
+    /// <summary>
+    /// Every paying or feature-triggering combination implied by the PAR strips, paylines,
+    /// paytable, and feature rules. The table is compiled once with the rest of the game;
+    /// combinations that do nothing are absent.
+    /// </summary>
+    public WinningOutcomeTable WinningOutcomes => _winningOutcomes.Value;
 
     public int ReelCount => Reels.ReelCount;
 

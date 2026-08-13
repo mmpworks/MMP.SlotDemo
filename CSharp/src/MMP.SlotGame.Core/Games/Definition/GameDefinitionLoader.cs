@@ -40,15 +40,23 @@ public static class GameDefinitionLoader
     public static GameDefinition LoadFile(string path)
     {
         var json = File.ReadAllText(path);
-        return TryLoad(json, out var definition, out var errors)
-            ? definition!
-            : throw new GameDefinitionException(path, errors);
+        if (!TryLoad(json, out var definition, out var errors))
+            throw new GameDefinitionException(path, errors);
+
+        // LoadFile is the deployment construction path, not a validation probe. Complete
+        // the PAR-derived lookup now so the first spin never pays its construction cost.
+        _ = definition!.WinningOutcomes;
+        return definition;
     }
 
-    public static GameDefinition Load(string json) =>
-        TryLoad(json, out var definition, out var errors)
-            ? definition!
-            : throw new GameDefinitionException("(inline)", errors);
+    public static GameDefinition Load(string json)
+    {
+        if (!TryLoad(json, out var definition, out var errors))
+            throw new GameDefinitionException("(inline)", errors);
+
+        _ = definition!.WinningOutcomes;
+        return definition;
+    }
 
     public static bool TryLoad(string json, out GameDefinition? definition, out IReadOnlyList<string> errors)
     {

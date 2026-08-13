@@ -94,6 +94,50 @@ three medians were 101.2M, 107.2M, and 111.7M spins per second after the byte-wi
 The representation stayed because it improved the center result and preserved the dictionary
 as the public source of truth.
 
+## Precompute PAR outcomes by reel stop
+
+A loaded PAR game does not change after construction. Its reel strips, paylines, paytable,
+and feature rules are fixed. That lets construction calculate the useful stop combinations
+once instead of rebuilding and evaluating a visible window on every spin.
+
+Each reel stop occupies one byte in a 64-bit key. Five reels use 40 bits:
+
+```text
+stops:  12   28   4   17   25
+bytes:  0C   1C   04  11   19
+key:    0x0C1C041119
+```
+
+This is an encoding, not a conventional hash. Every reel owns a separate byte, so two
+different stop combinations cannot share a key. A byte supports stop numbers 0 through 255,
+which means as many as 256 stops on each reel. Eight reels fit in one `ulong`.
+
+`WinningOutcomeTable` examines the complete stop cycle during game construction. It stores
+an entry when at least one payline pays or a feature starts. The value contains the final
+line-pay multiplier, the paylines that contributed to it, and the triggered features.
+Combinations that do nothing are absent.
+
+The feature information matters even when the initial payout is zero. Orca Dive's key
+`0x0000000000` shows Penguin on each required reel. No payline wins, but `PenguinBonus`
+starts. Dropping zero-pay entries would silently remove that minigame.
+
+Orca Dive has 14,781,416 stop combinations. Construction stores 1,516,294 line-winning
+combinations and recognizes 181,656 feature-triggering combinations. Outcomes with the same
+payout, paylines, and feature state share one value object; the table does not allocate a
+new payline list for every key.
+
+The spin loop now draws five stops, packs their bytes, and performs one lookup. It does not
+copy the fifteen visible symbol IDs or run the payline and scatter rules again. A Release
+run of the complete loaded-game path produced a five-sample median of 14.03 million spins
+per second on the development machine. That number includes payout lookup, feature play,
+worker accounting, and telemetry; it is not comparable to the earlier 92.8M measurement,
+which timed window drawing alone.
+
+`TryLoad` remains a validation operation. Tests use it thousands of times with damaged PAR
+documents, so it creates a lazy table holder without enumerating the stop cycle. `Load` and
+`LoadFile` are the construction paths used for playable games; they materialize the table
+before returning, so the first spin does not inherit the setup cost.
+
 ## The failed experiments belong in the lesson
 
 Several plausible changes lost:
@@ -134,6 +178,6 @@ reverted while their measurements remain in the article and teaching notes.
 Do not create that branch in a worktree containing unrelated active edits. Establish the
 initial-system commit first, then branch from that exact point.
 
-*Source files: `Reels/StripReelSet.cs`, `Simulation/SpinRng.cs`,
+*Source files: `Reels/StripReelSet.cs`, `Games/WinningOutcomeTable.cs`, `Simulation/SpinRng.cs`,
 `Paytables/Paytable.cs`, `tests/MMP.SlotGame.Tests/PerformanceBaselineTests.cs`, and
 `SlotDemo.Server/Chapters/ChapterNineEndpoints.cs`.*
