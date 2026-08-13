@@ -32,6 +32,8 @@ own; the illustrations borrow `#/finale` and `#/ch06`.
 - [ ] A finished 10M-spin run left on screen in a second tab for the cold open
 
 **OBS**
+- [ ] `MMP.Media/generated/slotdemo-series/episodes/ep01/` staged locally as an OBS
+      media source folder, with `strip/` and `symbols/` alongside it
 - [ ] Scenes: `WHITEBOARD`, `RIDER`, `BROWSER`
 - [ ] Zoom-to-mouse hotkey bound and tested at diagram-reading zoom
 - [ ] Pen pressure and color tested on camera; thin lines vanish at 1080p
@@ -42,6 +44,9 @@ own; the illustrations borrow `#/finale` and `#/ch06`.
 
 **Scene:** BROWSER, a completed run on the finale page.
 
+> **Asset (FULL FRAME, open):** `slotdemo-series/episodes/ep01/ep01-title-plate.png` —
+> hold three seconds ahead of the first line, then cut to the finale page.
+
 - "This chart is a 98% slot machine proving itself. The line is ten million simulated
   spins. The shaded band is what probability theory says the wander should be. It
   walks in and it stays in."
@@ -50,6 +55,9 @@ own; the illustrations borrow `#/finale` and `#/ch06`.
   way I would whiteboard this in a design interview, requirements through deep dives.
   By the end of this one you know where the whole series goes and what gets built
   when."
+> **Asset (FULL FRAME):** `slotdemo-series/episodes/series-title-plate.png` — up under
+> the route, held through the nine-episode list, out on "Any one of episodes 2 through 9".
+
 - Name the route, one question per episode, so viewers know where they are. Episode 2,
   how do you hold money that never drifts and randomness you can replay. Episode 3,
   what a reel actually is, and why a weighted die gets the odds wrong. Episode 4, how
@@ -115,6 +123,10 @@ recursive. Three sentences of restraint buy back months of work.
   and the gap between them. "Seven orders of magnitude. That gap is the design
   problem, and every architecture decision today is an answer to it."
 
+> **Asset (FULL FRAME):** `slotdemo-series/episodes/ep01/ep01-1.3-orders-of-magnitude.png`
+> — cut on "seven orders of magnitude", hold to the end of the line, then back to the
+> board.
+
 ### Beat — estimates as a design tool
 
 The estimate exists to eliminate options rather than to be right to two significant
@@ -133,6 +145,10 @@ the arithmetic before drawing boxes is what keeps the boxes honest.
 - "Every box we draw next lives in one lane. Mix them and you get one of two failures:
   audit numbers corrupted by a dropped event, or a simulation stalled because a laptop
   fell behind on a chart."
+
+> **Asset (FULL FRAME):** `slotdemo-series/episodes/ep01/ep01-1.4-two-lane-plate.png` —
+> up once both lanes are drawn, held through the "same word meaning two things" beat
+> below.
 
 ### Beat — the same word meaning two things
 
@@ -157,6 +173,10 @@ Draw order:
 5. The SPA box with the chart in it.
 6. REST arrows: `GET /api/run/limits` and `POST /api/run`.
 
+> **Asset (FULL FRAME):** `slotdemo-series/episodes/ep01/ep01-1.1-architecture-3tier.png`
+> — cut to it once the board is complete, hold through the three key lines below, then
+> back to the board for the illustration.
+
 Key lines to land while drawing:
 
 - "Core is a class library with zero I/O. No ASP.NET, no logging, no file system. It
@@ -167,6 +187,10 @@ Key lines to land while drawing:
 - "Nothing here is a message broker, a database, or a cache. Each one would be a box
   that has to be run, monitored, and explained. They are absent because the arithmetic
   in the last segment said they buy nothing."
+
+> **Asset (FULL FRAME):** `slotdemo-series/episodes/ep01/ep01-1.2-request-lifecycle-sequence.png`
+> — one pass down the diagram to close the segment, roughly twenty seconds, then cut to
+> the browser illustration.
 
 > **Illustration (45 seconds, BROWSER).** The simulation lab page, `#/ch06`, Lab 2. Run it
 > once at the default capacity. The spin total climbs by every spin while the delivered

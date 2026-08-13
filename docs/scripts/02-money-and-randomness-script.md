@@ -36,6 +36,8 @@ minutes total, and only to make an engine claim visible.
 - [ ] `logs/` cleared so the viewer starts empty
 
 **OBS**
+- [ ] `MMP.Media/generated/slotdemo-series/episodes/ep02/` staged locally as an OBS
+      media source folder
 - [ ] Scenes: `RIDER`, `BROWSER`, `TERMINAL`
 - [ ] Zoom-to-mouse hotkey bound and tested at code-reading zoom
 - [ ] Rider font sized for capture
@@ -45,6 +47,9 @@ minutes total, and only to make an engine claim visible.
 ## 0:00–1:00 — Cold open
 
 **Scene:** RIDER, the Core project tree, both target files absent.
+
+> **Asset (FULL FRAME, open):** `slotdemo-series/episodes/ep02/ep02-title-plate.png` —
+> hold three seconds, then cut to Rider on the first line.
 
 - "Two files today. About a hundred lines between them. One holds money, one holds
   randomness, and between them they decide whether a ten-million-spin run means
@@ -246,6 +251,9 @@ with `==` in it."
 
 **Scene:** RIDER, comment block or whiteboard.
 
+> **Asset (FULL FRAME):** `slotdemo-series/episodes/ep02/ep02-2.5-three-enemies.png` —
+> up for the whole segment; talk the three items off the card.
+
 1. **Ambient randomness.** `Random.Shared`, `Guid.NewGuid()`, `DateTime.Now`. One call
    anywhere in the engine and the run stops being reproducible. Rule R3: randomness
    travels as `ref` parameters, which makes it greppable across the assembly.
@@ -363,6 +371,10 @@ Here that hazard is turned into discipline.
 
 ### Beat 10 — seeding, and when borrowed code is the engineering decision
 
+> **Asset (FULL FRAME):** `slotdemo-series/episodes/ep02/ep02-2.3-rng-streams.png` — up
+> on the first bullet, held while you trace master seed to worker streams, out before the
+> constants beat.
+
 - `masterSeed ^ workerId`, then SplitMix64 four times. One mixing function does two
   jobs: separates the workers, and expands one seed into four well-spread state words.
 - The constants are published and canonical, from the generator's author. **The
@@ -378,6 +390,11 @@ Here that hazard is turned into discipline.
 > those two workers are walking nearly the same stream." Click **SplitMix64**: shared
 > prefix drops to 0 and the stops spread. Point at the replay row: same seed, same
 > worker, same first value. Cut back.
+
+> **Asset (OVERLAY):** `slotdemo-series/episodes/ep02/ep02-2.4-correlated-seeds-1080p.mp4`
+> — cut to it full frame on "fifty-one shared bits" and let it play through the lit
+> prefix and the SplitMix64 pass; it holds its last frame, so talk over the hold rather
+> than racing it. Back to the lab for the replay row.
 
 ### Beat 11 — `NextInt`, and paying for uniformity
 
@@ -395,6 +412,13 @@ Here that hazard is turned into discipline.
 > showing the price. "At 64 bits this same skew is real and far too small to see. That
 > is the kind of bug that passes review and turns up later as an RTP that misses its
 > target by a hair." Cut back.
+
+> **Asset (FULL FRAME, two clips back to back):**
+> `slotdemo-series/episodes/ep02/ep02-2.1-modulo-bias-1080p.mp4`, then
+> `slotdemo-series/episodes/ep02/ep02-2.2-rejection-sampling-1080p.mp4` — same chart,
+> same axes, method swapped, so cut straight from one into the other with no beat
+> between. Hold the first on its final frame long enough to name the 15% bucket, hold
+> the second on its rejection counter.
 
 ### Beat 12 — the warning label
 

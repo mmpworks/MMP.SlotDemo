@@ -40,6 +40,8 @@ minutes total, and only to make an engine claim visible.
 - [ ] `logs/` cleared so the viewer starts empty
 
 **OBS**
+- [ ] `MMP.Media/generated/slotdemo-series/episodes/ep03/` staged locally as an OBS
+      media source folder, with `strip/` and `symbols/` alongside it
 - [ ] Scenes: `RIDER`, `BROWSER`, `WHITEBOARD`
 - [ ] Zoom-to-mouse hotkey bound and tested at code-reading zoom
 - [ ] Rider font sized for capture
@@ -49,6 +51,9 @@ minutes total, and only to make an engine claim visible.
 ## 0:00–1:15 — Cold open
 
 **Scene:** RIDER, the Core project tree, the `Reels` folder absent.
+
+> **Asset (FULL FRAME, open):** `slotdemo-series/episodes/ep03/ep03-title-plate.png` —
+> hold three seconds, then cut to Rider on the first line.
 
 - "Episode 2 gave us money that cannot round and randomness that can be replayed.
   Today we model the machine itself, and I want to start with a bug."
@@ -77,6 +82,19 @@ for (var cell = 0; cell < 3; cell++) window[cell] = Draw();
 
 **Scene:** WHITEBOARD. Draw the strip, then slide a three-cell window along it.
 
+> **Asset (FULL FRAME):** `slotdemo-series/episodes/ep03/ep03-3.5-strip-window-flowchart.png`
+> — up as the board turns over, roughly fifteen seconds, then the strip still below.
+
+> **Asset (FULL FRAME):** `slotdemo-series/strip/reel1-strip-4k.png` — reel 1's real
+> 26-stop order; pan down it slowly while you describe the strip, and leave it on screen
+> for the window slide.
+
+> **Asset (FULL FRAME):** `slotdemo-series/strip/ep03-window-slide-1080p.mp4` — the
+> window travelling down the strip and wrapping past the seam. Runs long by design, so
+> start it on "its visible column shows that stop and the next two strip positions" and
+> stay on it through the wrap; it holds two seconds on the wrap for the neighbor-rule
+> line.
+
 - "Each reel has its own ordered cyclic strip. A spin picks one stop on this reel. Its
   visible column shows that stop and the next two strip positions, wrapping at the end.
   One random number fills three visible symbol positions on this reel. A five-reel game repeats that process
@@ -85,11 +103,19 @@ for (var cell = 0; cell < 3; cell++) window[cell] = Draw();
   row zero forces Bell in row one. Probability one. The die model says four in
   twenty-two." (Seven and Bell are both real symbols in `classic-three-reel.json`, and
   Bell's count on reel 1 there is 4 of 22, so the whiteboard numbers check against a
-  file that is on disk.)
+  file that is on disk. The strip art on screen is Orca Dive's real reel 1 — bridge the
+  two out loud: "The strip you're looking at is the real five-reel game's first reel.
+  The numbers I'm working are the small classic strip, so they fit on a whiteboard.
+  Same rule on both.")
 - Then the part that makes this dangerous: "Single-cell marginals agree between the two
   models. One in twenty-two either way. Every one-row test passes under both. What
   diverges is V-shaped lines, multi-line variance, and the confidence band: the numbers
   you check at the end of the project."
+
+> **Asset (FULL FRAME):** `slotdemo-series/episodes/ep03/ep03-3.2-die-vs-strip-1080p.mp4`
+> — cut on "single-cell marginals agree" and play it through: the two models agree on one
+> cell, then rows 0 and 1 come up together and separate. Hold the final frame while you
+> say the "every one-row test passes under both" line.
 - "This was the first thing the design review caught, and the type we are about to write
   is what it turned into."
 - Close the segment with the industry tell: "Par sheets publish strip layouts rather
@@ -143,6 +169,10 @@ the preset path they look like dead weight until you read what the comment says 
   every builder, and every test fixture. Adding it now costs one line.
 - The comment names who does use them: a loaded game definition. Orca Dive ships a wild
   and a scatter, and it arrives in episode 7 through this door.
+
+> **Asset (FULL FRAME):** `slotdemo-series/symbols/_contact-sheet-FINAL.png` — the whole
+> Orca Dive symbol set, up while you name the wild and the scatter; point at the orca,
+> which is the wild. Twenty seconds, then back to Rider.
 
 **The line to say:** "The presets keep the flags at false so their math stays a closed
 form. Episode 7 is the game that uses them."
@@ -310,6 +340,11 @@ The constructor accepts read-only lists and copies them into a jagged `Symbol[][
 **Jump to `orca-dive.json`** and point at
 `"reelStops": [26, 29, 26, 29, 26]`.
 
+> **Asset (OVERLAY):** `slotdemo-series/episodes/ep03/ep03-3.6-reel1-strip.png` — a
+> quarter-frame inset beside the `reelStops` line while you say "each inner list is one
+> reel strip", so the 26 on screen has the strip it belongs to next to it. Out before the
+> par-sheet line.
+
 - Each inner list is one reel strip, so real machines may carry unequal strips.
 - The read-only parameter says the constructor borrows the caller's data. The private
   arrays are the snapshot owned by the reel set.
@@ -380,6 +415,12 @@ Slow down here.
   independent, so the joint probability is forced to be the product of the marginals.
   Here it is whatever the strip layout makes it, and those two numbers differ for every
   real reel."
+- The strongest case is on Orca Dive's own reel 1, so say it with the strip on screen:
+  "Green7 sits at stops 3, 16 and 24. Its gaps are 13, 8 and 5, so no window ever shows
+  two Green7s. The die model prices two Green7s in one window at 1.33 percent, one spin
+  in seventy-five. The machine's answer is zero. Same symbol counts, same marginal, and
+  one model treats an impossible outcome as a paying one. Every single-row test you can
+  write passes under both models."
 - Where it gets spent: variance. Correlated rows change how much a run wanders even
   when they leave the mean untouched. "The confidence band in episode 4 is built out of
   this method."
@@ -470,6 +511,11 @@ Name plus one row index per reel. Center on a five-reel three-row machine is
 `1,1,1,1,1`; a V is `0,1,2,1,0`.
 
 - **Whiteboard:** draw a 5×3 grid and trace Center, Top, V, and ZigTop quickly.
+
+> **Asset (FULL FRAME):** `slotdemo-series/episodes/ep03/ep03-3.3-payline-shapes-1080p.mp4`
+> — all nine default lines traced one at a time over the 5×3 grid. Run it under the two
+> bullets below rather than drawing all nine by hand; it ends on a readable frame with
+> every line on the grid.
 - The constructor takes `IReadOnlyList<int>` and immediately copies it into a read-only
   wrapper. Same defensive-copy move as the reel set, same reason: this object is read
   concurrently by every worker for the life of the run.
@@ -497,6 +543,11 @@ lines from three position values. Then open the JSON `paylines` list.
 ### Beat 13 — the paragraph about even row counts
 
 Read the doc comment's last paragraph aloud, then show the four-row result.
+
+> **Asset (FULL FRAME):** `slotdemo-series/episodes/ep03/ep03-3.4-even-row-asymmetry.png`
+> — the same ZigTop line on a 3-row grid and a 4-row grid, side by side. Up on "show the
+> four-row result" and held through the three bullets; the swing rows are what you point
+> at on the second bullet.
 
 - With an odd row count, `rows / 2` is the true center and everything is symmetric.
 - With an even count there is no center, integer division rounds toward the bottom
