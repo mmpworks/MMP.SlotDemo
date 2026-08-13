@@ -1,10 +1,8 @@
 # Proving the Machine: Ground Truth, Statistics, and Bit-for-Bit Determinism
 
-*Part 7, the last in a series on building a slot game engine in C#. The engine is
-built and it loads data-defined games. This article is about trusting its results: a test
-architecture where independent computations referee each other, an overflow budget
-that was measured rather than assumed, and one shared home for a constant that would
-otherwise drift without failing a test.*
+*Part 8, the last in a series on building a slot game engine in C#. The engine is built
+and can load games from data. This article asks whether its answers are trustworthy. We
+will compare independent calculations, check numeric limits, and test repeatability.*
 
 A simulator that verifies itself is a circular argument. The engine says 98.01%;
 the analytic calculator says 98.00% ± band; they agree, but both were written by
@@ -21,6 +19,18 @@ Four kinds of evidence appear here:
 | **Exhaustive test** | Checks every outcome in a small finite game |
 | **Determinism test** | Repeats the same complete setup and demands identical totals |
 | **Statistical test** | Checks whether a large sample is reasonably close to analytic expectations |
+
+### Check your understanding
+
+Why write an exhaustive evaluator separately instead of calling the production evaluator
+inside the loop?
+
+<details><summary>Answer</summary>
+
+Separate code can catch a mistake in the production evaluator. If both paths call the same
+method, they will repeat the same mistake and agree with each other.
+
+</details>
 
 ## The anchor: enumerate everything
 
@@ -56,12 +66,16 @@ Against this anchor, two independent claims are checked:
   must return what the test's independent evaluation returns, for all 10,648
   windows.
 
-The same pattern scales up through the symbol-tuple enumeration from article 6:
-`Analyser_MatchesAnIndependentExhaustiveEnumeration` holds the weighted-tuple
+The same pattern scales up through the weighted enumeration from article 5:
+`Analyzer_MatchesAnIndependentExhaustiveEnumeration` holds the weighted-tuple
 analyzer against a raw stop-by-stop walk. Integer combination counts are compared
 exactly; floating-point RTP and sigma are compared with tight stated tolerances.
 Nothing here samples, so when one of these tests fails, something changed or is
 wrong.
+
+Part 5 takes `GameAnalyzer` apart method by method, beginning with a 24-outcome example.
+That walkthrough explains the weighted recursion used for loaded games; this article keeps
+its focus on how independent calculations test one another.
 
 <!-- EXPORT: render this Mermaid block to PNG before publishing -->
 ```mermaid
@@ -78,7 +92,7 @@ flowchart TB
 ```
 
 > 🧪 **Try it live.** The companion site's chapter 7 page (<http://localhost:5090>,
-> then `#/ch07`) puts the referee on screen. **Lab 1 — The census** runs the exact
+> then `#/ch08`) puts the referee on screen. **Lab 1 — The census** runs the exact
 > enumeration and lists the combination counts it produces; **Lab 2 — Simulation
 > against the referee** spins the same game and shows the measured numbers walking
 > toward those exact ones.
@@ -150,7 +164,7 @@ declared and updated in multiplier units, never in money:
 private long _hits, _payUnits, _paySquareUnits, _payTriggerUnits, _triggerWeight;
 
 // win.Multiplier is the real multiplier x Millicents.ScaleFactor (PayCategory.PayFor),
-// so every tally below is at that scale too. Summarise() divides that back out
+// so every tally below is at that scale too. Summarize() divides that back out
 // once, at the end, rather than converting per combination.
 //
 // Overflow check for _paySquareUnits, since it is quadratic in the multiplier: at
@@ -178,7 +192,7 @@ checked against the game's real numbers in the comment above, is already enormou
 
 The conversion at the boundary is also a speed decision, and it shows in the
 function shapes. `Accumulate` runs once per enumerated symbol tuple and adds whole
-integers into the tallies above. `Summarise` runs once at the end and does every
+integers into the tallies above. `Summarize` runs once at the end and does every
 division: by `ScaleFactor`, by the count of weighted outcomes. A version of
 `Accumulate` that divided each contribution down to a per-unit-wagered value first
 would do a floating-point division once for every symbol combination in the game
@@ -308,14 +322,14 @@ multiple seeds, a pooled mean, analytic checks, and exhaustive fixtures.
 The capstone uses an external comparison:
 `OrcaDive_TenMillionSpins_ReproduceThePublishedReturns`, ten million spins of
 the loaded game against the public third-party deconstruction cited in
-`docs/par-orca-dive.md`. As article 6 clarifies, that source is an independent
+`docs/par-orca-dive.md`. As article 7 clarifies, that source is an independent
 reconstruction, not an official manufacturer PAR sheet or certification report.
 
 ## Determinism you can assert with ==
 
 A concurrency test often can't assert much: run threads, hope a race surfaces, check
 that nothing crashed. This codebase's invariants (article 2's M2, integer
-addition is order-independent, and article 5's fixed quotas) let these tests assert
+addition is order-independent, and article 6's fixed quotas) let these tests assert
 *exact* equality instead:
 
 ```csharp
@@ -392,3 +406,10 @@ that shares their data and none of their code.
 `ExhaustiveGroundTruthTests.cs`, `ConcurrencyTests.cs`, `GameConvergenceTests.cs`,
 `OrcaDiveParSheetTests.cs`; `Games/GameAnalyzer.cs`, `Simulation/RunTotals.cs`,
 `Rtp/NormalQuantile.cs`.*
+
+## Optimization notebook
+
+Correctness tests become the gate for performance work. Run old and new implementations with
+the same seed, compare exact totals or checksums, and report speed only after they match.
+Benchmark repeated Release runs inside one process so startup and JIT warmup do not masquerade
+as algorithmic change. Episode 9 uses this test design on `DrawWindow`.

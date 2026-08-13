@@ -11,7 +11,7 @@ minutes total, and only to make an engine claim visible.
 
 > **Discipline note for this recording.** The labs illustrate; they do not carry the
 > episode. If a beat can be made in Rider, make it in Rider. Cut to the browser only
-> where the engine's behaviour is easier to see than to describe, and cut back inside
+> where the engine's behavior is easier to see than to describe, and cut back inside
 > a minute.
 
 ---
@@ -49,7 +49,7 @@ minutes total, and only to make an engine claim visible.
 - "Two files today. About a hundred lines between them. One holds money, one holds
   randomness, and between them they decide whether a ten-million-spin run means
   anything."
-- "Everything downstream (reels, paytables, the engine, the proof in episode 7) gets
+- "Everything downstream (reels, paytables, the engine, the proof in episode 8) gets
   to be ordinary because these two are strict."
 - Set the format: "I paste each file finished, then we go through it and I tell you
   why every line is the way it is."
@@ -233,7 +233,7 @@ conversion cannot be exact.
 ### Beat 7 — M2, stated once so it can be tested later
 
 Integer addition gives the same total in any order, so an N-worker total matches a
-1-worker total bit for bit. Flag it: "Remember this. In episode 7 it becomes a test
+1-worker total bit for bit. Flag it: "Remember this. In episode 8 it becomes a test
 with `==` in it."
 
 > **Illustration (40 seconds, BROWSER).** Money lab, multiplier `110`, one million
@@ -252,7 +252,7 @@ with `==` in it."
 2. **Correlated seeds.** `masterSeed + workerId` looks reasonable and produces streams
    that rhyme. We will see how badly in a few minutes.
 3. **Dynamic scheduling.** `Parallel.For` steals work, so which worker handles which
-   spin changes between runs. Episode 5's problem, named here so it does not surprise
+   spin changes between runs. Episode 6's problem, named here so it does not surprise
    anyone later.
 
 ## 14:00–14:45 — Create the second file
@@ -438,7 +438,7 @@ Give this section real time.
   test proves whatever it was tuned to."
 - Run the suite. Green.
 - Flash `ParallelRun_EqualsSequentialReplication_BitForBit` without opening it.
-  "Episode 7 takes this one apart. It passes because of the three rules we set today."
+  "Episode 8 takes this one apart. It passes because of the three rules we set today."
 
 ## 24:30–25:30 — Wrap
 

@@ -1,48 +1,60 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { getJson, postJson } from '../api/labs'
-import type { GameSummary, ValidateView } from '../api/labs'
+import { ref } from 'vue'
+import { postJson } from '../api/labs'
+import type { DeterminismView, TelemetryView } from '../api/labs'
+import ComprehensionCheck from '../components/ComprehensionCheck.vue'
+import OptimizationPreview from '../components/OptimizationPreview.vue'
 
 defineProps<{ title: string; blurb: string }>()
 
-const games = ref<GameSummary[]>([])
-const selected = ref<GameSummary | null>(null)
+const presetName = ref('Video5x64')
+const seed = ref(42)
+const workerCount = ref(8)
+const spins = ref(1_000_000)
+const varySeed = ref(false)
+const useOrca = ref(true)
+const determinism = ref<DeterminismView | null>(null)
 
-const draft = ref('')
-const validation = ref<ValidateView | null>(null)
+const telemetrySpins = ref(2_000_000)
+const channelCapacity = ref(16)
+const telemetry = ref<TelemetryView | null>(null)
 
 const error = ref('')
 const busy = ref(false)
 
-onMounted(async () => {
-  try {
-    games.value = await getJson<GameSummary[]>('/api/ch6/games')
-    selected.value = games.value[0] ?? null
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load games.'
-  }
-})
-
-const brokenExample = `{
-  "name": "Broken Example",
-  "symbols": [ { "name": "Seven" }, { "name": "Cherry", "scatter": true } ],
-  "reels": [ ["Seven", "Cherry", "Seven"], ["Cherry", "Missing", "Seven"] ],
-  "reelStops": [3, 4],
-  "paylines": [ { "name": "Centre", "rows": [1, 1, 1] } ],
-  "paytable": [ { "symbol": "Bell", "pays": { "3": 2.25 } } ]
-}`
-
-function loadBroken(): void {
-  draft.value = brokenExample
-}
-
-async function validate(): Promise<void> {
+async function runDeterminism(vary: boolean): Promise<void> {
+  varySeed.value = vary
   busy.value = true
   error.value = ''
   try {
-    validation.value = await postJson<ValidateView>('/api/ch6/validate', { json: draft.value })
+    determinism.value = await postJson<DeterminismView>('/api/ch5/determinism', {
+      presetName: presetName.value,
+      seed: seed.value,
+      workerCount: workerCount.value,
+      spins: spins.value,
+      repeats: 3,
+      varySeed: vary,
+      gameFile: useOrca.value ? 'orca-dive.json' : '',
+    })
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Validation failed.'
+    error.value = err instanceof Error ? err.message : 'Determinism run failed.'
+  } finally {
+    busy.value = false
+  }
+}
+
+async function runTelemetry(): Promise<void> {
+  busy.value = true
+  error.value = ''
+  try {
+    telemetry.value = await postJson<TelemetryView>('/api/ch5/telemetry', {
+      presetName: presetName.value,
+      seed: seed.value,
+      spins: telemetrySpins.value,
+      channelCapacity: channelCapacity.value,
+    })
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Telemetry run failed.'
   } finally {
     busy.value = false
   }
@@ -59,160 +71,180 @@ async function validate(): Promise<void> {
     <section class="chapter-brief">
       <h3>What the episode builds</h3>
       <p>
-        A slot game is a document: symbols, strips, paylines, paytable, and optionally a
-        scatter-triggered bonus, all in one JSON file. The loader compiles it into a
-        validated <code>GameDefinition</code> or returns the complete list of problems in
-        one pass. It checks the declared facts (stop counts, symbol tallies) against the
-        strips, so a PAR-sheet transcription error is caught at load rather than showing up
-        later as a wrong RTP.
+        Think of it as a factory floor. Each worker is handed a fixed stack of spins at the
+        start of the shift, so the same worker always plays the same spins and a run
+        replays. Each keeps a private tally and posts it to the shared board every 4,096
+        spins, because the shared board is the slow part. The progress readout is a
+        whiteboard: a worker writes its current total over the old one, so a missed reading
+        costs a chart point.
+      </p>
+      <p>
+        In the engine's own terms: workers get fixed spin quotas up front instead of stealing
+        work, so the RNG partition never depends on scheduling luck. Totals are integer
+        counters fed by one batched atomic add per 4,096 spins. Telemetry rides a bounded
+        drop-oldest channel carrying absolute snapshots, so a dropped sample is superseded by
+        the next one.
       </p>
       <p class="chapter-source">
-        Source: <code>src/MMP.SlotGame.Core/Games/Definition/</code> and the shipped
-        documents in <code>games/</code>.
+        Source: <code>src/MMP.SlotGame.Core/Simulation/SimulationEngine.cs</code>,
+        <code>Simulation/RunTotals.cs</code>.
       </p>
     </section>
 
     <section class="lab">
-      <h3>Lab 1 — The shipped games, read by the real loader</h3>
-      <p v-if="error" class="lab__error">{{ error }}</p>
+      <h3>Lab 1 — Same seed, same answer</h3>
+      <p class="lab__lede">
+        Three runs of the same configuration, on Orca Dive by default with wilds and the
+        scatter bonus. Wall time varies with whatever else the machine is doing. The
+        totals come back identical to the last millicent, because the bonus draws from the
+        same per-worker stream as the reels. Vary the seed to see a real difference.
+      </p>
 
-      <div class="game-picker">
-        <button
-          v-for="g in games"
-          :key="g.file"
-          type="button"
-          class="lab-button"
-          :class="{ inactive: selected?.file !== g.file }"
-          @click="selected = g"
-        >
-          {{ g.name ?? g.file }}
-        </button>
+      <div class="controls">
+        <label>
+          Subject
+          <select v-model="useOrca">
+            <option :value="true">Orca Dive (full game)</option>
+            <option :value="false">Preset below</option>
+          </select>
+        </label>
+        <label v-if="!useOrca">
+          Preset
+          <select v-model="presetName">
+            <option>Classic3</option><option>Video3</option><option>Line4</option>
+            <option>Video5x64</option><option>Video5x128</option>
+          </select>
+        </label>
+        <label>
+          Seed
+          <input v-model.number="seed" type="number" min="0" />
+        </label>
+        <label>
+          Workers
+          <input v-model.number="workerCount" type="number" min="1" max="64" />
+        </label>
+        <label>
+          Spins
+          <input v-model.number="spins" type="number" min="1000" max="5000000" step="100000" />
+        </label>
+        <button type="button" :disabled="busy" @click="runDeterminism(false)">Same seed ×3</button>
+        <button type="button" class="ghost" :disabled="busy" @click="runDeterminism(true)">Vary seed ×3</button>
       </div>
 
-      <div v-if="selected?.valid" class="results">
-        <div class="verdict verdict--info">
+      <p v-if="error" class="lab__error">{{ error }}</p>
+
+      <div v-if="determinism" class="results">
+        <div class="verdict" :class="determinism.identical ? '' : 'verdict--drift'">
           <div>
-            <span class="verdict__label">Geometry</span>
-            <span class="mono">{{ selected.reels }} reels × {{ selected.rows }} rows</span>
+            <span class="verdict__label">Mode</span>
+            <span class="mono">{{ determinism.varySeed ? 'different seeds' : 'same seed' }}</span>
           </div>
           <div>
-            <span class="verdict__label">Stops per reel</span>
-            <span class="mono">{{ selected.stopsPerReel?.join(' · ') }}</span>
-          </div>
-          <div>
-            <span class="verdict__label">Outcome space</span>
-            <span class="mono">{{ selected.stopCombinations?.toLocaleString() }}</span>
-          </div>
-          <div v-if="selected.bonus">
-            <span class="verdict__label">Bonus</span>
-            <span class="mono">{{ selected.bonus.name }} (max {{ selected.bonus.maxAward }}×)</span>
+            <span class="verdict__label">Snapshots identical</span>
+            <span class="mono">{{ determinism.identical ? 'yes — bit for bit' : 'no' }}</span>
           </div>
         </div>
-
         <table class="lab-table">
           <thead>
-            <tr><th>Category</th><th>Kind</th><th>Pays</th></tr>
+            <tr><th>Run</th><th>Seed</th><th>Returned (mc)</th><th>Hits</th><th>RTP</th><th>Time</th><th>Spins/s</th></tr>
           </thead>
           <tbody>
-            <tr v-for="c in selected.categories" :key="c.name">
-              <td>{{ c.name }}</td>
-              <td>{{ c.kind }}</td>
-              <td>{{ c.pays.map((p) => `${p.count}→${p.payHundredths / 100}×`).join('  ') }}</td>
+            <tr v-for="r in determinism.runs" :key="r.attempt">
+              <td>{{ r.attempt }}</td>
+              <td>{{ r.seed }}</td>
+              <td>{{ r.returnedMillicents.toLocaleString() }}</td>
+              <td>{{ r.hits.toLocaleString() }}</td>
+              <td>{{ (r.measuredRtp * 100).toFixed(4) }}%</td>
+              <td>{{ r.elapsedMs.toFixed(0) }} ms</td>
+              <td>{{ Math.round(r.spinsPerSecond).toLocaleString() }}</td>
             </tr>
           </tbody>
         </table>
-
         <p class="lab-note">
-          Symbols:
-          <span class="mono">
-            {{ selected.symbols?.map((s) => s.name + (s.isWild ? ' (wild)' : s.isScatter ? ' (scatter)' : '')).join(', ') }}
-          </span>
+          Read the returned column. Integer money (M2), fixed quotas, and seeded per-worker
+          streams (the R3 discipline) together make an N-worker run reproducible.
         </p>
       </div>
     </section>
 
     <section class="lab">
-      <h3>Lab 2 — Feed the loader anything</h3>
+      <h3>Lab 2 — Starve the telemetry lane</h3>
       <p class="lab__lede">
-        Paste a definition and the loader answers with the compiled game, or with every
-        problem in the file at once. An author fixes a document in one pass instead of
-        load-fix-load-fix.
+        A deliberately slow reader drains the snapshot channel while eight workers flood
+        it. Shrink the capacity and the drop rate climbs. The exact totals never move,
+        because the two lanes never touch.
       </p>
 
       <div class="controls">
-        <button type="button" class="ghost" @click="loadBroken">Load a broken example</button>
-        <button type="button" :disabled="busy || !draft" @click="validate">Validate</button>
+        <label>
+          Spins
+          <input v-model.number="telemetrySpins" type="number" min="10000" max="10000000" step="500000" />
+        </label>
+        <label>
+          Channel capacity
+          <input v-model.number="channelCapacity" type="number" min="1" max="4096" />
+          <small>try 1, 16, 1024</small>
+        </label>
+        <button type="button" :disabled="busy" @click="runTelemetry">Run under pressure</button>
       </div>
 
-      <textarea
-        v-model="draft"
-        class="editor mono"
-        rows="12"
-        spellcheck="false"
-        placeholder="Paste a game definition JSON here"
-      />
-
-      <div v-if="validation" class="results">
-        <div v-if="validation.valid" class="verdict">
+      <div v-if="telemetry" class="results">
+        <div class="verdict verdict--info">
           <div>
-            <span class="verdict__label">Compiled</span>
-            <span class="mono">{{ validation.name }}</span>
+            <span class="verdict__label">Samples produced ≈</span>
+            <span class="mono">{{ telemetry.samplesProducedApprox.toLocaleString() }}</span>
           </div>
           <div>
-            <span class="verdict__label">Outcome space</span>
-            <span class="mono">{{ validation.stopCombinations?.toLocaleString() }}</span>
+            <span class="verdict__label">Delivered</span>
+            <span class="mono">{{ telemetry.samplesDelivered.toLocaleString() }}</span>
+          </div>
+          <div>
+            <span class="verdict__label">Dropped ≈</span>
+            <span class="mono">{{ telemetry.samplesDroppedApprox.toLocaleString() }}</span>
+          </div>
+          <div>
+            <span class="verdict__label">Throughput</span>
+            <span class="mono">{{ Math.round(telemetry.spinsPerSecond).toLocaleString() }} spins/s</span>
           </div>
         </div>
-        <div v-else class="refused">
-          <span class="verdict__label">Refused — {{ validation.errors?.length }} problem(s)</span>
-          <ul>
-            <li v-for="(problem, i) in validation.errors" :key="i" class="mono">{{ problem }}</li>
-          </ul>
+        <div class="verdict">
+          <div>
+            <span class="verdict__label">Exact final RTP</span>
+            <span class="mono">{{ (telemetry.exactFinal.measuredRtp * 100).toFixed(4) }}%</span>
+          </div>
+          <div>
+            <span class="verdict__label">Exact spins counted</span>
+            <span class="mono">{{ telemetry.exactFinal.spins.toLocaleString() }}</span>
+          </div>
+          <div>
+            <span class="verdict__label">Last sample carried</span>
+            <span class="mono">{{ telemetry.lastDeliveredSample.spins.toLocaleString() }} spins</span>
+          </div>
         </div>
+        <p class="lab-note">
+          Dropped samples are absolute snapshots, so losing one costs a chart point. The
+          proving ground works the same way.
+        </p>
       </div>
     </section>
 
     <section class="chapter-brief">
-      <h3>Carried into episode 7</h3>
+      <h3>Carried into episode 6</h3>
       <p>
-        Because the game is data, every stop combination can be walked. Episode 7 does that
-        and uses the exhaustive census to referee the simulation.
+        The engine takes a play function, so a game with its own rules (wilds, scatters, a
+        pick bonus) plugs into the same workers, quotas, and telemetry. Episode 6 makes the
+        game itself a document.
       </p>
     </section>
+    <ComprehensionCheck
+      question="A slow browser misses several progress updates. What happens to the final totals?"
+      :choices="['They become smaller.', 'They remain exact.', 'The workers repeat the missed spins.']"
+      :answer="1"
+      explanation="Progress snapshots are copies. Workers keep the authoritative totals in separate counters."
+    />
+    <OptimizationPreview
+      question="Would manual inlining or loop unrolling make workers faster?"
+      later="Only a complete Release run can answer. Episode 9 shows both ideas losing to the JIT's compact loop."
+    />
   </article>
 </template>
-
-<style scoped>
-.game-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-md);
-}
-
-.lab-button.inactive {
-  color: var(--color-text-secondary);
-  border: var(--rule-hairline);
-}
-
-.editor {
-  width: 100%;
-  background: var(--color-surface);
-  border: var(--rule-hairline);
-  color: var(--color-text-primary);
-  font-size: 0.8rem;
-  padding: var(--space-sm);
-  resize: vertical;
-}
-
-.refused ul {
-  margin: 0.4rem 0 0;
-  padding-left: 1.2rem;
-}
-
-.refused li {
-  font-size: 0.8rem;
-  color: var(--color-log-warning);
-  line-height: 1.6;
-}
-</style>

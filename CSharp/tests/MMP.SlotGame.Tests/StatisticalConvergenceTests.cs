@@ -34,7 +34,7 @@ public sealed class StatisticalConvergenceTests
         const long spinsPerSeed = 3_000_000;
 
         var reference = TestGame.Build(TestGame.DefaultPreset);
-        var analytic = reference.Analyse();
+        var analytic = reference.Analyze();
         var band = NormalQuantile.TwoSided99 * analytic.SigmaPerUnitWagered / Math.Sqrt(spinsPerSeed);
 
         var inBand = 0;
@@ -103,7 +103,7 @@ public sealed class StatisticalConvergenceTests
 
         var game = TestGame.Build(
             TestGame.DefaultPreset, masterSeed: seed, workerCount: Workers, targetSpins: spins);
-        var analytic = game.Analyse();
+        var analytic = game.Analyze();
 
         var snapshot = await game.Engine().RunAsync(telemetry: null);
 
@@ -144,7 +144,7 @@ public sealed class StatisticalConvergenceTests
         {
             var game = TestGame.Build(
                 preset, masterSeed: seed, workerCount: Workers, targetSpins: spins);
-            var analytic = game.Analyse();
+            var analytic = game.Analyze();
             var snapshot = await game.Engine().RunAsync(telemetry: null);
 
             var band = NormalQuantile.TwoSided999 * analytic.SigmaPerUnitWagered / Math.Sqrt(spins);

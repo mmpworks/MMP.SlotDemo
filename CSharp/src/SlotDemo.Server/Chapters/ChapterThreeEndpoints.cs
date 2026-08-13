@@ -21,12 +21,13 @@ public static class ChapterThreeEndpoints
         app.MapGet("/api/ch3/sources", Sources);
         app.MapPost("/api/ch3/spin", (SpinRequest request) => Spin(request, log));
         app.MapPost("/api/ch3/census", (CensusRequest request) => Census(request, log));
+        app.MapPost("/api/ch3/reel-snapshots", (ReelSnapshotRequest request) => ReelSnapshots(request, log));
     }
 
     /// <summary>Strip geometry for every source, so the page can draw the actual cycles.</summary>
     private static IResult Sources()
     {
-        var ids = ReelPreset.All.Keys
+        var ids = StandardReelPresets.All.Keys
             .Concat(ReelSources.GameFiles().Select(f => $"{ReelSources.GamePrefix}{f}"));
 
         var described = new List<object>();
@@ -40,6 +41,9 @@ public static class ChapterThreeEndpoints
                 id = source.Id,
                 name = source.DisplayName,
                 isGame = source.IsGame,
+                configurationSource = source.IsGame
+                    ? "PAR transcription in a game-definition file"
+                    : "built-in demo catalog",
                 reelCount = reels.ReelCount,
                 rows = reels.Rows,
                 stopsPerReel = Enumerable.Range(0, reels.ReelCount).Select(reels.StopCount),
@@ -126,6 +130,58 @@ public static class ChapterThreeEndpoints
 
     public sealed record CensusRequest(string SourceId, ulong Seed, int Spins, byte SymbolId);
 
+    public sealed record ReelSnapshotRequest(ulong? Seed);
+
+    /// <summary>
+    /// Builds two immutable reel-set snapshots from different input arrays. The same seed
+    /// repeats each snapshot, while choosing the 36-stop snapshot changes only the next run.
+    /// </summary>
+    private static IResult ReelSnapshots(ReelSnapshotRequest request, StructuredLogger log)
+    {
+        if (request.Seed is null)
+            return Results.BadRequest(new { error = "Seed is required." });
+
+        var seed = request.Seed.Value;
+        var pearl = new Symbol(0, "Pearl");
+        var shell = new Symbol(1, "Shell");
+
+        static Symbol[] BuildStrip(int stops, Symbol first, Symbol second) =>
+            Enumerable.Range(0, stops).Select(index => index % 5 == 0 ? first : second).ToArray();
+
+        var source26 = BuildStrip(26, pearl, shell);
+        var snapshot26 = new StripReelSet([source26]);
+        source26[0] = shell; // Prove the completed snapshot does not follow later source-array edits.
+        var snapshot36 = new StripReelSet([BuildStrip(36, pearl, shell)]);
+
+        static string[] Draw(StripReelSet reels, ulong seed)
+        {
+            var rng = SpinRng.ForWorker(seed, 0);
+            var window = new Symbol[reels.WindowSize];
+            reels.DrawWindow(ref rng, window);
+            return window.Select(symbol => symbol.Name).ToArray();
+        }
+
+        var first26 = Draw(snapshot26, seed);
+        var repeated26 = Draw(snapshot26, seed);
+        var first36 = Draw(snapshot36, seed);
+
+        log.Information(Category,
+            "Compared immutable reel snapshots at seed {Seed}: {ShortStops} and {LongStops} stops",
+            new LogProperty("Seed", seed),
+            new LogProperty("ShortStops", snapshot26.StopCount(0)),
+            new LogProperty("LongStops", snapshot36.StopCount(0)));
+
+        return Results.Ok(new
+        {
+            seed,
+            shortSnapshot = new { stops = snapshot26.StopCount(0), window = first26 },
+            repeatedShortSnapshot = new { stops = snapshot26.StopCount(0), window = repeated26 },
+            longSnapshot = new { stops = snapshot36.StopCount(0), window = first36 },
+            shortSnapshotRepeatedExactly = first26.SequenceEqual(repeated26),
+            shortSnapshotKeptOriginalFirstSymbol = snapshot26.Strip(0)[0].Name == "Pearl",
+        });
+    }
+
     /// <summary>
     /// The strip-versus-weighted-die argument, measured: draw N windows and count how
     /// often the chosen symbol lands in the center row per reel, next to the exact strip
@@ -146,14 +202,14 @@ public static class ChapterThreeEndpoints
 
         var rng = SpinRng.ForWorker(request.Seed, 0);
         var window = new Symbol[reels.WindowSize];
-        var centre = reels.Rows / 2;
+        var center = reels.Rows / 2;
         var counts = new int[reels.ReelCount];
 
         for (var spin = 0; spin < request.Spins; spin++)
         {
             reels.DrawWindow(ref rng, window);
             for (var reel = 0; reel < reels.ReelCount; reel++)
-                if (window[reel * reels.Rows + centre].Id == request.SymbolId)
+                if (window[reel * reels.Rows + center].Id == request.SymbolId)
                     counts[reel]++;
         }
 

@@ -9,9 +9,9 @@ using MMP.SlotGame.Core.Simulation;
 namespace SlotDemo.Server.Chapters;
 
 /// <summary>
-/// Episode 5's lab — the simulation engine. Two claims made measurable: determinism
-/// (same seed and worker count, identical totals, any number of times) and the two-lane
-/// telemetry design (exact totals untouched while the lossy channel drops under load).
+/// Episode 5 endpoints for testing the simulation engine. They demonstrate that a fixed
+/// seed and worker count produce identical totals, and that dropped telemetry snapshots
+/// do not change the final totals.
 /// </summary>
 public static class ChapterFiveEndpoints
 {
@@ -137,10 +137,9 @@ public static class ChapterFiveEndpoints
     public sealed record TelemetryRequest(string PresetName, ulong Seed, long Spins, int ChannelCapacity);
 
     /// <summary>
-    /// The two-lane argument with numbers on it. The workers write a snapshot per batch
-    /// into a bounded drop-oldest channel while a deliberately slow reader drains it.
-    /// The response counts samples produced against samples delivered, then puts the
-    /// exact final totals next to the last sample the lossy lane happened to carry.
+    /// Workers write one snapshot per batch to a bounded, drop-oldest channel while a
+    /// deliberately slow reader consumes it. The response compares the number of snapshots
+    /// produced and delivered, then compares the final totals with the last delivered snapshot.
     /// </summary>
     private static async Task<IResult> Telemetry(
         TelemetryRequest request, StructuredLogger log, CancellationToken ct)
@@ -169,8 +168,7 @@ public static class ChapterFiveEndpoints
             SingleReader = true,
         });
 
-        // A reader that sleeps between reads, standing in for a slow browser. The point
-        // is what does NOT happen: the workers never notice.
+        // Sleep between reads to simulate a slow browser. Channel backpressure never reaches the workers.
         long delivered = 0;
         TelemetrySample last = default;
         var reader = Task.Run(async () =>

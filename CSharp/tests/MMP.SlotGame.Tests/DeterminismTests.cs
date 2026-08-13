@@ -76,7 +76,7 @@ public sealed class DeterminismTests
     {
         var game = TestGame.Build(
             TestGame.DefaultPreset, masterSeed: Seed, workerCount: workers, targetSpins: Spins);
-        var analytic = game.Analyse();
+        var analytic = game.Analyze();
 
         var snapshot = await game.Engine().RunAsync(telemetry: null);
 

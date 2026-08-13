@@ -1,12 +1,12 @@
 namespace MMP.SlotGame.Core.Games.Definition;
 
 /// <summary>
-/// The on-disk JSON shape. Every property is nullable and validation happens elsewhere,
+/// Types used to deserialize the on-disk JSON document. Every property is nullable and validation happens elsewhere,
 /// so that a bad game file is reported in slot terms instead of JSON deserializer terms.
 /// <see cref="GameDefinitionLoader"/> does the checking and produces
 /// <see cref="GameDefinition"/>, which is the type the rest of the engine sees.
 ///
-/// These types are internal for that reason: the JSON shape is not part of the API.
+/// These types are internal because callers use the validated <see cref="GameDefinition"/> instead.
 /// </summary>
 internal sealed class GameDocument
 {
@@ -29,7 +29,7 @@ internal sealed class GameDocument
 
     /// <summary>
     /// How every <see cref="PayDocument.Pays"/> value in this game is interpreted: "units"
-    /// (the default, and the only shape before fractional pays existed) for whole multipliers
+    /// (the default, and the only format before fractional pays existed) for whole multipliers
     /// of the total spin bet, "tenths" for whole tenths of the total spin bet (15 = 1.5X), or
     /// "hundredths" for whole hundredths of the total spin bet (225 = 2.25X) — the finest unit
     /// the engine supports, and the only way to state a multiplier like 2.25X or 1.75X that

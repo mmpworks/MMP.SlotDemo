@@ -7,9 +7,9 @@ namespace SlotDemo.Server.Runs;
 /// SSE fan-out for run events, separate from the log stream so a page can watch the run
 /// without parsing log lines for numbers it needs as data.
 ///
-/// Same posture as the log relay: one bounded channel per subscriber, drop-oldest. A
-/// browser that cannot keep up loses chart points, never accuracy, and never slows the
-/// workers down. That is the lossy lane doing its job.
+/// Each subscriber receives a bounded, drop-oldest channel, as in the log relay. A slow
+/// browser may miss intermediate chart points, but it cannot slow the workers or change
+/// the run's final totals.
 /// </summary>
 public sealed class RunStreamService
 {

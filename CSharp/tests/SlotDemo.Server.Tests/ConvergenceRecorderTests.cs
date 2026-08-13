@@ -7,7 +7,7 @@ namespace SlotDemo.Server.Tests;
 /// <summary>
 /// The consolidation rules the finale chart depends on. The recorder is the reason ten
 /// million spins reach the browser as a couple hundred points, so its boundary
-/// behaviour is the contract under test, boundary by boundary.
+/// behavior is the contract under test, boundary by boundary.
 /// </summary>
 public sealed class ConvergenceRecorderTests
 {

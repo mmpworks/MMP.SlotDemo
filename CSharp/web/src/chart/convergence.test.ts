@@ -37,7 +37,7 @@ describe('scales', () => {
     expect(x(10_000_000)).toBe(frame.width - frame.pad.right)
   })
 
-  it('maps rtp so the analytic centre sits mid-plot and higher rtp is higher on screen', () => {
+  it('maps rtp so the analytic center sits mid-plot and higher rtp is higher on screen', () => {
     const y = yScale(frame, 0.98, 0.01)
     const mid = frame.pad.top + (frame.height - frame.pad.top - frame.pad.bottom) / 2
     expect(y(0.98)).toBeCloseTo(mid, 6)
@@ -103,7 +103,7 @@ describe('buildGeometry', () => {
     expect(g.lastX).toBeLessThanOrEqual(frame.width - frame.pad.right + 0.1)
   })
 
-  it('labels the analytic centre tick with the analytic rtp', () => {
+  it('labels the analytic center tick with the analytic rtp', () => {
     const g = buildGeometry(frame, input([point(50_000, 0.98)]))!
     expect(g.ticksY[2].label).toBe('98.00%')
   })

@@ -71,8 +71,8 @@ public sealed record SimulationConfig
         var errs = new List<string>();
         config = null;
 
-        if (!ReelPreset.All.TryGetValue(draft.PresetName ?? "", out var preset))
-            errs.Add($"Unknown preset '{draft.PresetName}'. Valid: {string.Join(", ", ReelPreset.All.Keys)}.");
+        if (!StandardReelPresets.All.TryGetValue(draft.PresetName ?? "", out var preset))
+            errs.Add($"Unknown preset '{draft.PresetName}'. Valid: {string.Join(", ", StandardReelPresets.All.Keys)}.");
         if (draft.BaseRtpBasisPoints is < 1 or > MaxAggregateBasisPoints)
             errs.Add($"Base RTP must be 1..{MaxAggregateBasisPoints} basis points; got {draft.BaseRtpBasisPoints}.");
         if (draft.FreeSpinsRtpBasisPoints < 0)

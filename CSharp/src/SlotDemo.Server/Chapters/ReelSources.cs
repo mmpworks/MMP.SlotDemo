@@ -67,9 +67,9 @@ public static class ReelSources
             return true;
         }
 
-        if (!ReelPreset.All.TryGetValue(id, out var preset))
+        if (!StandardReelPresets.All.TryGetValue(id, out var preset))
         {
-            error = $"Unknown source '{id}'. Presets: {string.Join(", ", ReelPreset.All.Keys)}; games use the '{GamePrefix}' prefix.";
+            error = $"Unknown source '{id}'. Presets: {string.Join(", ", StandardReelPresets.All.Keys)}; games use the '{GamePrefix}' prefix.";
             return false;
         }
 
@@ -78,7 +78,7 @@ public static class ReelSources
             preset.Name,
             preset.BuildReels(),
             preset.Paylines,
-            preset.SymbolWeights.Select(sw => new SymbolInfo(sw.Symbol.Id, sw.Symbol.Name, false, false)).ToArray(),
+            preset.Symbols.Select(symbol => new SymbolInfo(symbol.Id, symbol.Name, false, false)).ToArray(),
             IsGame: false);
         return true;
     }

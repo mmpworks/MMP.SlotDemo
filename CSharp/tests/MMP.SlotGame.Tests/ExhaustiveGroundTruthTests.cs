@@ -1,4 +1,4 @@
-﻿using MMP.SlotGame.Core.Money;
+using MMP.SlotGame.Core.Money;
 using MMP.SlotGame.Core.Paytables;
 using MMP.SlotGame.Core.Reels;
 using MMP.SlotGame.Core.Rtp;
@@ -177,7 +177,7 @@ public sealed class ExhaustiveGroundTruthTests
     {
         Assert.Equal(3, game.Reels.ReelCount);
 
-        // --- copy out the raw data (ids, rows, pays). No behaviour comes with it. ---
+        // --- copy out the raw data (ids, rows, pays). No behavior comes with it. ---
         var strips = new byte[3][];
         for (var reel = 0; reel < 3; reel++)
         {

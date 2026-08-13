@@ -1,7 +1,7 @@
 // Boundary validation: the wire payload is external data, so it gets normalized
-// into the StatsResponse shape before any component sees it. Malformed or hostile
+// into a StatsResponse before any component sees it. Malformed or hostile
 // JSON degrades to placeholder values, so components downstream always receive a
-// well-shaped object.
+// complete object with safe fallback values.
 
 import type { AiSystemStats, LogEvent, LogPropertyValue, MachineStats, ProcessStats, StatsResponse } from './types'
 

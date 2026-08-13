@@ -91,7 +91,7 @@ try {
   const shownCount = Number(shownAfterResume.match(/(?<shown>\d+)\s*\//)?.groups?.shown ?? 0)
   check('resume catches up with buffered events', shownCount >= rowsAtPause + 30, shownAfterResume.trim())
 
-  // 3. Level show/hide: hide the app information lane, E2E rows vanish; show, they return.
+  // 3. Level show/hide: hiding app information removes E2E rows; showing it restores them.
   const shownBeforeHide = await page.$$eval('.log-row', r => r.length)
   await page.$$eval('.log-filter-chip', (chips) => {
     // The "app" chip inside the Information family.
@@ -136,7 +136,7 @@ try {
   }))
   check('clear empties the view', afterClear.rows === 0 && afterClear.empty, JSON.stringify(afterClear))
 
-  // 7. Resizable panel + no page errors across the whole run.
+  // 7. The panel resizes and no page errors occurred during the test.
   const resizable = await page.$eval('.log-viewer', el => getComputedStyle(el).resize)
   check('panel is user-resizable', resizable === 'both' || resizable === 'vertical', `resize=${resizable}`)
   check('zero page errors across the run', pageErrors.length === 0, pageErrors.slice(0, 2).join(' | '))

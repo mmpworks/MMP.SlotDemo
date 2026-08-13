@@ -201,7 +201,7 @@ const shelves: Shelf[] = [
         free: true,
         url: 'https://gaminglabs.com/wp-content/uploads/2018/09/GLI-11-Gaming-Devices-V3-0.pdf',
         about: 'The de-facto worldwide certification standard for gaming devices: RNG requirements, continuous chi-square self-tests, metering, program verification.',
-        series: 'SpinRng is labelled simulation-grade rather than certified-gaming because of the requirements in this document.',
+        series: 'SpinRng is labeled simulation-grade rather than certified-gaming because of the requirements in this document.',
       },
       {
         title: 'Technical Standards for Gaming Devices',

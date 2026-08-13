@@ -45,20 +45,20 @@ public static class ChapterFourEndpoints
     {
         if (!string.IsNullOrWhiteSpace(request.GameFile))
             return SolveGame(request, log);
-        if (!ReelPreset.All.TryGetValue(request.PresetName ?? "", out var preset))
+        if (!StandardReelPresets.All.TryGetValue(request.PresetName ?? "", out var preset))
             return Results.BadRequest(new { error = $"Unknown preset '{request.PresetName}'." });
         if (request.TargetBaseRtpBasisPoints is < 100 or > 9_900)
             return Results.BadRequest(new { error = "Target base RTP 100-9900 basis points." });
 
         var reels = preset.BuildReels();
-        var canonical = Paytable.CanonicalFor(preset.ReelCount, preset.SymbolWeights.Count);
+        var canonical = Paytable.CanonicalFor(preset.ReelCount, preset.Symbols.Count);
         var target = request.TargetBaseRtpBasisPoints / 10_000.0;
 
         var unscaledEv = AnalyticMath.BaseEvMultiplier(reels, preset.Paylines, canonical);
         var scaled = PaytableSolver.Solve(reels, preset.Paylines, canonical, target, SimulationConfig.Wager);
         var realized = AnalyticMath.RealizedBaseRtp(reels, preset.Paylines, scaled, SimulationConfig.Wager);
 
-        var symbolNames = preset.SymbolWeights.ToDictionary(sw => sw.Symbol.Id, sw => sw.Symbol.Name);
+        var symbolNames = preset.Symbols.ToDictionary(symbol => symbol.Id, symbol => symbol.Name);
         var rows = canonical.Pays
             .OrderBy(p => p.Key.SymbolId).ThenBy(p => p.Key.Count)
             .Select(p => new
@@ -107,7 +107,7 @@ public static class ChapterFourEndpoints
 
         var game = definition!;
         MMP.SlotGame.Core.Games.GameAnalysis analysis;
-        try { analysis = MMP.SlotGame.Core.Games.GameAnalyzer.Analyse(game); }
+        try { analysis = MMP.SlotGame.Core.Games.GameAnalyzer.Analyze(game); }
         catch (NotSupportedException ex) { return Results.BadRequest(new { error = ex.Message }); }
 
         var target = request.TargetBaseRtpBasisPoints / 10_000.0;
@@ -187,11 +187,11 @@ public static class ChapterFourEndpoints
 
         var valid = config!;
         var reels = valid.Preset.BuildReels();
-        var canonical = Paytable.CanonicalFor(valid.Preset.ReelCount, valid.Preset.SymbolWeights.Count);
+        var canonical = Paytable.CanonicalFor(valid.Preset.ReelCount, valid.Preset.Symbols.Count);
         var scaled = PaytableSolver.Solve(
             reels, valid.Preset.Paylines, canonical,
             valid.BaseRtpBasisPoints / 10_000.0, SimulationConfig.Wager);
-        var breakdown = RtpCalculator.Analyse(reels, valid.Preset.Paylines, scaled, valid.Features, SimulationConfig.Wager);
+        var breakdown = RtpCalculator.Analyze(reels, valid.Preset.Paylines, scaled, valid.Features, SimulationConfig.Wager);
 
         long[] ladder = [10_000, 100_000, 1_000_000, 10_000_000, 100_000_000];
         var bands = ladder.Select(n => new
@@ -242,7 +242,7 @@ public static class ChapterFourEndpoints
         MMP.SlotGame.Core.Games.GameAnalysis analysis;
         try
         {
-            analysis = MMP.SlotGame.Core.Games.GameAnalyzer.Analyse(game);
+            analysis = MMP.SlotGame.Core.Games.GameAnalyzer.Analyze(game);
         }
         catch (NotSupportedException ex)
         {

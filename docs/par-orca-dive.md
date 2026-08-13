@@ -10,7 +10,8 @@ everything below is a description of that file.
 
 ## Provenance
 
-- **Public URL:** https://wizardofodds.com/games/slots/jackpot-party/
+- **Public source:** Wizard of Odds statistical slot analysis used during the original
+  reconstruction. The source game's branding is intentionally omitted from Orca Dive.
 - **Fetched:** 2026-08-07
 - **Method:** the cited page's author reconstructed reel strips and return
   figures from 212 recorded spins at the Wynn, January 2012, and published the
@@ -143,13 +144,13 @@ Line-pay expected return: **59.601%** of a one-unit line wager.
   each reel shows a Penguin symbol in the window with probability 6/26.
 - Trigger: a Penguin visible in the window on ALL of reels 1, 3, 5:
   P = (6/26)^3 = **0.0122895** (~1 in 81.4 spins).
-- Bonus: pick from 30 gifts — 24 prizes + 6 "Party Poopers" (pooper ends the
-  bonus, pays +1 consolation). Prize pool: 1×2, 2×5, 3×1, 4×1, 5×9, 10×3,
-  15×2, 20×1 → 24 prizes summing to 144 (avg 6.0/pick). Pool incl. pooper
-  consolations: 150.
-- Expected total picks until pooper (inclusive): (n+1)/(p+1) = 31/7 = 4.428571.
+- Bonus: open from 30 treasure chests — 24 prizes + 6 rogue waves. A rogue wave
+  ends the dive and pays a +1 safe-return award. Prize pool: 1×2, 2×5, 3×1,
+  4×1, 5×9, 10×3, 15×2, 20×1 → 24 prizes summing to 144 (avg 6.0/pick).
+  Including the six safe-return awards, the pool total is 150.
+- Expected total picks through the rogue wave: (n+1)/(p+1) = 31/7 = 4.428571.
   Expected safe picks: 24/7 = 3.428571. Expected safe win: 24/7 × 6 = 144/7 =
-  20.571429. Plus 1 pooper consolation = **21.571429** expected bonus win.
+  20.571429. Plus the 1× safe-return award = **21.571429** expected bonus win.
 - Bonus return: 0.0122895 × 21.571429 = **26.510%** of wager.
 
 Note the source's model treats picks as drawn with the *average* prize value
@@ -225,7 +226,7 @@ well as the one the numbers force.
 
 ### 2. Mixed 7 excludes wilds, and is a category rather than a fallback
 
-Counting sevens per reel (6, 7, 3, 7, 6) and subtracting the pure-colour runs
+Counting sevens per reel (6, 7, 3, 7, 6) and subtracting the pure-color runs
 reproduces all three mixed counts directly:
 
 - Mixed 3oak = 6 x 7 x 3 x (29 - 7) x 26 - (2 + 6 + 6) x 22 x 26 = 72,072 - 8,008 = 64,064
@@ -256,16 +257,16 @@ what makes it a single rule rather than two special cases.
 
 The pick bonus needs no reconciliation, but the implementation derives its
 moments rather than assuming the average-prize shortcut. Over a uniformly
-random order of all 30 gifts, prize *i* is collected exactly when it precedes
-all 6 poopers (probability 1/7), and prizes *i* and *j* are both collected when
-they lead the 8-item subset consisting of themselves and the 6 poopers
+random order of all 30 treasure chests, prize *i* is collected exactly when it precedes
+all 6 rogue waves (probability 1/7), and prizes *i* and *j* are both collected when
+they lead the 8-item subset consisting of themselves and the 6 rogue waves
 (probability 2/(8x7) = 1/28). That gives
 
 - E[award] = 144/7 + 1 = 151/7 = 21.571429, matching the published figure
 - Var[award] = 469.744898
 
 exactly, without enumerating a permutation. The simulation does not use these:
-it draws real gifts without replacement, and the closed form exists to check it.
+it opens real treasure chests without replacement, and the closed form exists to check it.
 
 ### Verified numbers
 

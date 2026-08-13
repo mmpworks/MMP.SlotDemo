@@ -98,6 +98,7 @@ app.MapChapterFour(log);
 app.MapChapterFive(log);
 app.MapChapterSix(log);
 app.MapChapterSeven(log);
+app.MapChapterNine(log);
 app.MapParSheet(log);
 
 // ---- Simulation runs: the finale page's start/watch/stop surface. ----

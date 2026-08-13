@@ -7,7 +7,7 @@ builds one box of it.
 minutes total, and only to make a design claim visible.
 **Companion article:** `docs/articles/01-system-design.md`
 **Companion site:** MMP.SlotDemo, branch `main`. Episode 1 has no lab page of its
-own; the illustrations borrow `#/finale` and `#/ch05`.
+own; the illustrations borrow `#/finale` and `#/ch06`.
 
 > **Discipline note for this recording.** The labs illustrate; they do not carry the
 > episode. The whiteboard is the subject. Cut to the browser where a number is easier
@@ -18,7 +18,7 @@ own; the illustrations borrow `#/finale` and `#/ch05`.
 ## Prep checklist
 
 **Repo — the subject**
-- [ ] Excalidraw (or draw.io) open on a blank canvas, pen colour set, grid off
+- [ ] Excalidraw (or draw.io) open on a blank canvas, pen color set, grid off
 - [ ] Rider on `CSharp/MMP.SlotDemo.slnx`, tree collapsed to project level
 - [ ] `docs/architecture.md` open in a Rider tab, scrolled to the ADR table in §6
 - [ ] `CSharp/src/MMP.SlotGame.Core/Simulation/SimulationConfig.cs` open in a second tab
@@ -27,14 +27,14 @@ own; the illustrations borrow `#/finale` and `#/ch05`.
 **Companion site — the illustration**
 - [ ] `E:\dev\MMP.SlotDemo`, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
-- [ ] `http://localhost:5090/#/ch05` and `#/finale` each loaded once so nothing pays
+- [ ] `http://localhost:5090/#/ch06` and `#/finale` each loaded once so nothing pays
       first-request cost
 - [ ] A finished 10M-spin run left on screen in a second tab for the cold open
 
 **OBS**
 - [ ] Scenes: `WHITEBOARD`, `RIDER`, `BROWSER`
 - [ ] Zoom-to-mouse hotkey bound and tested at diagram-reading zoom
-- [ ] Pen pressure and colour tested on camera; thin lines vanish at 1080p
+- [ ] Pen pressure and color tested on camera; thin lines vanish at 1080p
 
 ---
 
@@ -45,7 +45,8 @@ own; the illustrations borrow `#/finale` and `#/ch05`.
 - "This chart is a 98% slot machine proving itself. The line is ten million simulated
   spins. The shaded band is what probability theory says the wander should be. It
   walks in and it stays in."
-- "Over seven episodes we build everything behind that chart. Today is the map: the
+- "Over eight episodes we build everything behind that chart. A ninth follow-up measures
+  what is worth optimizing. Today is the map: the
   way I would whiteboard this in a design interview, requirements through deep dives.
   By the end of this one you know where the whole series goes and what gets built
   when."
@@ -53,9 +54,9 @@ own; the illustrations borrow `#/finale` and `#/ch05`.
   how do you hold money that never drifts and randomness you can replay. Episode 3,
   what a reel actually is, and why a weighted die gets the odds wrong. Episode 4, how
   to compute the return and the confidence band without playing a spin. Episode 5, how
-  to play millions of spins in parallel and still reproduce them bit for bit. Episode
-  6, how the game itself becomes a data file. Episode 7, why you should believe any of
-  the numbers.
+  weighted counting replaces millions of repeated outcomes. Episode 6, how to play
+  millions of spins in parallel and still reproduce them bit for bit. Episode 7, how
+  the game itself becomes a data file. Episode 8, why you should believe the numbers.
 - Set the format for the series: "Every later episode creates a file on camera, pastes
   the finished source, and then I tell you why every line is the way it is. Today is the
   design those files come out of."
@@ -164,7 +165,7 @@ Key lines to land while drawing:
   that has to be run, monitored, and explained. They are absent because the arithmetic
   in the last segment said they buy nothing."
 
-> **Illustration (45 seconds, BROWSER).** Episode 5's lab page, `#/ch05`, Lab 2. Run it
+> **Illustration (45 seconds, BROWSER).** The simulation lab page, `#/ch06`, Lab 2. Run it
 > once at the default capacity. The spin total climbs by every spin while the delivered
 > and dropped sample counts sit next to each other. Point at the two rates. "Same run,
 > two lanes. The counter took every spin, and the drop count is how many chart samples
@@ -182,7 +183,7 @@ Key lines to land while drawing:
   no floating-point boundary to argue about at 99.00%.
 - Money is a `long` count of millicents, and no conversion to `double` exists in the
   type. "The compiler enforces the money rule on every build."
-- State the associativity point once, because episode 7 collects on it: integer
+- State the associativity point once, because episode 8 collects on it: integer
   addition gives the same total in any order, so an N-worker total equals a
   single-worker total bit for bit. Determinism becomes a property that can be asserted
   with `==`.
@@ -244,7 +245,7 @@ plain server-sent events instead of a socket?
 - "Two independent implementations of the same game. One counts probabilities, one
   plays spins. They share the paytable and the strips, and no payout code. Their
   agreement is the check."
-- Then plant episode 7: "A third implementation joins in the last episode. Brute-force
+- Then plant episode 8: "A third implementation joins in the last episode. Brute-force
   enumeration walks every possible outcome and referees the other two. Three
   implementations agreeing is a much stronger claim than one implementation passing
   its own tests."

@@ -9,13 +9,13 @@ namespace MMP.SlotGame.Tests;
 /// The second config-driven game, and the reason it exists: it is a DIFFERENT SHAPE. Three
 /// reels instead of five, six symbols instead of ten, strips of 22/24/22 instead of
 /// 26/29/26/29/26, a wild covering two symbols instead of four, and no feature at all. It
-/// loads through the same loader, evaluates through the same evaluator and is analysed by the
-/// same analyser as Orca Dive, with no code anywhere that knows which is which.
+/// loads through the same loader, evaluates through the same evaluator and is analyzed by the
+/// same analyzer as Orca Dive, with no code anywhere that knows which is which.
 ///
-/// The analyser is then checked against an INDEPENDENT exhaustive enumeration in the spirit of
+/// The analyzer is then checked against an INDEPENDENT exhaustive enumeration in the spirit of
 /// <see cref="ExhaustiveGroundTruthTests"/>: all 22 x 24 x 22 = 11,616 stop combinations, with
 /// the matching rules re-derived here from scratch. It shares the DATA with the engine (symbol
-/// names, strip contents, pay values) and none of the BEHAVIOUR. If both the analyser and this
+/// names, strip contents, pay values) and none of the BEHAVIOR. If both the analyzer and this
 /// enumeration had the same bug in run matching, the Orca Dive numbers would still be
 /// right and this test would still be green, which is why the two games together are worth
 /// more than either alone.
@@ -43,7 +43,7 @@ public sealed class ClassicThreeReelTests
     [Fact]
     public void WithoutAFeature_TheBonusTermsVanish()
     {
-        var analysis = GameAnalyzer.Analyse(Game);
+        var analysis = GameAnalyzer.Analyze(Game);
 
         Assert.Equal(0, analysis.TriggerCombinations);
         Assert.Equal(0.0, analysis.BonusRtp);
@@ -59,17 +59,17 @@ public sealed class ClassicThreeReelTests
     [Fact]
     public void ExampleGame_PaysAPlausibleReturn()
     {
-        var analysis = GameAnalyzer.Analyse(Game);
+        var analysis = GameAnalyzer.Analyze(Game);
 
         Assert.InRange(analysis.TotalRtp, 0.85, 0.99);
         Assert.InRange(analysis.HitFrequency, 0.05, 0.50);
     }
 
     [Fact]
-    public void Analyser_MatchesAnIndependentExhaustiveEnumeration()
+    public void Analyzer_MatchesAnIndependentExhaustiveEnumeration()
     {
         var game = Game;
-        var analysis = GameAnalyzer.Analyse(game);
+        var analysis = GameAnalyzer.Analyze(game);
         var truth = Enumerate(game);
 
         Assert.Equal(11_616L, truth.Combinations);
@@ -82,12 +82,12 @@ public sealed class ClassicThreeReelTests
             var expected = truth.Counts.GetValueOrDefault(key);
             var actual = analysis.CombinationCounts.GetValueOrDefault(key);
             if (expected != actual)
-                deltas.Add($"{game.Categories[key.CategoryIndex].Name} x{key.Count}: analyser {actual:N0}, exhaustive {expected:N0}");
+                deltas.Add($"{game.Categories[key.CategoryIndex].Name} x{key.Count}: analyzer {actual:N0}, exhaustive {expected:N0}");
         }
 
         Assert.True(
             deltas.Count == 0,
-            "Analyser disagrees with the independent enumeration:\n  " + string.Join("\n  ", deltas));
+            "Analyzer disagrees with the independent enumeration:\n  " + string.Join("\n  ", deltas));
 
         Assert.Equal(truth.Hits, analysis.HitCombinations);
 
@@ -98,7 +98,7 @@ public sealed class ClassicThreeReelTests
         var relative = Math.Abs(analysis.LineRtp - exhaustiveRtp) / exhaustiveRtp;
         Assert.True(
             relative <= 1e-12,
-            $"Analyser line RTP {analysis.LineRtp:R} disagrees with exhaustive {exhaustiveRtp:R} (relative {relative:R}).");
+            $"Analyzer line RTP {analysis.LineRtp:R} disagrees with exhaustive {exhaustiveRtp:R} (relative {relative:R}).");
     }
 
     // ---------------------------------------------------------------------------
@@ -113,12 +113,12 @@ public sealed class ClassicThreeReelTests
     /// longhand.
     /// Every stop combination is equally likely (one uniform stop per reel, reels independent),
     /// so an unweighted count over all of them IS the exact distribution. No probabilities are
-    /// multiplied anywhere in here: multiplying per-reel weights is precisely what the analyser
+    /// multiplied anywhere in here: multiplying per-reel weights is precisely what the analyzer
     /// does, and what this exists to check.
     /// </summary>
     private static Truth Enumerate(GameDefinition game)
     {
-        // Data only: symbol ids, strip contents, the centre row, the pay values.
+        // Data only: symbol ids, strip contents, the center row, the pay values.
         var seven = (byte)game.SymbolId("Seven");
         var bar = (byte)game.SymbolId("Bar");
         var bell = (byte)game.SymbolId("Bell");
@@ -144,7 +144,7 @@ public sealed class ClassicThreeReelTests
         {
             combinations++;
 
-            // Centre row: one position along the strip from the stop, wrapping cyclically.
+            // Center row: one position along the strip from the stop, wrapping cyclically.
             cells[0] = strips[0][(s0 + 1) % strips[0].Length];
             cells[1] = strips[1][(s1 + 1) % strips[1].Length];
             cells[2] = strips[2][(s2 + 1) % strips[2].Length];

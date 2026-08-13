@@ -1,6 +1,6 @@
 # Games as Data: Loading a Third-Party Slot Deconstruction
 
-*Part 6 of a series on building a slot game engine in C#. Parts 3 through 5 built a
+*Part 7 of a series on building a slot game engine in C#. Parts 3 through 6 built a
 configurable slot game and the engine that runs it. This one models Orca Dive
 from a public third-party deconstruction by making the game itself a JSON file.*
 
@@ -30,6 +30,32 @@ The vocabulary for this chapter:
 | **Pay category** | One possible interpretation of a line, such as Mackerel or Mixed Seven |
 | **Wild** | A symbol allowed to continue specified categories of wins |
 | **Scatter** | A symbol checked in allowed window positions rather than only on a payline |
+
+## A validation example
+
+Suppose a JSON file says a reel has 22 stops, but its strip lists only 21 symbols. It also
+uses `Whale` on a payline even though no symbol named `Whale` was declared.
+
+A parser can read that JSON successfully. The braces and commas are valid. The game is still
+invalid. The loader should report both game problems:
+
+```text
+Reel 1 declares 22 stops but contains 21.
+Payline "Center" refers to unknown symbol "Whale".
+```
+
+Reporting both lets the author fix the file in one editing pass.
+
+### Check your understanding
+
+What is the difference between parsing and validation?
+
+<details><summary>Answer</summary>
+
+Parsing turns JSON text into objects. Validation checks whether those objects describe a
+game the engine can safely run.
+
+</details>
 | **Provenance** | A record of where externally supplied game data came from |
 
 ## The game definition file
@@ -91,12 +117,9 @@ class GameDocument` (and a handful of smaller classes alongside it for symbols,
 paylines, pays, and features), before the loader turns it into the real
 `GameDefinition`. Every one of those classes is declared `internal`, meaning code
 outside this assembly cannot reference the type at all, not even to catch it in a
-variable. The source comment on `GameDocument` states the reason directly: "the
-JSON shape is not part of the API." A consumer of this engine works with
-`GameDefinition`, `PayCategory`, and the rest of the validated, public shape;
-whatever the raw JSON document classes look like today is free to change,
-gain a field, or restructure entirely as the file format evolves, because
-nothing outside this project could have compiled against it in the first place.
+variable. The JSON document types are not the public API. Engine users work with
+validated types such as `GameDefinition` and `PayCategory`. The raw document classes
+can change as the file format changes. Code outside this project cannot depend on them.
 
 ## How fractional pays enter a game file
 
@@ -160,7 +183,7 @@ be an absurd paytable entry, and `checked` makes it surface as an exception inst
 of a plausible-looking number.
 
 > 🧪 **Try it live.** The companion site's chapter 6 page (<http://localhost:5090>,
-> then `#/ch06`) hands the real loader whatever you give it. **Lab 1 — The shipped
+> then `#/ch07`) hands the real loader whatever you give it. **Lab 1 — The shipped
 > games, read by the real loader** compiles `orca-dive.json` and
 > `classic-three-reel.json` and shows what came out; **Lab 2 — Feed the loader
 > anything** lets you edit a definition and read back the whole error list at once.
@@ -279,17 +302,17 @@ screen, 24 prizes and 6 blanks; pick until a blank ends the round.
 
 ```csharp
 /// <summary>
-/// A pick-until-you-lose bonus, configured from data: a bag of prize gifts plus some number
+/// A pick-until-you-lose bonus, configured from data: a pool of prizes plus some number
 /// of blanks that end the round for a fixed consolation. Orca Dive fills it with 24
 /// prizes and 6 blanks, but nothing here knows that.
 ///
-/// <see cref="Play"/> draws gifts without replacement. The closed forms below provide an
+/// <see cref="Play"/> draws entries without replacement. The closed forms below provide an
 /// independent analytic check of that play path.
 /// </summary>
 public sealed class PickBonus { /* … */ }
 ```
 
-The simulation draws one gift at a time, without replacement. Its *expected value*
+The Orca Dive screen opens one treasure chest at a time, without replacement. Its *expected value*
 comes from a symmetry argument. In a uniformly random ordering of `b` blanks and
 however many prizes, any one prize is collected exactly when it precedes every blank
 in the ordering, which by symmetry happens with probability `1 / (b + 1)`. Sum that
@@ -304,7 +327,7 @@ different ways, which makes disagreement useful evidence of a defect.
 
 Article 5's `SpinPlay` delegate lets a loaded game supply its scoring rules while
 the engine retains responsibility for scheduling, counters, and telemetry.
-`GameRunner.CreatePlay` below returns a `SpinPlay` for the same reason article 5
+`GameRunner.CreatePlay` below returns a `SpinPlay` for the same reason article 6
 gives: the engine asks every game, generated or loaded from JSON, for the same
 one-behavior shape, so a data-loaded game plugs into the identical worker loop a
 generated preset uses:
@@ -350,7 +373,7 @@ private SpinPlay CreatePlay(ConcurrentBag<ComponentTally> tallies)
 `ComponentTally` is a small class with four plain `long` fields, one instance per
 worker, added to a thread-safe `ConcurrentBag` when a worker starts. Its fields need
 no `Interlocked`: each worker owns its own instance, and the run sums every tally
-after every worker has joined, on a quiesced engine. `RunTotals` (article 5) remains
+after every worker has joined, on a quiesced engine. `RunTotals` (article 6) remains
 the interlocked, shared counter; the component split rides alongside it, per worker,
 with no synchronization on the spin path.
 
@@ -392,12 +415,11 @@ flowchart LR
 
 ## Where the analytic side fits
 
-`GameAnalyzer` computes the loaded game's analytic RTP by enumeration, but over
-*symbol tuples* rather than stop tuples. A payline reads one cell per reel, so
-outcomes group by "which symbol shows on each reel," weighted by how many stops
-produce it: tens of thousands of weighted tuples instead of Orca Dive's
-14,781,416 stop combinations, for the same underlying combinatorial result, because the payline never
-looks at which specific stop landed, only which symbol it carries.
+`GameAnalyzer` computes the loaded game's analytic RTP by enumeration. It groups
+outcomes by the symbol shown on each reel. The weight records how many stops produce
+those symbols. This reduces Orca Dive from 14,781,416 stop combinations to tens of
+thousands of symbol combinations. The exact answer stays the same because line scoring
+does not use the stop number.
 
 The scatter reads the whole window instead of a single cell, so it rides through
 the enumeration as a second weight per symbol: stops showing this symbol on the
@@ -439,3 +461,10 @@ calculations, reel-strip listings, paytables, source code, and other materials:
 
 *Source files: `games/orca-dive.json`, `Games/Definition/*.cs`,
 `Games/WinEvaluator.cs`, `Games/GameRunner.cs`, `Games/GameAnalyzer.cs`.*
+
+## Optimization notebook
+
+Parsing and validation happen once; simulation may run ten million times. Keep rich symbols,
+names, and flags at the definition boundary, then ask whether the worker needs all of them in
+each window cell. Episode 9 measures a byte-ID execution view while preserving the complete
+domain model for configuration, analysis, and the UI.

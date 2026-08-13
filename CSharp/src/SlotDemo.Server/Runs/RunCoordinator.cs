@@ -16,9 +16,9 @@ namespace SlotDemo.Server.Runs;
 /// shipped game document (Orca Dive, Classic Three Reel), both on the same engine, the
 /// same recorder, and the same stream. The subject decides where the analytic reference
 /// comes from: the solver-plus-closed-form pipeline for presets, exhaustive enumeration
-/// for games. Everything downstream reads the same shape either way.
+/// for games. Both paths produce the same run summary type.
 ///
-/// The class inherits three separations from the engine's own design:
+/// The coordinator preserves three properties of the simulation engine:
 ///
 /// 1. The exact path and the lossy path never touch. Totals are integer counters inside
 ///    the engine; everything this class publishes is a copy for display.
@@ -43,7 +43,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         bool IsGame,
         int Reels,
         int Rows,
-        string StopsPerReel,
+        string StopsByReel,
         int Paylines,
         double TargetRtp,
         int Workers,
@@ -174,7 +174,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         var facts = new RunFacts(
             valid.Preset.Name, IsGame: false,
             valid.Preset.ReelCount, MMP.SlotGame.Core.Reels.StripReelSet.DefaultRows,
-            valid.Preset.StopsPerReel.ToString(), valid.Preset.Paylines.Count,
+            string.Join('/', valid.Preset.StopCounts), valid.Preset.Paylines.Count,
             valid.TargetTotalRtp, valid.WorkerCount, valid.TargetSpins, valid.MasterSeed);
 
         var analytic = new AnalyticView(
@@ -205,7 +205,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         {
             // Enumeration is the analytic twin for a published game: exact RTP and sigma
             // from the document alone, before a single spin.
-            analysis = GameAnalyzer.Analyse(game);
+            analysis = GameAnalyzer.Analyze(game);
         }
         catch (NotSupportedException ex)
         {
@@ -214,7 +214,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
 
         var runId = Guid.CreateVersion7().ToString("n");
         var plan = new RunPlan(runId, request.Seed, request.WorkerCount, request.TargetSpins);
-        var runner = new GameRunner(game, plan);
+        var runner = new GameRunner(game, plan, analysis);
 
         var facts = new RunFacts(
             game.Name, IsGame: true,
@@ -244,7 +244,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
     }
 
     /// <summary>
-    /// The whole run as one object: subject echo, analytic prediction, newest totals, and
+    /// Returns the run configuration, analytic prediction, latest totals, and
     /// the consolidated curve. A page that connects mid-run reads this once and then
     /// follows the event stream, so a late arrival sees the same chart as an early one.
     /// </summary>
@@ -266,7 +266,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
                 isGame = run.Facts.IsGame,
                 reels = run.Facts.Reels,
                 rows = run.Facts.Rows,
-                stopsPerReel = run.Facts.StopsPerReel,
+                stopsPerReel = run.Facts.StopsByReel,
                 paylines = run.Facts.Paylines,
                 targetRtp = run.Facts.TargetRtp,
                 workers = run.Facts.Workers,
@@ -309,8 +309,8 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         {
             final = await runner(channel.Writer, ct).ConfigureAwait(false);
             // Workers notice cancellation at a batch boundary and return normally, so a
-            // cancelled run usually completes without throwing. The token, not the
-            // exception, is the truth about why the run stopped.
+            // cancelled run usually completes without throwing. Check the token to determine
+            // whether cancellation ended the run.
             terminal = ct.IsCancellationRequested ? "cancelled" : "completed";
         }
         catch (OperationCanceledException)
@@ -346,7 +346,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
     }
 
     /// <summary>
-    /// Drains everything waiting and hands every sample to the recorder — a fast run
+    /// Passes every queued sample to the recorder. A fast run
     /// crosses several stride boundaries inside one 100 ms drain, and skipping to the
     /// newest sample would skip those curve points. Publishing stays consolidated.
     /// </summary>

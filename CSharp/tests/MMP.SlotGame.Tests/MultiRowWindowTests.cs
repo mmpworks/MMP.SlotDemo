@@ -14,7 +14,7 @@ namespace MMP.SlotGame.Tests;
 /// definition everywhere (there was no literal 3 to remove in any of them); the actual gaps
 /// closed here are the loader's validation bound (previously "at least 1", now
 /// <see cref="StripReelSet.MinRows"/>..<see cref="StripReelSet.MaxRows"/>) and
-/// <see cref="Payline.For"/>'s row-shape generation, which used to derive its row indices
+/// <see cref="StandardPaylines.For"/>'s position-shape generation, which derives its indices
 /// from a fixed 3-row assumption rather than the window height it was actually building
 /// shapes for.
 ///
@@ -50,7 +50,7 @@ public sealed class MultiRowWindowTests
     /// overlap and the per-reel trigger probability is exactly (starCount * rows) / stripLength
     /// — the formula item 3 of the windowRows directive asked to verify. The payline reads the
     /// middle row (rows / 2), which is the true center at 5 rows and the lower of the two
-    /// central rows at 4 (see <see cref="Payline.For"/>'s doc comment for that convention).
+    /// central positions at 4 (see <see cref="StandardPaylines.For"/> for that convention).
     /// </summary>
     private static string BuildFixture(int rows, int stripLength, int starGap, string name)
     {
@@ -68,7 +68,7 @@ public sealed class MultiRowWindowTests
               "windowRows": {{rows}},
               "symbols": [ { "name": "A" }, { "name": "Blank" }, { "name": "Star", "scatter": true } ],
               "reels": [ {{strip}}, {{strip}}, {{strip}} ],
-              "paylines": [ { "name": "Centre", "rows": [{{middleRow}}, {{middleRow}}, {{middleRow}}] } ],
+              "paylines": [ { "name": "Center", "rows": [{{middleRow}}, {{middleRow}}, {{middleRow}}] } ],
               "paytable": [ { "symbol": "A", "pays": { "3": 5 } } ],
               "features": [
                 { "kind": "scatterPickBonus", "name": "Bonus", "scatter": "Star",
@@ -98,7 +98,7 @@ public sealed class MultiRowWindowTests
         var loaded = GameDefinitionLoader.TryLoad(json, out var definition, out var errors);
         Assert.True(loaded, "Fixture failed to load:\n  " + string.Join("\n  ", errors));
 
-        var analysis = GameAnalyzer.Analyse(definition!);
+        var analysis = GameAnalyzer.Analyze(definition!);
 
         // Hand-derived exact rationals: P(AAA) = (4/stripLength)^3; a reel's scatter-trigger
         // probability is (2 Stars * rows) / stripLength, cubed for 3 required reels; the bonus
@@ -122,7 +122,7 @@ public sealed class MultiRowWindowTests
         var loaded = GameDefinitionLoader.TryLoad(json, out var definition, out var errors);
         Assert.True(loaded, "Fixture failed to load:\n  " + string.Join("\n  ", errors));
 
-        var analytic = GameAnalyzer.Analyse(definition!);
+        var analytic = GameAnalyzer.Analyze(definition!);
         var plan = new RunPlan($"multirow-{rows}", 0xA11CE_5EED_0000UL + (ulong)rows, WorkerCount: 4, TargetSpins: 3_000_000);
         var result = await new GameRunner(definition!, plan).RunAsync();
 

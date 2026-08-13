@@ -4,7 +4,7 @@ using MMP.SlotGame.Core.Reels;
 namespace MMP.SlotGame.Core.Games.Definition;
 
 /// <summary>
-/// Validates a parsed <see cref="GameDocument"/> and compiles it. Phased on purpose: reels,
+/// Validates a parsed <see cref="GameDocument"/> and compiles it in dependency order. Reels,
 /// paylines, pay table and features all reference symbols, so if the symbol table is broken
 /// every later phase would report the same problem again in a different voice. Each phase
 /// runs only when the phases it depends on were clean, which keeps the error list short and
@@ -24,7 +24,7 @@ internal sealed class GameDefinitionBuilder(GameDocument document)
     /// <summary>
     /// How the JSON paytable's numbers are interpreted. Compiled pays are always hundredths of
     /// the TOTAL SPIN BET regardless of which unit the document declared, so the evaluator and
-    /// the analyser never carry more than one representation. "Total spin bet," not "line
+    /// the analyzer never carry more than one representation. "Total spin bet," not "line
     /// bet": see <see cref="Games.WinEvaluator.EvaluateWindow"/> for why — a PAR sheet quotes
     /// pays per line, but this engine applies every declared multiplier against the whole wager.
     /// </summary>
@@ -56,7 +56,7 @@ internal sealed class GameDefinitionBuilder(GameDocument document)
         if (string.Equals(trimmed, "tenths", StringComparison.OrdinalIgnoreCase)) return PayUnit.Tenths;
         if (string.Equals(trimmed, "hundredths", StringComparison.OrdinalIgnoreCase)) return PayUnit.Hundredths;
 
-        Fail($"payUnit '{declared}' is not recognised; supported values are \"units\", \"tenths\" and \"hundredths\".");
+        Fail($"payUnit '{declared}' is not recognized; supported values are \"units\", \"tenths\" and \"hundredths\".");
         return PayUnit.Units;
     }
 
@@ -268,7 +268,7 @@ internal sealed class GameDefinitionBuilder(GameDocument document)
     /// <summary>
     /// The PAR sheet symbol-count table, verified against the strips we actually wrote. This
     /// is the check that matters most when transcribing by hand: the strips are long, the
-    /// table is short, and the table is the thing the published maths was derived from.
+    /// table is short, and the published mathematics was calculated from that table.
     /// </summary>
     private void VerifyDeclaredCounts(Symbol[][] strips)
     {
@@ -426,7 +426,7 @@ internal sealed class GameDefinitionBuilder(GameDocument document)
     /// Compiles declared pays to the category's internal pay lookup, always as the real
     /// multiplier × <see cref="Millicents.ScaleFactor"/> regardless of <see cref="_payUnit"/>: a
     /// "units" pay of 5, a "tenths" pay of 50 and a "hundredths" pay of 500 all compile to the
-    /// same value at the current ScaleFactor of 100, so the evaluator and the analyser read one
+    /// same value at the current ScaleFactor of 100, so the evaluator and the analyzer read one
     /// representation. ScaleFactor is the engine's one named scale constant; "tenths" and
     /// "hundredths" convert to a real multiplier by their own definition (/10, /100).
     ///
@@ -500,7 +500,7 @@ internal sealed class GameDefinitionBuilder(GameDocument document)
     }
 
     // ---------------------------------------------------------------------------
-    // Features. One kind today; the discriminator is the seam for the next one.
+    // Features. The kind field selects the parser when more feature types are added.
     // ---------------------------------------------------------------------------
 
     private const string ScatterPickBonusKind = "scatterPickBonus";
@@ -527,7 +527,7 @@ internal sealed class GameDefinitionBuilder(GameDocument document)
         var entry = declared[0];
         if (!string.Equals(entry.Kind, ScatterPickBonusKind, StringComparison.Ordinal))
         {
-            Fail($"feature kind '{entry.Kind}' is not recognised; supported kinds: {ScatterPickBonusKind}.");
+            Fail($"feature kind '{entry.Kind}' is not recognized; supported kinds: {ScatterPickBonusKind}.");
             return null;
         }
 

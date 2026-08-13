@@ -1,6 +1,6 @@
 # System Design: A Slot-Game RTP Simulator
 
-*Part 1 of a seven-part series on building a slot game engine in C#. This one covers
+*Part 1 of an eight-part series on building a slot game engine in C#. This one covers
 the system design: requirements, the high-level shape, and the decisions that make
 the rest of the series possible. It closes with a map of what each later article
 builds and what you can run at the end of it.*
@@ -26,10 +26,23 @@ return. Along the way it covers fixed-point money, replayable parallel randomnes
 probability on reel strips, and the difference between data that must be preserved
 and display updates that may be skipped.
 
+### Check your understanding
+
+Suppose a game has a 98% RTP. A player wagers $100 once and loses all of it. Does that
+single result disprove the 98% figure?
+
+<details><summary>Answer</summary>
+
+No. RTP is the average over a very large number of wagers. It does not predict one player's
+result. To test the 98% claim, we need many spins and a reasonable range around the expected
+average.
+
+</details>
+
 > 🧪 **Try it live.** The series ships a companion site that runs this engine's own
 > code in the browser: start it with `dotnet run` from `CSharp/src/SlotDemo.Server`
-> and open <http://localhost:5090>. Articles 2 through 7 each have a matching lab
-> page at `#/ch02` … `#/ch07`. Three more pages belong to the series as a whole: the
+> and open <http://localhost:5090>. Articles 2 through 8 each have a matching lab
+> page at `#/ch02` … `#/ch08`. Three more pages belong to the series as a whole: the
 > live PAR sheet at `#/par`, the source library at `#/library`, and the proving
 > ground at `#/finale`, which runs ten million spins while the chart watches the
 > measured RTP settle into its band.
@@ -404,7 +417,7 @@ processes the response.
 Walking back through the requirements:
 
 - **Exactness**: integer `Millicents` on the authoritative counter path, subject to
-  the accumulator limits checked in article 7.
+  the accumulator limits checked in article 8.
 - **Replayability**: seeded per-worker streams, fixed work partition, and integer
   accumulation, verified by repeatable tests.
 - **Throughput**: worker-local work inside each batch, four batched atomic adds, and
@@ -439,7 +452,7 @@ Ask a programmer to model a reel and you'll usually get a weighted die. **Articl
 *Reels Are Strips, Not Dice*,** shows what that costs: every single-symbol
 probability comes out right and every two-symbol probability comes out wrong,
 because a reel is an ordered cyclic strip stopped once per spin, so the cells
-visible in one column are neighbours rather than independent draws. Out of that come
+visible in one column are neighbors rather than independent draws. Out of that come
 `StripReelSet`, paylines as data, and the five steps from a stopped reel to a paid
 line, with four- and five-row windows handled by the same code. The lab walks a spin
 one stop at a time so you can watch the window slide along the strip, then counts a
@@ -455,7 +468,12 @@ sharing cells. That σ is where the chart's confidence band comes from, priced b
 the first spin runs. The lab solves a paytable to a target you pick and turns σ into
 a band half-width at a ladder of spin counts.
 
-**Article 5, *A Replayable Parallel Simulation Engine*,** builds the machine that
+**Article 5, *Counting Every Outcome Without Playing Every Spin*,** slows down at
+`GameAnalyzer`. It groups repeated reel stops by symbol, carries their counts as weights,
+and turns those weighted outcomes into exact RTP and variance. A 24-outcome example makes
+the recursion visible before the production code handles a five-reel game.
+
+**Article 6, *A Replayable Parallel Simulation Engine*,** builds the machine that
 plays the spins. Determinism turns out to be mostly a scheduling property: fixed
 pre-assigned worker quotas, one seeded stream each, 4,096-spin batches published
 through four `Interlocked.Add` calls into exact integer totals, and the bounded
@@ -464,9 +482,10 @@ Its lab re-runs a configuration and compares the totals down to the millicent,
 including what changing the worker count does to them, then lets you starve the
 telemetry lane on purpose and watch the counters stay exact.
 
-Everything to that point runs generated games, which proves the engine and the math
-agree with each other and leaves a skeptic room to call it a closed loop. **Article
-6, *Games as Data*,** closes that loop by moving the game out of code and into a
+The main examples to that point use generated games. Article 5 previews the loaded-game
+analyzer to teach its counting method, but it does not yet explain how a JSON file becomes
+a validated game. **Article
+7, *Games as Data*,** closes that loop by moving the game out of code and into a
 validated JSON file: a loader that reports every error at once, a `payUnit` schema
 that compiles fractional pays to integers, an evaluator that handles wilds, group
 wins, and scatters with no game-specific flags, a pick-until-you-lose bonus with a
@@ -476,7 +495,7 @@ series whose math reproduces a published third-party PAR deconstruction of a rea
 commercial machine. Hand the lab any definition you like and read back the whole
 error list at once.
 
-A simulator that verifies itself is a circular argument, so **article 7, *Proving
+A simulator that verifies itself is a circular argument, so **article 8, *Proving
 the Machine*,** brings in a referee: exhaustive enumeration, which shares *data* with
 the analytic and simulated paths and *code* with neither. It also itemizes the
 overflow budget for both the money and squared-payout accumulators, gives the normal
@@ -507,3 +526,10 @@ the band narrows with √N.
 
 *Source for this series: the repository's architecture document carries
 the full invariant list and ADR-001.*
+
+## Optimization notebook
+
+Record likely hot paths now: random selection, window construction, evaluation, and shared
+counters. Do not optimize them in the architecture chapter. The first system needs stable
+contracts and independent correctness checks before a faster version has a trustworthy
+answer to compare against. Episode 9 returns to this list with measurements.

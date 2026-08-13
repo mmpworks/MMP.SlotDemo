@@ -22,7 +22,7 @@ public sealed class PaytableSolverFuzzTests
     public void Solve_AcrossRandomTargetsAndSmallPaytables_HitsTargetWithinToleranceAndNeverPaysNegative()
     {
         var rng = new Random(4001);
-        var preset = ReelPreset.All["Classic3"];
+        var preset = StandardReelPresets.All["Classic3"];
         var reels = preset.BuildReels();
 
         for (var i = 0; i < Iterations; i++)

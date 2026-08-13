@@ -6,9 +6,8 @@ using MMP.SlotGame.Core.Reels;
 namespace MMP.SlotGame.Core.Rtp;
 
 /// <summary>
-/// The analytic verdict for a realized game: what the integer paytable and feature
-/// schedules actually pay (not what was requested), plus the analytic per-spin σ the
-/// confidence band is computed from.
+/// The calculated return of the finished game: base-game RTP, each feature's RTP, total RTP,
+/// and the per-spin standard deviation used by the confidence band.
 /// </summary>
 public sealed record RtpBreakdown(
     double BaseRtp,
@@ -19,10 +18,10 @@ public sealed record RtpBreakdown(
 public sealed class RtpCalculator
 {
     /// <summary>
-    /// Analyse the realized game: recomputes RTP from the integer millicent pays via the
-    /// enumeration path, so the solver's own scalar is never carried forward.
+    /// Calculates the RTP and standard deviation from the rounded paytable and feature
+    /// schedules that the game will use. It does not reuse the solver's requested RTP.
     /// </summary>
-    public static RtpBreakdown Analyse(
+    public static RtpBreakdown Analyze(
         StripReelSet reels,
         IReadOnlyList<Payline> lines,
         ScaledPaytable scaled,

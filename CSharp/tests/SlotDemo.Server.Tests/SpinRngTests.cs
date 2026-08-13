@@ -35,7 +35,7 @@ public sealed class SpinRngTests
     }
 
     [Fact]
-    public void SplitMix64_seeding_leaves_neighbouring_workers_uncorrelated()
+    public void SplitMix64_seeding_leaves_neighboring_workers_uncorrelated()
     {
         for (var worker = 0; worker < 7; worker++)
         {
@@ -49,7 +49,7 @@ public sealed class SpinRngTests
     }
 
     [Fact]
-    public void Naive_seeding_correlates_neighbouring_workers()
+    public void Naive_seeding_correlates_neighboring_workers()
     {
         // Documents the failure the demo contrasts against. If this ever stops correlating,
         // the demo's whole point has quietly expired and the episode needs a new example.

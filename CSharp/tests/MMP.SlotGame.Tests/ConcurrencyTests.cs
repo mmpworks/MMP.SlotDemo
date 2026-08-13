@@ -1,4 +1,4 @@
-﻿using MMP.SlotGame.Core.Money;
+using MMP.SlotGame.Core.Money;
 using MMP.SlotGame.Core.Reels;
 using MMP.SlotGame.Core.Simulation;
 using MMP.SlotGame.Core.Games;
@@ -14,7 +14,7 @@ namespace MMP.SlotGame.Tests;
 /// TargetSpins / WorkerCount with worker 0 absorbing the remainder; stream =
 /// SpinRng.ForWorker(masterSeed, workerId); per spin, draw the window FIRST and then
 /// play each feature in schedule order (the RNG consumption order is part of the
-/// contract — swap those two and the streams desynchronise even though nothing looks
+/// contract — swap those two and the streams desynchronize even though nothing looks
 /// wrong).
 ///
 /// Money is integer millicents, so this is an EXACT equality. If it ever passes only

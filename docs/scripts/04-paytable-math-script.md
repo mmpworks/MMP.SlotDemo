@@ -203,7 +203,7 @@ public sealed record ScaledPaytable
   decisions, and this method only makes the first one."
 - The magic numbers 60, 2.2, and 5 are a teaching curve rather than a real par sheet,
   and the comment says so. A real game brings its own table through the JSON path in
-  episode 6.
+  episode 7.
 - One table per symbol set. The shape is generated from the geometry, so there is no
   per-preset table to keep in sync.
 
@@ -358,7 +358,7 @@ one the 99% cap is checked against.
 - The reflex from a SOLID-first habit is an `IPayoutScaler` interface, an
   implementation, and a decorator so scalers can compose.
 - Closures already compose: `x => outer(inner(x))`, for free, with nothing to register.
-- In C#, one behaviour with no identity and no lifetime is a delegate. The interface,
+- In C#, one behavior with no identity and no lifetime is a delegate. The interface,
   the class, the file, and the registration would add four things to read and change
   nothing the code can do.
 - The delegate still has a name and a doc comment, so the concept stays visible in the
@@ -382,7 +382,7 @@ one the 99% cap is checked against.
    sum of the covariances over distinct pairs.
 3. **Per-line variance is easy:** the same probabilities that gave expected value.
 4. **The covariance is where episode 3 collects.** Two lines cross the same reels, and
-   their cells on a reel are strip neighbours. They win together. "This is where the
+   their cells on a reel are strip neighbors. They win together. "This is where the
    weighted-die model gives a wrong answer while agreeing with reality on every mean you
    can check."
 5. Do not derive the algebra on camera. Point at the identity and move to the code.
@@ -705,7 +705,7 @@ Walk the method as three sections rather than line by line.
    at `i + 1`, and the `2.0 *` in front matching the identity on the whiteboard.
 3. **Features add.** Feature triggers are independent of the window and of each other in
    this model, so their variances add with no covariance term. Point at the loop and say
-   that independence out loud, because it is a modelling assumption rather than a fact
+   that independence out loud, because it is a modeling assumption rather than a fact
    about arithmetic.
 
 Then the return: a square root and a division by the wager, so sigma comes out per unit
@@ -754,8 +754,8 @@ wagered and the band works at any bet size.
 - The award table is built so the third value is derived rather than chosen, which makes
   the mean land on the declared contribution to the millicent after rounding.
 - "Features trigger independently of the window, which is why their variances added
-  without a covariance term two beats ago. That independence is a v1 modelling decision,
-  and episode 6 shows what changes when a real game's scatter bonus breaks it."
+  without a covariance term two beats ago. That independence is a v1 modeling decision,
+  and episode 7 shows what changes when a real game's scatter bonus breaks it."
 
 ## 25:45–27:45 — The tests are part of the design
 

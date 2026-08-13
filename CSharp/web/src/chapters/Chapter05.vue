@@ -1,62 +1,39 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { postJson } from '../api/labs'
-import type { DeterminismView, TelemetryView } from '../api/labs'
+import { computed, ref } from 'vue'
+import ComprehensionCheck from '../components/ComprehensionCheck.vue'
+import OptimizationPreview from '../components/OptimizationPreview.vue'
 
 defineProps<{ title: string; blurb: string }>()
 
-const presetName = ref('Video5x64')
-const seed = ref(42)
-const workerCount = ref(8)
-const spins = ref(1_000_000)
-const varySeed = ref(false)
-const useOrca = ref(true)
-const determinism = ref<DeterminismView | null>(null)
+const reel1 = [
+  { symbol: 'Cherry', count: 2 },
+  { symbol: 'Bell', count: 1 },
+]
+const reel2 = [
+  { symbol: 'Cherry', count: 1 },
+  { symbol: 'Bell', count: 1 },
+]
+const reel3 = [
+  { symbol: 'Cherry', count: 3 },
+  { symbol: 'Bell', count: 1 },
+]
 
-const telemetrySpins = ref(2_000_000)
-const channelCapacity = ref(16)
-const telemetry = ref<TelemetryView | null>(null)
+const pick1 = ref(0)
+const pick2 = ref(0)
+const pick3 = ref(0)
+const weight = computed(() => reel1[pick1.value].count * reel2[pick2.value].count * reel3[pick3.value].count)
+const combination = computed(() => [reel1[pick1.value], reel2[pick2.value], reel3[pick3.value]])
+const isThreeCherries = computed(() => combination.value.every((item) => item.symbol === 'Cherry'))
 
-const error = ref('')
-const busy = ref(false)
-
-async function runDeterminism(vary: boolean): Promise<void> {
-  varySeed.value = vary
-  busy.value = true
-  error.value = ''
-  try {
-    determinism.value = await postJson<DeterminismView>('/api/ch5/determinism', {
-      presetName: presetName.value,
-      seed: seed.value,
-      workerCount: workerCount.value,
-      spins: spins.value,
-      repeats: 3,
-      varySeed: vary,
-      gameFile: useOrca.value ? 'orca-dive.json' : '',
-    })
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Determinism run failed.'
-  } finally {
-    busy.value = false
-  }
-}
-
-async function runTelemetry(): Promise<void> {
-  busy.value = true
-  error.value = ''
-  try {
-    telemetry.value = await postJson<TelemetryView>('/api/ch5/telemetry', {
-      presetName: presetName.value,
-      seed: seed.value,
-      spins: telemetrySpins.value,
-      channelCapacity: channelCapacity.value,
-    })
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Telemetry run failed.'
-  } finally {
-    busy.value = false
-  }
-}
+const allRows = computed(() => {
+  const rows: Array<{ symbols: string; weight: number }> = []
+  for (const a of reel1)
+    for (const b of reel2)
+      for (const c of reel3)
+        rows.push({ symbols: `${a.symbol} / ${b.symbol} / ${c.symbol}`, weight: a.count * b.count * c.count })
+  return rows
+})
+const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.weight, 0))
 </script>
 
 <template>
@@ -67,172 +44,92 @@ async function runTelemetry(): Promise<void> {
     </header>
 
     <section class="chapter-brief">
-      <h3>What the episode builds</h3>
+      <h3>Start with a smaller problem</h3>
       <p>
-        Think of it as a factory floor. Each worker is handed a fixed stack of spins at the
-        start of the shift, so the same worker always plays the same spins and a run
-        replays. Each keeps a private tally and posts it to the shared board every 4,096
-        spins, because the shared board is the slow part. The progress readout is a
-        whiteboard: a worker writes its current total over the old one, so a missed reading
-        costs a chart point.
+        These three reels have 3, 2, and 4 stops. Checking every stop would require
+        3 × 2 × 4 = 24 outcomes. Repeated symbols let us do less work without estimating.
       </p>
       <p>
-        In the engine's own terms: workers get fixed spin quotas up front instead of stealing
-        work, so the RNG partition never depends on scheduling luck. Totals are integer
-        counters fed by one batched atomic add per 4,096 spins. Telemetry rides a bounded
-        drop-oldest channel carrying absolute snapshots, so a dropped sample is superseded by
-        the next one.
-      </p>
-      <p class="chapter-source">
-        Source: <code>src/MMP.SlotGame.Core/Simulation/SimulationEngine.cs</code>,
-        <code>Simulation/RunTotals.cs</code>.
+        Think of sorting a jar of coins. You can count each coin separately, or group the
+        quarters and multiply their count by 25 cents. This lab groups identical reel symbols.
       </p>
     </section>
 
     <section class="lab">
-      <h3>Lab 1 — Same seed, same answer</h3>
+      <h3>Lab 1 — Build one weighted outcome</h3>
       <p class="lab__lede">
-        Three runs of the same configuration, on Orca Dive by default with wilds and the
-        scatter bonus. Wall time varies with whatever else the machine is doing. The
-        totals come back identical to the last millicent, because the bonus draws from the
-        same per-worker stream as the reels. Vary the seed to see a real difference.
+        Choose one symbol from each reel. The number beside it says how many stops show that
+        symbol. Multiply the three counts to find how many physical outcomes your choice represents.
       </p>
 
-      <div class="controls">
-        <label>
-          Subject
-          <select v-model="useOrca">
-            <option :value="true">Orca Dive (full game)</option>
-            <option :value="false">Preset below</option>
-          </select>
+      <div class="weight-picker">
+        <label>Reel 1
+          <select v-model.number="pick1"><option v-for="(x, i) in reel1" :key="x.symbol" :value="i">{{ x.symbol }} ({{ x.count }})</option></select>
         </label>
-        <label v-if="!useOrca">
-          Preset
-          <select v-model="presetName">
-            <option>Classic3</option><option>Video3</option><option>Line4</option>
-            <option>Video5x64</option><option>Video5x128</option>
-          </select>
+        <span>×</span>
+        <label>Reel 2
+          <select v-model.number="pick2"><option v-for="(x, i) in reel2" :key="x.symbol" :value="i">{{ x.symbol }} ({{ x.count }})</option></select>
         </label>
-        <label>
-          Seed
-          <input v-model.number="seed" type="number" min="0" />
+        <span>×</span>
+        <label>Reel 3
+          <select v-model.number="pick3"><option v-for="(x, i) in reel3" :key="x.symbol" :value="i">{{ x.symbol }} ({{ x.count }})</option></select>
         </label>
-        <label>
-          Workers
-          <input v-model.number="workerCount" type="number" min="1" max="64" />
-        </label>
-        <label>
-          Spins
-          <input v-model.number="spins" type="number" min="1000" max="5000000" step="100000" />
-        </label>
-        <button type="button" :disabled="busy" @click="runDeterminism(false)">Same seed ×3</button>
-        <button type="button" class="ghost" :disabled="busy" @click="runDeterminism(true)">Vary seed ×3</button>
       </div>
 
-      <p v-if="error" class="lab__error">{{ error }}</p>
-
-      <div v-if="determinism" class="results">
-        <div class="verdict" :class="determinism.identical ? '' : 'verdict--drift'">
-          <div>
-            <span class="verdict__label">Mode</span>
-            <span class="mono">{{ determinism.varySeed ? 'different seeds' : 'same seed' }}</span>
-          </div>
-          <div>
-            <span class="verdict__label">Snapshots identical</span>
-            <span class="mono">{{ determinism.identical ? 'yes — bit for bit' : 'no' }}</span>
-          </div>
-        </div>
-        <table class="lab-table">
-          <thead>
-            <tr><th>Run</th><th>Seed</th><th>Returned (mc)</th><th>Hits</th><th>RTP</th><th>Time</th><th>Spins/s</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in determinism.runs" :key="r.attempt">
-              <td>{{ r.attempt }}</td>
-              <td>{{ r.seed }}</td>
-              <td>{{ r.returnedMillicents.toLocaleString() }}</td>
-              <td>{{ r.hits.toLocaleString() }}</td>
-              <td>{{ (r.measuredRtp * 100).toFixed(4) }}%</td>
-              <td>{{ r.elapsedMs.toFixed(0) }} ms</td>
-              <td>{{ Math.round(r.spinsPerSecond).toLocaleString() }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="lab-note">
-          Read the returned column. Integer money (M2), fixed quotas, and seeded per-worker
-          streams (the R3 discipline) together make an N-worker run reproducible.
-        </p>
+      <div class="verdict verdict--info">
+        <div><span class="verdict__label">Combination</span><span>{{ combination.map(x => x.symbol).join(' / ') }}</span></div>
+        <div><span class="verdict__label">Weight</span><span class="mono">{{ combination.map(x => x.count).join(' × ') }} = {{ weight }}</span></div>
+        <div><span class="verdict__label">Result</span><span>{{ isThreeCherries ? 'Three-cherry win' : 'No three-cherry win' }}</span></div>
       </div>
+
+      <ComprehensionCheck
+        question="Why does Cherry / Cherry / Cherry have a weight of 6?"
+        :choices="['It pays six credits.', 'Six physical stop combinations show those three symbols.', 'The analyzer ran six random spins.']"
+        :answer="1"
+        explanation="The cherries appear 2, 1, and 3 times. Multiplying 2 × 1 × 3 gives six physical stop combinations."
+      />
     </section>
 
     <section class="lab">
-      <h3>Lab 2 — Starve the telemetry lane</h3>
+      <h3>Lab 2 — Prove that no outcomes disappeared</h3>
       <p class="lab__lede">
-        A deliberately slow reader drains the snapshot channel while eight workers flood
-        it. Shrink the capacity and the drop rate climbs. The exact totals never move,
-        because the two lanes never touch.
+        There are eight distinct symbol combinations. Their weights should add back to the
+        original 24 physical stop combinations.
       </p>
+      <table class="lab-table">
+        <thead><tr><th>Symbol combination</th><th>Physical outcomes represented</th></tr></thead>
+        <tbody><tr v-for="row in allRows" :key="row.symbols"><td>{{ row.symbols }}</td><td>{{ row.weight }}</td></tr></tbody>
+        <tfoot><tr><th>Total</th><th>{{ totalWeight }}</th></tr></tfoot>
+      </table>
 
-      <div class="controls">
-        <label>
-          Spins
-          <input v-model.number="telemetrySpins" type="number" min="10000" max="10000000" step="500000" />
-        </label>
-        <label>
-          Channel capacity
-          <input v-model.number="channelCapacity" type="number" min="1" max="4096" />
-          <small>try 1, 16, 1024</small>
-        </label>
-        <button type="button" :disabled="busy" @click="runTelemetry">Run under pressure</button>
-      </div>
-
-      <div v-if="telemetry" class="results">
-        <div class="verdict verdict--info">
-          <div>
-            <span class="verdict__label">Samples produced ≈</span>
-            <span class="mono">{{ telemetry.samplesProducedApprox.toLocaleString() }}</span>
-          </div>
-          <div>
-            <span class="verdict__label">Delivered</span>
-            <span class="mono">{{ telemetry.samplesDelivered.toLocaleString() }}</span>
-          </div>
-          <div>
-            <span class="verdict__label">Dropped ≈</span>
-            <span class="mono">{{ telemetry.samplesDroppedApprox.toLocaleString() }}</span>
-          </div>
-          <div>
-            <span class="verdict__label">Throughput</span>
-            <span class="mono">{{ Math.round(telemetry.spinsPerSecond).toLocaleString() }} spins/s</span>
-          </div>
-        </div>
-        <div class="verdict">
-          <div>
-            <span class="verdict__label">Exact final RTP</span>
-            <span class="mono">{{ (telemetry.exactFinal.measuredRtp * 100).toFixed(4) }}%</span>
-          </div>
-          <div>
-            <span class="verdict__label">Exact spins counted</span>
-            <span class="mono">{{ telemetry.exactFinal.spins.toLocaleString() }}</span>
-          </div>
-          <div>
-            <span class="verdict__label">Last sample carried</span>
-            <span class="mono">{{ telemetry.lastDeliveredSample.spins.toLocaleString() }} spins</span>
-          </div>
-        </div>
-        <p class="lab-note">
-          Dropped samples are absolute snapshots, so losing one costs a chart point. The
-          proving ground works the same way.
-        </p>
-      </div>
+      <ComprehensionCheck
+        question="The eight weights add to 24. What does that prove?"
+        :choices="['Every physical stop outcome is still counted.', 'The game has a 24% RTP.', 'Every symbol is equally likely.']"
+        :answer="0"
+        explanation="Grouping repeated symbols changed the amount of work, not the outcomes being counted."
+      />
     </section>
 
     <section class="chapter-brief">
-      <h3>Carried into episode 6</h3>
+      <h3>How this becomes `GameAnalyzer.Descend`</h3>
       <p>
-        The engine takes a play function, so a game with its own rules (wilds, scatters, a
-        pick bonus) plugs into the same workers, quotas, and telemetry. Episode 6 makes the
-        game itself a document.
+        The method fills one reel position, multiplies the running weight, and calls itself for
+        the next reel. When every reel has a symbol, it evaluates the completed payline once.
+        The production analyzer uses the same steps as this table, with more reels and symbols.
+      </p>
+      <p class="chapter-source">
+        Source: <code>src/MMP.SlotGame.Core/Games/GameAnalyzer.cs</code>.
       </p>
     </section>
+    <OptimizationPreview
+      question="Where does weighted enumeration spend its time after branch count shrinks?"
+      later="The grouping algorithm is the first optimization. Keep the independent exhaustive check, then profile recursion, evaluation, and accumulation separately."
+    />
   </article>
 </template>
+
+<style scoped>
+.weight-picker { display: flex; align-items: end; gap: 0.75rem; flex-wrap: wrap; margin: 1rem 0; }
+.weight-picker label { display: grid; gap: 0.3rem; }
+tfoot { border-top: 2px solid var(--color-border); }
+</style>

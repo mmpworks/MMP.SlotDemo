@@ -5,7 +5,7 @@ namespace MMP.SlotGame.Tests;
 
 /// <summary>
 /// Orca Dive checked against the hand method in Muir's "Elements of Slot Design"
-/// (3rd ed., ch. 2 and 8): hits-over-cycle factor products, prioritisation discounts,
+/// (3rd ed., ch. 2 and 8): hits-over-cycle factor products, prioritization discounts,
 /// and separated-scatter window counting. Each fact here was derived by the book's
 /// formulas independently of the enumerator, so a strip or paytable edit that breaks
 /// one of the book's identities fails a named test instead of drifting the RTP quietly.
@@ -13,11 +13,11 @@ namespace MMP.SlotGame.Tests;
 /// </summary>
 public sealed class MuirCrossCheckTests
 {
-    private static GameAnalysis Analyse()
+    private static GameAnalysis Analyze()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "games", "orca-dive.json");
         var definition = GameDefinitionLoader.LoadFile(path);
-        return GameAnalyzer.Analyse(definition);
+        return GameAnalyzer.Analyze(definition);
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public sealed class MuirCrossCheckTests
     {
         // Wilds substitute for fish only, so the count is the bare per-reel product:
         // 1 * 2 * 1 * 2 * 1.
-        Assert.Equal(4, Analyse().CountFor("Red7", 5));
+        Assert.Equal(4, Analyze().CountFor("Red7", 5));
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public sealed class MuirCrossCheckTests
         // Naive book count: 1*2*1*2*(26-1) = 100. Twenty of those put another seven on
         // reel 5, and Red7-4 (100x) ties MixedSeven-5 (100x) — ties go to the longer
         // run, so they leave this bucket: 100 - 4*(2+3) = 80.
-        Assert.Equal(80, Analyse().CountFor("Red7", 4));
+        Assert.Equal(80, Analyze().CountFor("Red7", 4));
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public sealed class MuirCrossCheckTests
         // Naive wild-inclusive book count: (2+2)(3+1)(4+1)(29-4-1)(26) = 49,920. The
         // 1,248 all-wild-led lines (2*1*1 * 24 * 26) classify as WildOrca instead:
         // 49,920 - 1,248 = 48,672.
-        Assert.Equal(48_672, Analyse().CountFor("Salmon", 3));
+        Assert.Equal(48_672, Analyze().CountFor("Salmon", 3));
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public sealed class MuirCrossCheckTests
         // window-area count (6/26)^3. If someone reorders a strip and two Penguins
         // share a window, this identity breaks and the shipped RTP shifts silently —
         // the exact failure Muir warns about.
-        var analysis = Analyse();
+        var analysis = Analyze();
         var windowArea = Math.Pow(6.0 / 26.0, 3);
         Assert.Equal(windowArea, analysis.TriggerProbability, precision: 12);
         Assert.Equal(181_656, analysis.TriggerCombinations);

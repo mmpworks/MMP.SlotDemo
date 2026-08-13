@@ -20,7 +20,7 @@ public readonly record struct LineWin(int CategoryIndex, int Count, int Multipli
 /// Turns one payline into one win, for any game definition. It walks the compiled pay
 /// categories and takes the best; the definition supplies every symbol meaning.
 ///
-/// Two engine-wide rules live here, and they are the whole of this class's game knowledge:
+/// This class applies two engine-wide rules:
 ///
 ///  1. A run is left-aligned and continues while the category says the symbol continues it.
 ///     A run counts only if at least one symbol in it satisfies the category. That second
@@ -80,8 +80,7 @@ public sealed class WinEvaluator(GameDefinition definition)
 
     /// <summary>
     /// Total pay multiplier over every payline, in hundredths of the total spin bet. Lines
-    /// are independent pays that add, which is also what makes the analytic EV a plain sum
-    /// over lines.
+    /// pay independently, so the analytic expected value is the sum of the line values.
     ///
     /// Every payline's compiled multiplier is scaled against the same total spin wager:
     /// <see cref="Money.Millicents.ScaledMultiply"/> is always called with this sum, never
@@ -103,6 +102,20 @@ public sealed class WinEvaluator(GameDefinition definition)
         return total;
     }
 
+    /// <summary>Simulation path for a window already reduced to symbol ids.</summary>
+    public int EvaluateWindowIds(ReadOnlySpan<byte> window, Span<byte> cells)
+    {
+        var total = 0;
+        for (var payline = 0; payline < _paylines.Length; payline++)
+        {
+            var positions = _paylines[payline].Rows;
+            for (var reel = 0; reel < _reelCount; reel++)
+                cells[reel] = window[reel * _rows + positions[reel]];
+            total += Evaluate(cells).Multiplier;
+        }
+        return total;
+    }
+
     /// <summary>True when the scatter shows anywhere in the window on every required reel.</summary>
     public static bool IsTriggered(ReadOnlySpan<Symbol> window, int rows, ScatterPickBonus bonus)
     {
@@ -111,6 +124,19 @@ public sealed class WinEvaluator(GameDefinition definition)
             var seen = false;
             for (var row = 0; row < rows && !seen; row++)
                 seen = window[reel * rows + row].Id == bonus.ScatterSymbolId;
+            if (!seen) return false;
+        }
+        return true;
+    }
+
+    /// <summary>Scatter trigger check for a window already reduced to symbol ids.</summary>
+    public static bool IsTriggeredIds(ReadOnlySpan<byte> window, int rows, ScatterPickBonus bonus)
+    {
+        foreach (var reel in bonus.RequiredReels)
+        {
+            var seen = false;
+            for (var row = 0; row < rows && !seen; row++)
+                seen = window[reel * rows + row] == bonus.ScatterSymbolId;
             if (!seen) return false;
         }
         return true;

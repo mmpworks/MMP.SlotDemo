@@ -2,6 +2,8 @@
 import MoneyLab from './ch02/MoneyLab.vue'
 import RngLab from './ch02/RngLab.vue'
 import BiasLab from './ch02/BiasLab.vue'
+import ComprehensionCheck from '../components/ComprehensionCheck.vue'
+import OptimizationPreview from '../components/OptimizationPreview.vue'
 
 defineProps<{ title: string; blurb: string }>()
 </script>
@@ -57,6 +59,16 @@ defineProps<{ title: string; blurb: string }>()
         die even when the two look identical on a spec sheet.
       </p>
     </section>
+    <ComprehensionCheck
+      question="Why does the engine store money as whole millicents?"
+      :choices="['To make payouts look larger.', 'So repeated addition stays exact.', 'Because random numbers require integers.']"
+      :answer="1"
+      explanation="Whole-number addition does not collect the small rounding errors produced by binary floating point."
+    />
+    <OptimizationPreview
+      question="Can bounded random selection move constant work out of the spin loop?"
+      later="Reel lengths become stable construction-time data. Finish and test the RNG first; episode 9 measures precomputed Lemire ranges and rejection thresholds."
+    />
   </article>
 </template>
 

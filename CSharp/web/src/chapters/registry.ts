@@ -6,6 +6,8 @@ import Chapter04 from './Chapter04.vue'
 import Chapter05 from './Chapter05.vue'
 import Chapter06 from './Chapter06.vue'
 import Chapter07 from './Chapter07.vue'
+import Chapter08 from './Chapter08.vue'
+import Chapter09 from './Chapter09.vue'
 import Finale from './Finale.vue'
 import Library from './Library.vue'
 import ParSheet from './ParSheet.vue'
@@ -69,25 +71,41 @@ export const chapters: ChapterEntry[] = [
   {
     id: 'ch05',
     label: '05',
-    title: 'Episode 5 — The Simulation Engine',
-    blurb: 'Fixed quotas, batched atomic totals, and a telemetry lane that can drop samples without changing the totals.',
+    title: 'Episode 5 — Weighted Enumeration',
+    blurb: 'Group repeated reel symbols, carry their counts as weights, and get the same exact answer with less work.',
     component: Chapter05,
     ready: true,
   },
   {
     id: 'ch06',
     label: '06',
-    title: 'Episode 6 — Games as Data',
-    blurb: 'A slot game as a JSON document. The loader compiles it or returns every problem at once, and it checks the declared facts against the strips.',
+    title: 'Episode 6 — The Simulation Engine',
+    blurb: 'Fixed worker quotas make a parallel run repeatable. Progress updates may be dropped without changing the totals.',
     component: Chapter06,
     ready: true,
   },
   {
     id: 'ch07',
     label: '07',
-    title: 'Episode 7 — Proving the Machine',
-    blurb: 'Exhaustive enumeration referees the simulation. Three implementations share only the game data, and their answers match.',
+    title: 'Episode 7 — Games as Data',
+    blurb: 'A slot game becomes a JSON document. The loader either compiles it or returns a useful list of problems.',
     component: Chapter07,
+    ready: true,
+  },
+  {
+    id: 'ch08',
+    label: '08',
+    title: 'Episode 8 — Proving the Machine',
+    blurb: 'Exhaustive counting gives an exact answer. Simulation should move toward that answer as more spins are played.',
+    component: Chapter08,
+    ready: true,
+  },
+  {
+    id: 'ch09',
+    label: '09',
+    title: 'Episode 9 — Optimize the Machine You Proved',
+    blurb: 'Keep the clear first version, measure the hot path, and accept only optimizations that preserve identical output and improve repeated benchmarks.',
+    component: Chapter09,
     ready: true,
   },
   {

@@ -1,5 +1,5 @@
 // Typed clients for the chapter labs and the finale run. One post helper, one get
-// helper; every shape mirrors the server records field for field.
+// helper. Each response interface mirrors its server record field for field.
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   let response: Response
@@ -41,6 +41,7 @@ export interface SourceView {
   id: string
   name: string
   isGame: boolean
+  configurationSource: string
   reelCount: number
   rows: number
   stopsPerReel: number[]
@@ -72,6 +73,15 @@ export interface CensusView {
   spins: number
   symbolId: number
   perReel: { reel: number; observed: number; expected: number; count: number }[]
+}
+
+export interface ReelSnapshotView {
+  seed: number
+  shortSnapshot: { stops: number; window: string[] }
+  repeatedShortSnapshot: { stops: number; window: string[] }
+  longSnapshot: { stops: number; window: string[] }
+  shortSnapshotRepeatedExactly: boolean
+  shortSnapshotKeptOriginalFirstSymbol: boolean
 }
 
 // ---- chapter 4 ----
@@ -248,7 +258,7 @@ export interface RunLimits {
     stride: number
   }
   workerCeiling: number
-  presets: { name: string; reels: number; rows: number; stopsPerReel: number; paylines: number }[]
+  presets: { name: string; reels: number; rows: number; stopsPerReel: number[]; paylines: number }[]
 }
 
 export interface CurvePoint {
@@ -294,4 +304,23 @@ export interface RunDescription {
 export interface RunStreamEvent {
   type: string
   data: unknown
+}
+
+// ---- chapter 9 ----
+
+export interface OptimizationBenchmarkView {
+  source: string
+  spins: number
+  trials: number
+  reels: number
+  rows: number
+  randomSelections: number
+  visibleCellWrites: number
+  checksum: string
+  outputsMatch: boolean
+  baseline: { label: string; samples: number[]; medianSpinsPerSecond: number }
+  optimized: { label: string; samples: number[]; medianSpinsPerSecond: number }
+  speedup: number
+  percentFaster: number
+  memoryTradeoff: string
 }

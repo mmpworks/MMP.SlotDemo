@@ -7,9 +7,9 @@ using MMP.SlotGame.Core.Games.Definition;
 namespace SlotDemo.Server.Chapters;
 
 /// <summary>
-/// Episode 6's lab — games as data. A slot game is a JSON document; the loader either
-/// returns a valid game or the complete list of reasons it refused. The shipped games
-/// live in games/ and travel with the server, so the lab loads the real files.
+/// Episode 6 endpoints for loading slot games from JSON. The loader returns either a
+/// compiled game or all validation errors. The examples come from the JSON files shipped
+/// in the games directory.
 /// </summary>
 public static class ChapterSixEndpoints
 {
@@ -24,7 +24,7 @@ public static class ChapterSixEndpoints
     private static string GamesDirectory =>
         Path.Combine(AppContext.BaseDirectory, "games");
 
-    /// <summary>The shipped definitions, loaded and summarized through the real loader.</summary>
+    /// <summary>Loads and summarizes every game definition shipped with the server.</summary>
     private static IResult Games(StructuredLogger log)
     {
         var summaries = new List<object>();
@@ -78,8 +78,8 @@ public static class ChapterSixEndpoints
     public sealed record ValidateRequest(string Json);
 
     /// <summary>
-    /// The loader as a teaching surface: paste any JSON, get back either the compiled
-    /// game or every problem at once. Reporting the full list saves the author from
+    /// Accepts a JSON game definition and returns either the compiled game or every
+    /// validation error. Reporting the full list saves the author from
     /// repeating an edit-and-run cycle for each error.
     /// </summary>
     private static IResult Validate(ValidateRequest request, StructuredLogger log)

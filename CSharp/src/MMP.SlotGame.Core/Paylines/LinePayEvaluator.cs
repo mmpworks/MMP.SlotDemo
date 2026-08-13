@@ -31,4 +31,24 @@ public sealed class LinePayEvaluator(IReadOnlyList<Payline> lines, ScaledPaytabl
         }
         return total;
     }
+
+    /// <summary>Allocation-free simulation path for a window that already contains symbol ids.</summary>
+    public Millicents EvaluateIds(ReadOnlySpan<byte> window, int reelCount, int rows)
+    {
+        var total = Millicents.Zero;
+        foreach (var line in _lines)
+        {
+            var first = window[line.Rows[0]];
+            var run = 1;
+            for (var reel = 1; reel < reelCount; reel++)
+            {
+                if (window[reel * rows + line.Rows[reel]] != first)
+                    break;
+                run++;
+            }
+            if (run >= Paytable.MinimumWinningRun)
+                total += paytable.PayFor(first, run);
+        }
+        return total;
+    }
 }

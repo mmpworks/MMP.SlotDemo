@@ -7,11 +7,10 @@ using SlotDemo.Server.Chapters.Simulation;
 namespace SlotDemo.Server.Chapters;
 
 /// <summary>
-/// Episode 2's lab endpoints — exact money and deterministic randomness.
+/// Episode 2 endpoints for exact money calculations and deterministic random-number streams.
 ///
 /// Every route runs the real <see cref="Millicents"/> and <see cref="SpinRng"/> types and
-/// narrates each step through Herald, so the page's controls on the left and the log
-/// stream underneath tell the same story from two directions.
+/// logs each step through Herald so the page can display the calculation and its trace.
 /// </summary>
 public static class ChapterTwoEndpoints
 {
@@ -27,9 +26,8 @@ public static class ChapterTwoEndpoints
     // ---- exact money -------------------------------------------------------------
 
     /// <param name="WagerMillicents">
-    /// The odd-amount seam: whole credits always divide evenly by the pay scale, so the way
-    /// to watch the type refuse an inexact conversion is to hand it a raw amount that does
-    /// not divide evenly.
+    /// An amount that may not divide evenly by the payout scale. This lets the lab demonstrate
+    /// how <see cref="Millicents"/> rejects a fractional-millicent result.
     /// </param>
     public sealed record MoneyRequest(
         long WagerCredits, int ScaledMultiplier, long Repeats, long WagerMillicents = 0);
@@ -127,8 +125,8 @@ public static class ChapterTwoEndpoints
     public sealed record RngRequest(ulong Seed, int WorkerCount, int Draws, int Bound, bool Mixed);
 
     /// <summary>
-    /// Raw draws travel as hex strings on purpose: a 64-bit unsigned value does not survive
-    /// a JSON number in the browser, where every number is a double with 53 bits of mantissa.
+    /// Returns raw 64-bit draws as hexadecimal strings because JavaScript numbers preserve
+    /// only 53 bits of integer precision.
     /// </summary>
     public sealed record StreamView(int WorkerId, string[] State, string[] Raw, int[] Reduced);
 

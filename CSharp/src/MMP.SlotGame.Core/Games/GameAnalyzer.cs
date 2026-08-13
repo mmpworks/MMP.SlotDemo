@@ -4,53 +4,47 @@ using MMP.SlotGame.Core.Money;
 namespace MMP.SlotGame.Core.Games;
 
 /// <summary>
-/// Exact analysis of a loaded game by enumeration over symbol tuples rather than stop
-/// tuples: every combination of one symbol per reel, weighted by how many stops produce it.
-/// A payline reads one cell per reel, so both enumerations give the same answer. For Orca
-/// Dive that is tens of thousands of tuples instead of 14,781,416 stops.
+/// Calculates the exact return of a loaded, single-payline game without running random spins.
+/// It tries every symbol combination that can appear on the payline. Each combination is
+/// counted as many times as it appears on the physical reel strips.
 ///
-/// The scatter reads the whole window rather than a single cell, so it rides through the
-/// same enumeration as a second weight: beside each reel's plain symbol counts sits the
-/// count of stops that show that symbol on the payline and the scatter somewhere in the
-/// window. Multiplying the second weight on the required reels and the first elsewhere
-/// gives the joint distribution of (line pay, feature triggered). Line pay and the feature
-/// are correlated, because a scatter in the window costs that reel a payline symbol, so a
-/// sigma built by adding their variances would be wrong.
+/// For example, suppose the first reel has four cherry stops and two bell stops. A combination
+/// beginning with a cherry represents four times as many reel stops as one beginning with a
+/// bell. Keeping that count produces the same result as checking every stop, with less work.
 ///
-/// Reel count is a loop bound, not a constant: the enumeration is a recursive descent over
-/// however many reels the definition has, and the same code analyses a 3-reel classic and a
-/// 5-reel video game.
+/// The analyzer also counts stops that show the bonus scatter anywhere in the visible window.
+/// This is necessary because the line win and the bonus trigger can happen on the same spin.
 ///
-/// Known limit: this analyses single-payline games. Multi-line EV is a plain sum over
-/// lines, but multi-line sigma needs the line-pair covariance that
-/// <see cref="Rtp.AnalyticMath"/> computes for the wild-free preset games, and combining
-/// that with wilds and a window-coupled feature is a separate piece of work. Multi-line
-/// definitions still simulate correctly; analysis here does not yet reach them.
+/// This class supports any number of reels, but only one payline. Games with several paylines
+/// still simulate correctly; their exact variance requires additional covariance calculations.
 /// </summary>
 public static class GameAnalyzer
 {
     /// <summary>
-    /// Enumeration is the product of the distinct symbols present on each reel. A definition
-    /// far past this is likely a mistake; the analyzer throws instead of appearing to hang.
+    /// Maximum number of payline-symbol combinations the analyzer will check. Larger inputs
+    /// are rejected because they are likely to take too long or indicate a bad game definition.
     /// </summary>
     public const long MaxEnumeration = 200_000_000;
 
-    public static GameAnalysis Analyse(GameDefinition definition)
+    /// <summary>
+    /// Validates that the game has one payline, then calculates its exact return and variance.
+    /// No random-number generator is used.
+    /// </summary>
+    public static GameAnalysis Analyze(GameDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
 
         if (definition.Paylines.Count != 1)
             throw new NotSupportedException(
                 $"Game '{definition.Name}' has {definition.Paylines.Count} paylines; exact analysis covers "
-                + "single-payline games. Multi-line games simulate correctly but are not analysed here yet.");
+                + "single-payline games. Multi-line games simulate correctly but are not analyzed here yet.");
 
         return new Enumeration(definition).Run();
     }
 
     /// <summary>
-    /// One analysis in flight. A class rather than a pile of ref parameters because the
-    /// descent carries eight accumulators, and a recursive signature would have to thread
-    /// all eight through every call.
+    /// Holds the working data and running totals for one analysis. Keeping the totals here
+    /// avoids passing the same set of values through every recursive call.
     /// </summary>
     private sealed class Enumeration
     {
@@ -63,6 +57,10 @@ public static class GameAnalyzer
 
         private long _hits, _payUnits, _paySquareUnits, _payTriggerUnits, _triggerWeight;
 
+        /// <summary>
+        /// Prepares the win evaluator, reusable payline buffer, and per-reel symbol counts.
+        /// It also rejects a game whose analysis would exceed <see cref="MaxEnumeration"/>.
+        /// </summary>
         public Enumeration(GameDefinition definition)
         {
             _definition = definition;
@@ -72,12 +70,21 @@ public static class GameAnalyzer
             GuardEnumerationSize();
         }
 
+        /// <summary>
+        /// Checks every possible payline-symbol combination and converts the resulting counts
+        /// into RTP, hit frequency, trigger frequency, and standard deviation.
+        /// </summary>
         public GameAnalysis Run()
         {
             Descend(reel: 0, weight: 1, triggerWeight: 1);
-            return Summarise();
+            return Summarize();
         }
 
+        /// <summary>
+        /// Multiplies the number of distinct symbols on each reel to estimate how many
+        /// combinations <see cref="Descend"/> must visit. Stops that show the same symbol count
+        /// as one branch because their frequency is stored in that branch's weight.
+        /// </summary>
         private void GuardEnumerationSize()
         {
             long space = 1;
@@ -93,9 +100,11 @@ public static class GameAnalyzer
         }
 
         /// <summary>
-        /// Walk one reel deeper, multiplying in this symbol weight. Symbols absent from a
-        /// reel are skipped, so a game whose reels carry different symbol sets costs nothing
-        /// for the ones it does not use.
+        /// Chooses one possible payline symbol for the current reel, then moves to the next reel.
+        /// <paramref name="weight"/> records how many physical stop combinations produce the
+        /// choices made so far. For example, choosing a symbol that appears four times multiplies
+        /// the current weight by four. After every reel has a choice, <see cref="Accumulate"/>
+        /// evaluates that completed payline.
         /// </summary>
         private void Descend(int reel, long weight, long triggerWeight)
         {
@@ -115,6 +124,11 @@ public static class GameAnalyzer
             }
         }
 
+        /// <summary>
+        /// Evaluates one completed payline and adds its weighted results to the running totals.
+        /// A combination with weight 12 contributes the same result as 12 individual reel-stop
+        /// combinations. Payout multipliers remain scaled integers here to avoid rounding.
+        /// </summary>
         private void Accumulate(long weight, long triggerWeight)
         {
             _triggerWeight += triggerWeight;
@@ -127,7 +141,7 @@ public static class GameAnalyzer
             _hits += weight;
 
             // win.Multiplier is the real multiplier x Millicents.ScaleFactor (PayCategory.PayFor),
-            // so every tally below is at that scale too. Summarise() divides that back out
+            // so every tally below is at that scale too. Summarize() divides that back out
             // once, at the end, rather than converting per combination.
             //
             // Overflow check for _paySquareUnits, since it is quadratic in the multiplier: at
@@ -146,19 +160,15 @@ public static class GameAnalyzer
         }
 
         /// <summary>
-        /// Turn the integer tallies into returns and sigmas. X = L + T*W, where L is the line
-        /// pay, T is the trigger indicator and W is the feature award, independent of
-        /// everything once triggered. So E[X] = E[L] + P(T)*E[W] and
-        /// E[X^2] = E[L^2] + 2*E[L*T]*E[W] + P(T)*E[W^2]. The middle term is the coupling,
-        /// and the enumeration carries its second weight to supply it.
+        /// Converts the weighted integer totals into the values returned to callers. The average
+        /// line pay is total weighted line pay divided by all reel-stop combinations. Bonus RTP
+        /// is trigger probability multiplied by the bonus's average award.
         ///
-        /// The tallies accumulate at <see cref="Millicents.ScaleFactor"/> (see
-        /// <see cref="Accumulate"/>); L is linear in the multiplier so a single /ScaleFactor
-        /// recovers it, and L^2 is quadratic so it needs /ScaleFactor^2. That division happens
-        /// here and nowhere else, which keeps <see cref="Games.GameRunner"/>'s simulated pay
-        /// and this analytic pay in the same unit throughout.
+        /// Variance also needs the average squared payout. The formula includes the case where
+        /// a line win and bonus trigger occur together; treating them as unrelated would give the
+        /// wrong standard deviation. Scaled integer multipliers are converted to doubles only here.
         /// </summary>
-        private GameAnalysis Summarise()
+        private GameAnalysis Summarize()
         {
             var total = (double)_definition.StopCombinations;
             var scale = (double)Millicents.ScaleFactor;
@@ -193,10 +203,10 @@ public static class GameAnalyzer
         }
 
         /// <summary>
-        /// Per reel and per symbol: how many stops put that symbol on the payline (anyStop),
-        /// and how many of those ALSO show the scatter in the window (triggerStop). Reels the
-        /// feature does not require keep the plain count, which is what makes the product in
-        /// <see cref="Descend"/> apply the scatter condition to the required reels only.
+        /// Counts two things for every symbol on every reel: stops that place the symbol on the
+        /// payline, and stops that also show the bonus scatter somewhere in the visible window.
+        /// <see cref="Descend"/> uses these counts as weights instead of visiting identical stops
+        /// one at a time.
         /// </summary>
         private static (int[][] AnyStop, int[][] TriggerStop) BuildWeights(GameDefinition definition)
         {
@@ -227,6 +237,10 @@ public static class GameAnalyzer
             return (anyStop, triggerStop);
         }
 
+        /// <summary>
+        /// Returns true when the requested scatter symbol appears in any visible row for one
+        /// reel position. Reel strips wrap around when the window reaches the end of a strip.
+        /// </summary>
         private static bool ScatterInWindow(Reels.StripReelSet reels, int reel, int stop, byte scatterId)
         {
             for (var row = 0; row < reels.Rows; row++)

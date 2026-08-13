@@ -36,7 +36,7 @@ onMounted(async () => {
     const current = await fetch('/api/run/current')
     if (current.status === 200) adopt((await current.json()) as RunDescription)
   } catch {
-    // The panel still renders; starting a run will surface any real problem.
+    // Keep rendering the panel. A later start request will display any server error.
   }
   subscribe()
 })
@@ -214,7 +214,7 @@ const verdict = computed(() => {
       <p v-if="error" class="lab__error">{{ error }}</p>
     </section>
 
-    <!-- The dark zone: the machine proving itself. -->
+    <!-- Simulation controls and convergence chart. -->
     <section class="proving-ground">
       <div class="proving-ground__head">
         <div class="readout">
@@ -246,19 +246,19 @@ const verdict = computed(() => {
         role="img"
         aria-label="Measured RTP converging inside the analytic confidence band"
       >
-        <!-- band funnel -->
+        <!-- Confidence-band boundary. -->
         <polygon :points="chart.funnel" class="chart__band" />
-        <!-- analytic centre line -->
+        <!-- Exact analytic RTP. -->
         <line
           :x1="PAD.left" :x2="W - PAD.right"
           :y1="chart.analyticY" :y2="chart.analyticY"
           class="chart__analytic"
         />
-        <!-- measured walk -->
+        <!-- Simulated RTP over time. -->
         <polyline :points="chart.measured" class="chart__measured" />
         <circle :cx="chart.lastX" :cy="chart.lastY" r="4" class="chart__tip" />
 
-        <!-- axes -->
+        <!-- Chart axes. -->
         <g v-for="t in chart.ticksY" :key="t.y">
           <line :x1="PAD.left - 6" :x2="PAD.left" :y1="t.y" :y2="t.y" class="chart__tick" />
           <text :x="PAD.left - 10" :y="t.y + 3" class="chart__label" text-anchor="end">{{ t.label }}</text>
@@ -304,7 +304,7 @@ const verdict = computed(() => {
 </template>
 
 <style scoped>
-/* The dark zone is the site's only inverted palette. */
+/* Use the site's inverted palette for the simulation panel. */
 .proving-ground {
   background: #0b0e14;
   border: 1px solid #232a38;

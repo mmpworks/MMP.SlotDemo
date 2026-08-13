@@ -41,7 +41,7 @@ public static class ParSheetEndpoints
             var game = definition!;
 
             GameAnalysis analysis;
-            try { analysis = GameAnalyzer.Analyse(game); }
+            try { analysis = GameAnalyzer.Analyze(game); }
             catch (NotSupportedException) { continue; }
 
             // Jackpot = the single highest-paying rule; plays per jackpot = cycle over
@@ -98,7 +98,7 @@ public static class ParSheetEndpoints
         GameAnalysis analysis;
         try
         {
-            analysis = GameAnalyzer.Analyse(game);
+            analysis = GameAnalyzer.Analyze(game);
         }
         catch (NotSupportedException ex)
         {

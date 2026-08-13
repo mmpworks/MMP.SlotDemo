@@ -25,10 +25,9 @@ public readonly record struct Millicents(long Value) : IComparable<Millicents>
     public static Millicents operator -(Millicents a, Millicents b) => new(a.Value - b.Value);
 
     /// <summary>
-    /// A money amount taken so many whole times: a bonus worth 20 bets, a wager over
-    /// 10M spins. The operand is dimensionless (money × money has no meaning), which is
-    /// why it is a long and not another <see cref="Millicents"/>; fractional multipliers
-    /// go through <see cref="ScaledMultiply"/> instead.
+    /// Multiplies an amount by a whole-number count. For example, wager * spinCount
+    /// returns the total amount wagered. Use <see cref="ScaledMultiply"/> for fractional
+    /// payout multipliers such as 2.25 times the wager.
     /// </summary>
     public static Millicents operator *(Millicents a, long multiples) => new(a.Value * multiples);
 

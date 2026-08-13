@@ -3,7 +3,7 @@ using MMP.SlotGame.Core.Reels;
 namespace MMP.SlotGame.Tests;
 
 /// <summary>
-/// Randomized geometry checks for <see cref="Payline.For"/> and <see cref="Payline.Center"/>
+/// Randomized geometry checks for <see cref="StandardPaylines.For"/> and <see cref="StandardPaylines.Center"/>
 /// across window heights and reel counts, independent of any concrete preset.
 /// </summary>
 [Trait("Category", "Fast")]
@@ -21,7 +21,7 @@ public sealed class PaylineGeometryFuzzTests
             var reelCount = rng.Next(1, 21);
             var lineCount = rng.Next(2) == 0 ? 5 : 9;
 
-            var paylines = Payline.For(reelCount, lineCount, rows);
+            var paylines = StandardPaylines.For(reelCount, lineCount, rows);
 
             Assert.Equal(lineCount, paylines.Count);
             foreach (var line in paylines)
@@ -42,7 +42,7 @@ public sealed class PaylineGeometryFuzzTests
             var reelCount = rng.Next(1, 21);
             var badLineCount = rng.Next(2) == 0 ? rng.Next(-10, 5) : rng.Next(6, 9);
 
-            Assert.Throws<ArgumentException>(() => Payline.For(reelCount, badLineCount, rows));
+            Assert.Throws<ArgumentException>(() => StandardPaylines.For(reelCount, badLineCount, rows));
         }
     }
 
@@ -55,7 +55,7 @@ public sealed class PaylineGeometryFuzzTests
             var rows = rng.Next(StripReelSet.MinRows, StripReelSet.MaxRows + 1);
             var reelCount = rng.Next(1, 21);
 
-            var line = Payline.Center(reelCount, rows);
+            var line = StandardPaylines.Center(reelCount, rows);
 
             Assert.Equal(reelCount, line.Rows.Count);
             Assert.All(line.Rows, row => Assert.Equal(rows / 2, row));
@@ -77,7 +77,7 @@ public sealed class PaylineGeometryFuzzTests
             var rows = rng.Next(StripReelSet.MinRows, StripReelSet.MaxRows + 1);
             var reelCount = rng.Next(2, 21);
 
-            var paylines = Payline.For(reelCount, 9, rows);
+            var paylines = StandardPaylines.For(reelCount, 9, rows);
             var vee = paylines.Single(p => p.Name == "V");
             var hat = paylines.Single(p => p.Name == "Hat");
             var middleReel = reelCount / 2;

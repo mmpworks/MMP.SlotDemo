@@ -3,11 +3,12 @@ using MMP.SlotGame.Core.Simulation;
 namespace MMP.SlotGame.Core.Reels;
 
 /// <summary>
-/// A reel is an ordered cyclic strip. A spin draws one uniform stop index per reel; the
-/// visible window shows adjacent strip positions {s, s+1, ... s+Rows-1} mod S. Rows within
-/// a reel are therefore correlated by strip adjacency, while different reels are
-/// independent. A weighted multiset loses that adjacency, so it stops being equivalent the
-/// moment a multi-row window exists.
+/// Each reel owns one ordered cyclic strip. A spin chooses one stop on each reel. The visible
+/// symbol positions for that reel then read neighboring locations from that same strip: s, s+1, and so on,
+/// wrapping at the end. Separate reels choose their stops independently.
+///
+/// Symbol counts can give the chance for one cell, but they do not record which symbols are
+/// neighbors. Calculations that inspect two visible positions on the same reel need the ordered strip.
 ///
 /// Reel count, per-reel stop count and window height all arrive as arguments. Strips of
 /// differing lengths on the same machine are normal; Orca Dive, the fictional game this
@@ -28,19 +29,27 @@ public sealed class StripReelSet
     public const int MaxRows = 5;
 
     private readonly Symbol[][] _strips;
+    private readonly Symbol[][] _drawStrips;
+    private readonly byte[][] _drawIds;
+    private readonly ulong[] _rngRanges;
+    private readonly ulong[] _rngThresholds;
 
-    public StripReelSet(Symbol[][] strips, int rows = DefaultRows)
+    /// <summary>
+    /// Copies one ordered symbol list per reel. Inner lists may have different lengths.
+    /// Create a new reel set to change strips for a later run; this snapshot never changes.
+    /// </summary>
+    public StripReelSet(IReadOnlyList<IReadOnlyList<Symbol>> strips, int rows = DefaultRows)
     {
         ArgumentNullException.ThrowIfNull(strips);
-        if (strips.Length < 1)
+        if (strips.Count < 1)
             throw new ArgumentException("A reel set needs at least one reel.", nameof(strips));
         if (rows < MinRows || rows > MaxRows)
             throw new ArgumentOutOfRangeException(
                 nameof(rows), rows, $"A window must have {MinRows}..{MaxRows} rows.");
 
-        for (var reel = 0; reel < strips.Length; reel++)
+        for (var reel = 0; reel < strips.Count; reel++)
         {
-            if (strips[reel] is null || strips[reel].Length == 0)
+            if (strips[reel] is null || strips[reel].Count == 0)
                 throw new ArgumentException($"Reel {reel + 1} has no stops.", nameof(strips));
         }
 
@@ -48,11 +57,34 @@ public sealed class StripReelSet
         // later mutations cannot change a game that is already running.
         _strips = strips.Select(strip => strip.ToArray()).ToArray();
         Rows = rows;
+
+        // A window may begin at the last stop and continue past the physical end of the
+        // array. Append Rows - 1 wrapped symbols once during construction so DrawWindow
+        // can read a contiguous slice without calculating modulo for every visible cell.
+        // Rows is limited to 3..5, so this costs only two to four extra references per reel.
+        _drawStrips = new Symbol[_strips.Length][];
+        _drawIds = new byte[_strips.Length][];
+        _rngRanges = new ulong[_strips.Length];
+        _rngThresholds = new ulong[_strips.Length];
+        for (var reel = 0; reel < _strips.Length; reel++)
+        {
+            var strip = _strips[reel];
+            var range = (ulong)strip.Length;
+            _rngRanges[reel] = range;
+            _rngThresholds[reel] = unchecked(0UL - range) % range;
+
+            var drawStrip = new Symbol[strip.Length + Rows - 1];
+            strip.CopyTo(drawStrip, 0);
+            for (var extra = 0; extra < Rows - 1; extra++)
+                drawStrip[strip.Length + extra] = strip[extra % strip.Length];
+            _drawStrips[reel] = drawStrip;
+            _drawIds[reel] = drawStrip.Select(symbol => symbol.Id).ToArray();
+        }
     }
 
     public int ReelCount => _strips.Length;
 
-    /// <summary>Visible rows per reel. The window is laid out [reel * Rows + row].</summary>
+    /// <summary>Number of visible symbol positions in each reel's column. Also the screen-row count. The window is laid out [reel * Rows + row].</summary>
     public int Rows { get; }
 
     public int WindowSize => ReelCount * Rows;
@@ -96,19 +128,54 @@ public sealed class StripReelSet
         return (double)count / n;
     }
 
-    /// <summary>Draw one spin window. One uniform stop per reel; rows are strip-adjacent.</summary>
+    /// <summary>Draws one stop per reel, then fills that reel's column from neighboring strip positions.</summary>
     public void DrawWindow(ref SpinRng rng, Span<Symbol> window)
     {
         // window layout: [reel * Rows + row]
         for (var reel = 0; reel < _strips.Length; reel++)
         {
+            // Range and rejection threshold depend only on strip length. Construction
+            // calculates both once so this call performs no setup division per spin.
+            var stop = rng.NextInt(_rngRanges[reel], _rngThresholds[reel]);
+            var drawStrip = _drawStrips[reel];
+            var windowOffset = reel * Rows;
+            for (var row = 0; row < Rows; row++)
+                window[windowOffset + row] = drawStrip[stop + row];
+        }
+    }
+
+    /// <summary>
+    /// Teaching baseline for the optimization lab. It uses the direct cyclic formula for
+    /// every visible cell and copies the full <see cref="Symbol"/> value. Production runs
+    /// use <see cref="DrawWindowIds"/>. Keeping both implementations lets the lab compare
+    /// equal work and equal output instead of comparing against a synthetic loop.
+    /// </summary>
+    public void DrawWindowBaseline(ref SpinRng rng, Span<Symbol> window)
+    {
+        for (var reel = 0; reel < _strips.Length; reel++)
+        {
             var strip = _strips[reel];
             var stop = rng.NextInt(strip.Length);
+            var windowOffset = reel * Rows;
             for (var row = 0; row < Rows; row++)
-            {
-                var pos = (stop + row) % strip.Length;
-                window[reel * Rows + row] = strip[pos];
-            }
+                window[windowOffset + row] = strip[(stop + row) % strip.Length];
+        }
+    }
+
+    /// <summary>
+    /// Draws the same window as <see cref="DrawWindow"/>, but writes only symbol ids.
+    /// Simulation evaluators use ids, so this avoids copying each symbol's name and flags
+    /// through the hot loop. The full-symbol overload remains available to teaching tools.
+    /// </summary>
+    public void DrawWindowIds(ref SpinRng rng, Span<byte> window)
+    {
+        for (var reel = 0; reel < _strips.Length; reel++)
+        {
+            var stop = rng.NextInt(_rngRanges[reel], _rngThresholds[reel]);
+            var drawIds = _drawIds[reel];
+            var windowOffset = reel * Rows;
+            for (var row = 0; row < Rows; row++)
+                window[windowOffset + row] = drawIds[stop + row];
         }
     }
 

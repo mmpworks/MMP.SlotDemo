@@ -1,46 +1,50 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { postJson } from '../api/labs'
-import type { EnumerateView, RefereeView } from '../api/labs'
+import { onMounted, ref } from 'vue'
+import { getJson, postJson } from '../api/labs'
+import type { GameSummary, ValidateView } from '../api/labs'
+import ComprehensionCheck from '../components/ComprehensionCheck.vue'
+import OptimizationPreview from '../components/OptimizationPreview.vue'
 
 defineProps<{ title: string; blurb: string }>()
-const emit = defineEmits<{ (e: 'navigate', id: string): void }>()
 
-const gameFile = ref('classic-three-reel.json')
-const enumeration = ref<EnumerateView | null>(null)
+const games = ref<GameSummary[]>([])
+const selected = ref<GameSummary | null>(null)
 
-const seed = ref(20260811)
-const workerCount = ref(8)
-const spins = ref(2_000_000)
-const referee = ref<RefereeView | null>(null)
+const draft = ref('')
+const validation = ref<ValidateView | null>(null)
 
 const error = ref('')
 const busy = ref(false)
 
-async function enumerate(): Promise<void> {
-  busy.value = true
-  error.value = ''
+onMounted(async () => {
   try {
-    enumeration.value = await postJson<EnumerateView>('/api/ch7/enumerate', { gameFile: gameFile.value })
+    games.value = await getJson<GameSummary[]>('/api/ch6/games')
+    selected.value = games.value[0] ?? null
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Enumeration failed.'
-  } finally {
-    busy.value = false
+    error.value = err instanceof Error ? err.message : 'Failed to load games.'
   }
+})
+
+const brokenExample = `{
+  "name": "Broken Example",
+  "symbols": [ { "name": "Seven" }, { "name": "Cherry", "scatter": true } ],
+  "reels": [ ["Seven", "Cherry", "Seven"], ["Cherry", "Missing", "Seven"] ],
+  "reelStops": [3, 4],
+  "paylines": [ { "name": "Center", "rows": [1, 1, 1] } ],
+  "paytable": [ { "symbol": "Bell", "pays": { "3": 2.25 } } ]
+}`
+
+function loadBroken(): void {
+  draft.value = brokenExample
 }
 
-async function runReferee(): Promise<void> {
+async function validate(): Promise<void> {
   busy.value = true
   error.value = ''
   try {
-    referee.value = await postJson<RefereeView>('/api/ch7/referee', {
-      gameFile: gameFile.value,
-      seed: seed.value,
-      workerCount: workerCount.value,
-      spins: spins.value,
-    })
+    validation.value = await postJson<ValidateView>('/api/ch6/validate', { json: draft.value })
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Referee run failed.'
+    error.value = err instanceof Error ? err.message : 'Validation failed.'
   } finally {
     busy.value = false
   }
@@ -55,164 +59,172 @@ async function runReferee(): Promise<void> {
     </header>
 
     <section class="chapter-brief">
-      <h3>What the episode proves</h3>
+      <h3>What the episode builds</h3>
       <p>
-        Three implementations share nothing but the game data: closed-form analysis,
-        Monte-Carlo simulation, and exhaustive enumeration. The enumerator walks every stop
-        combination with no randomness and no sampling, and counts what each category pays.
-        When the simulation's measured RTP lands inside the band around the enumerator's
-        exact figure, all three methods agree.
+        A slot game is a document: symbols, strips, paylines, paytable, and optionally a
+        scatter-triggered bonus, all in one JSON file. The loader compiles it into a
+        validated <code>GameDefinition</code> or returns the complete list of problems in
+        one pass. It checks the declared facts (stop counts, symbol tallies) against the
+        strips, so a PAR-sheet transcription error is caught at load rather than showing up
+        later as a wrong RTP.
       </p>
       <p class="chapter-source">
-        Source: <code>src/MMP.SlotGame.Core/Games/GameAnalyzer.cs</code>,
-        <code>Games/GameRunner.cs</code>, and the ground-truth suite in
-        <code>tests/MMP.SlotGame.Tests/ExhaustiveGroundTruthTests.cs</code>.
+        Source: <code>src/MMP.SlotGame.Core/Games/Definition/</code> and the shipped
+        documents in <code>games/</code>.
       </p>
     </section>
 
     <section class="lab">
-      <h3>Lab 1 — The census</h3>
-      <p class="lab__lede">
-        The classic game's space is 11,616 combinations; Orca Dive's is 14,781,416. Both
-        enumerate in well under a second.
-      </p>
-
-      <div class="controls">
-        <label>
-          Game
-          <select v-model="gameFile">
-            <option value="classic-three-reel.json">Classic Three Reel</option>
-            <option value="orca-dive.json">Orca Dive</option>
-          </select>
-        </label>
-        <button type="button" :disabled="busy" @click="enumerate">Enumerate</button>
-      </div>
-
+      <h3>Lab 1 — The shipped games, read by the real loader</h3>
       <p v-if="error" class="lab__error">{{ error }}</p>
 
-      <div v-if="enumeration?.supported" class="results">
-        <div class="verdict verdict--info">
-          <div>
-            <span class="verdict__label">Outcome space</span>
-            <span class="mono">{{ enumeration.stopCombinations?.toLocaleString() }}</span>
-          </div>
-          <div>
-            <span class="verdict__label">Line hit frequency</span>
-            <span class="mono">{{ ((enumeration.hitFrequency ?? 0) * 100).toFixed(4) }}%</span>
-          </div>
-          <div>
-            <span class="verdict__label">Line RTP</span>
-            <span class="mono">{{ ((enumeration.lineRtp ?? 0) * 100).toFixed(4) }}%</span>
-          </div>
-          <div>
-            <span class="verdict__label">Bonus RTP</span>
-            <span class="mono">{{ ((enumeration.bonusRtp ?? 0) * 100).toFixed(4) }}%</span>
-          </div>
-          <div>
-            <span class="verdict__label">Total RTP — exact</span>
-            <span class="mono">{{ ((enumeration.totalRtp ?? 0) * 100).toFixed(4) }}%</span>
-          </div>
-        </div>
-
-        <table class="lab-table">
-          <thead>
-            <tr><th>Category</th><th>Count</th><th>Combinations</th><th>Probability</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="c in enumeration.combinations" :key="`${c.category}-${c.count}`">
-              <td>{{ c.category }}</td>
-              <td>{{ c.count }}</td>
-              <td>{{ c.combinations.toLocaleString() }}</td>
-              <td>{{ c.probability.toExponential(4) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p v-else-if="enumeration" class="lab-note">{{ enumeration.reason }}</p>
-    </section>
-
-    <section class="lab">
-      <h3>Lab 2 — Simulation against the referee</h3>
-      <p class="lab__lede">
-        Play real spins with real randomness, then set the measurement beside the exact
-        figures. The band is z·σ/√N at the 99% level, computed from the enumerator's own
-        sigma. Hit frequency here counts line wins only, the same convention the PAR sheet
-        uses.
-      </p>
-
-      <div class="controls">
-        <label>
-          Seed
-          <input v-model.number="seed" type="number" min="0" />
-        </label>
-        <label>
-          Workers
-          <input v-model.number="workerCount" type="number" min="1" max="32" />
-        </label>
-        <label>
-          Spins
-          <input v-model.number="spins" type="number" min="10000" max="20000000" step="500000" />
-        </label>
-        <button type="button" :disabled="busy" @click="runReferee">
-          {{ busy ? 'Spinning…' : 'Run the match' }}
+      <div class="game-picker">
+        <button
+          v-for="g in games"
+          :key="g.file"
+          type="button"
+          class="lab-button"
+          :class="{ inactive: selected?.file !== g.file }"
+          @click="selected = g"
+        >
+          {{ g.name ?? g.file }}
         </button>
       </div>
 
-      <div v-if="referee?.supported && referee.measured && referee.exact" class="results">
-        <div class="verdict" :class="referee.withinBand ? '' : 'verdict--drift'">
+      <div v-if="selected?.valid" class="results">
+        <div class="verdict verdict--info">
           <div>
-            <span class="verdict__label">Verdict</span>
-            <span class="mono">{{ referee.withinBand ? 'WITHIN BAND' : 'OUTSIDE BAND' }}</span>
+            <span class="verdict__label">Geometry</span>
+            <span class="mono">{{ selected.reels }} reels × {{ selected.rows }} rows</span>
           </div>
           <div>
-            <span class="verdict__label">Band at N</span>
-            <span class="mono">±{{ ((referee.bandHalfWidth ?? 0) * 100).toFixed(4) }}pp</span>
+            <span class="verdict__label">Stops per reel</span>
+            <span class="mono">{{ selected.stopsPerReel?.join(' · ') }}</span>
+          </div>
+          <div>
+            <span class="verdict__label">Outcome space</span>
+            <span class="mono">{{ selected.stopCombinations?.toLocaleString() }}</span>
+          </div>
+          <div v-if="selected.bonus">
+            <span class="verdict__label">Bonus</span>
+            <span class="mono">{{ selected.bonus.name }} (max {{ selected.bonus.maxAward }}×)</span>
           </div>
         </div>
 
         <table class="lab-table">
           <thead>
-            <tr><th>Figure</th><th>Measured</th><th>Exact</th></tr>
+            <tr><th>Category</th><th>Kind</th><th>Pays</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td>Total RTP</td>
-              <td>{{ (referee.measured.totalRtp * 100).toFixed(4) }}%</td>
-              <td>{{ (referee.exact.totalRtp * 100).toFixed(4) }}%</td>
-            </tr>
-            <tr>
-              <td>Line RTP</td>
-              <td>{{ (referee.measured.lineRtp * 100).toFixed(4) }}%</td>
-              <td>{{ (referee.exact.lineRtp * 100).toFixed(4) }}%</td>
-            </tr>
-            <tr>
-              <td>Bonus RTP</td>
-              <td>{{ (referee.measured.bonusRtp * 100).toFixed(4) }}%</td>
-              <td>{{ (referee.exact.bonusRtp * 100).toFixed(4) }}%</td>
-            </tr>
-            <tr>
-              <td>Line hit frequency</td>
-              <td>{{ (referee.measured.hitFrequency * 100).toFixed(4) }}%</td>
-              <td>{{ (referee.exact.hitFrequency * 100).toFixed(4) }}%</td>
-            </tr>
-            <tr>
-              <td>Bonus trigger</td>
-              <td>{{ (referee.measured.triggerFrequency * 100).toFixed(4) }}%</td>
-              <td>{{ (referee.exact.triggerProbability * 100).toFixed(4) }}%</td>
+            <tr v-for="c in selected.categories" :key="c.name">
+              <td>{{ c.name }}</td>
+              <td>{{ c.kind }}</td>
+              <td>{{ c.pays.map((p) => `${p.count}→${p.payHundredths / 100}×`).join('  ') }}</td>
             </tr>
           </tbody>
         </table>
+
+        <p class="lab-note">
+          Symbols:
+          <span class="mono">
+            {{ selected.symbols?.map((s) => s.name + (s.isWild ? ' (wild)' : s.isScatter ? ' (scatter)' : '')).join(', ') }}
+          </span>
+        </p>
       </div>
-      <p v-else-if="referee && !referee.supported" class="lab-note">{{ referee.reason }}</p>
+    </section>
+
+    <section class="lab">
+      <h3>Lab 2 — Feed the loader anything</h3>
+      <p class="lab__lede">
+        Paste a definition and the loader answers with the compiled game, or with every
+        problem in the file at once. An author fixes a document in one pass instead of
+        load-fix-load-fix.
+      </p>
+
+      <div class="controls">
+        <button type="button" class="ghost" @click="loadBroken">Load a broken example</button>
+        <button type="button" :disabled="busy || !draft" @click="validate">Validate</button>
+      </div>
+
+      <textarea
+        v-model="draft"
+        class="editor mono"
+        rows="12"
+        spellcheck="false"
+        placeholder="Paste a game definition JSON here"
+      />
+
+      <div v-if="validation" class="results">
+        <div v-if="validation.valid" class="verdict">
+          <div>
+            <span class="verdict__label">Compiled</span>
+            <span class="mono">{{ validation.name }}</span>
+          </div>
+          <div>
+            <span class="verdict__label">Outcome space</span>
+            <span class="mono">{{ validation.stopCombinations?.toLocaleString() }}</span>
+          </div>
+        </div>
+        <div v-else class="refused">
+          <span class="verdict__label">Refused — {{ validation.errors?.length }} problem(s)</span>
+          <ul>
+            <li v-for="(problem, i) in validation.errors" :key="i" class="mono">{{ problem }}</li>
+          </ul>
+        </div>
+      </div>
     </section>
 
     <section class="chapter-brief">
-      <h3>The full run</h3>
+      <h3>Carried into episode 7</h3>
       <p>
-        The finale runs the full ten-million-spin proof live, with the convergence curve
-        settling into the narrowing band on screen.
-        <a href="#/finale" @click.prevent="emit('navigate', 'finale')">Open the proving ground →</a>
+        Because the game is data, every stop combination can be walked. Episode 7 does that
+        and uses the exhaustive census to referee the simulation.
       </p>
     </section>
+    <ComprehensionCheck
+      question="Why does the loader report several validation errors at once?"
+      :choices="['JSON requires it.', 'The author can fix related problems in one pass.', 'It makes the game run faster.']"
+      :answer="1"
+      explanation="Independent checks can all run after parsing, so the author does not need a separate edit-and-run cycle for each problem."
+    />
+    <OptimizationPreview
+      question="Does a worker need complete symbols after the game has been compiled?"
+      later="Configuration keeps names and flags. Episode 9 measures a byte-ID execution view while preserving the rich domain model."
+    />
   </article>
 </template>
+
+<style scoped>
+.game-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.lab-button.inactive {
+  color: var(--color-text-secondary);
+  border: var(--rule-hairline);
+}
+
+.editor {
+  width: 100%;
+  background: var(--color-surface);
+  border: var(--rule-hairline);
+  color: var(--color-text-primary);
+  font-size: 0.8rem;
+  padding: var(--space-sm);
+  resize: vertical;
+}
+
+.refused ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.refused li {
+  font-size: 0.8rem;
+  color: var(--color-log-warning);
+  line-height: 1.6;
+}
+</style>

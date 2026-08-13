@@ -9,7 +9,7 @@ namespace MMP.SlotGame.Core.Simulation;
 /// <summary>Per-spin diagnostic hook. Null by default and therefore free. Avoid it on 10M-spin runs.</summary>
 public delegate void SpinObserver(in SpinOutcome outcome);
 
-/// <summary>The seeding policy as a one-behaviour seam: tests inject scripted streams with one lambda.</summary>
+/// <summary>Creates the random-number generator for one worker. Tests replace it with a scripted generator.</summary>
 public delegate SpinRng SpinRngFactory(int workerId);
 
 /// <summary>
@@ -20,10 +20,9 @@ public delegate SpinOutcome SpinPlay(ref SpinRng rng);
 
 /// <summary>
 /// Builds one <see cref="SpinPlay"/> per worker. A game with its own evaluation rules
-/// (wilds, scatter-triggered bonuses, picks simulated round by round) reuses the
-/// determinism, quota partitioning, batching and telemetry below through this seam.
-/// OrcaDive is the first such game. Each worker's play owns its own scratch buffers, so
-/// this is a factory and not one shared instance.
+/// (wilds, scatter-triggered bonuses, or picks simulated round by round) can supply its
+/// own <see cref="SpinPlay"/> while reusing this engine's worker scheduling and telemetry.
+/// Each worker receives a separate instance because a play may own mutable scratch buffers.
 /// </summary>
 public delegate SpinPlay SpinPlayFactory();
 
@@ -35,8 +34,8 @@ public readonly record struct SpinOutcome(Millicents Wagered, Millicents BasePay
 
 /// <summary>
 /// What the engine needs in order to schedule a run: identity, seed, worker count, quota.
-/// <see cref="SimulationConfig"/> exposes one of these; a game whose geometry does not fit
-/// the preset shape (ragged strip lengths, a fixed published paytable) supplies its own.
+/// <see cref="SimulationConfig"/> provides these values for preset games. Games with
+/// unequal reel lengths or a fixed published paytable can provide the values directly.
 /// </summary>
 public sealed record RunPlan(string RunId, ulong MasterSeed, int WorkerCount, long TargetSpins);
 
@@ -53,7 +52,7 @@ public sealed class SimulationEngine
     private readonly SpinRngFactory _streamFactory;
     private readonly SpinPlayFactory _playFactory;
 
-    /// <summary>The stock composition: preset strips + line-pay evaluator + independent feature schedules.</summary>
+    /// <summary>Runs a preset game's reel strips, line-pay evaluator, and feature schedules.</summary>
     public SimulationEngine(SimulationConfig config, ScaledPaytable paytable, SpinRngFactory streamFactory)
         : this(
             config.Plan,
@@ -79,7 +78,7 @@ public sealed class SimulationEngine
     {
     }
 
-    /// <summary>A game that brings its own spin rules supplies the play; everything else is shared.</summary>
+    /// <summary>Runs a game-specific <see cref="SpinPlay"/> with the engine's standard scheduling and aggregation.</summary>
     public SimulationEngine(RunPlan plan, SpinRngFactory streamFactory, SpinPlayFactory playFactory)
     {
         ArgumentNullException.ThrowIfNull(plan);
@@ -91,9 +90,9 @@ public sealed class SimulationEngine
     public RunTotals Totals { get; } = new();
 
     /// <summary>
-    /// Telemetry goes to a caller-owned writer (lossy, bounded, drop-oldest at the
-    /// caller's choice) — the exact math never depends on it. Returns the quiesced
-    /// final snapshot after all workers join.
+    /// Writes optional progress snapshots to a caller-owned channel. The caller may use a
+    /// bounded, drop-oldest channel because dropped snapshots do not affect run totals.
+    /// Returns the final snapshot after every worker has completed.
     /// </summary>
     public async Task<RunSnapshot> RunAsync(
         ChannelWriter<TelemetrySample>? telemetry,
@@ -153,7 +152,7 @@ public sealed class SimulationEngine
             Totals.AddBatch(batch, batchWagered, batchReturned, batchHits);
             done += batch;
 
-            // Absolute snapshot per batch; TryWrite -> dropped under load, by design.
+            // Publish cumulative totals after each batch. TryWrite does not block if the channel is full.
             telemetry?.TryWrite(new TelemetrySample(_plan.RunId, Totals.Snapshot()));
         }
     }
@@ -173,13 +172,14 @@ public sealed class SimulationEngine
         return () =>
         {
             var evaluator = new LinePayEvaluator(lines, paytable);
-            // Symbol carries a string (managed) — no stackalloc; one array per worker, reused for every spin.
-            var window = new Symbol[reels.WindowSize];
+            // Evaluators need symbol ids, not names or flags. Allocate one compact byte
+            // window per worker and overwrite it on every spin.
+            var window = new byte[reels.WindowSize];
 
             return (ref SpinRng rng) =>
             {
-                reels.DrawWindow(ref rng, window);
-                var basePay = evaluator.Evaluate(window, reels.ReelCount, reels.Rows);
+                reels.DrawWindowIds(ref rng, window);
+                var basePay = evaluator.EvaluateIds(window, reels.ReelCount, reels.Rows);
                 var featurePay = Millicents.Zero;
                 for (var f = 0; f < features.Count; f++)
                     featurePay += features[f].Play(ref rng);

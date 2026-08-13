@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import { postJson } from '../api/labs'
 import type { BandView, PublishedView, SolveView } from '../api/labs'
+import ComprehensionCheck from '../components/ComprehensionCheck.vue'
+import OptimizationPreview from '../components/OptimizationPreview.vue'
 
 defineProps<{ title: string; blurb: string }>()
 
@@ -287,5 +289,15 @@ async function runBand(): Promise<void> {
         engine that plays ten million spins fast enough to chart both.
       </p>
     </section>
+    <ComprehensionCheck
+      question="Why can realized RTP differ slightly from target RTP?"
+      :choices="['Each payout is rounded to whole millicents.', 'The solver runs random spins.', 'RTP changes with the seed.']"
+      :answer="0"
+      explanation="The target sets the scale, but each finished payout must be rounded separately. The analyzer recalculates the actual result."
+    />
+    <OptimizationPreview
+      question="Should a readable dictionary also be the spin loop's payout lookup?"
+      later="Keep the dictionary while proving the paytable. Episode 9 compiles a dense execution view and measures tuple hashing against array indexing."
+    />
   </article>
 </template>

@@ -1,6 +1,6 @@
 # A Replayable Parallel Simulation Engine
 
-*Part 5 of a series on building a slot game engine in C#. Part 4 built the analytic
+*Part 6 of a series on building a slot game engine in C#. Parts 4 and 5 built the analytic
 math. This one builds the machine that checks it: a parallel simulation engine
 whose results are reproducible bit for bit, with live telemetry that never blocks
 the workers.*
@@ -21,6 +21,32 @@ The main pieces, before the code:
 | **Batch** | A small group of spins totaled privately before publishing a subtotal |
 | **Snapshot** | A read of the totals at one moment |
 | **Telemetry** | Progress information sent to the dashboard; it is not the accounting record |
+
+## A twelve-spin example
+
+Suppose four workers must play 12 spins. Give each worker three spins before the run starts:
+
+```text
+worker 0: spins 1–3
+worker 1: spins 4–6
+worker 2: spins 7–9
+worker 3: spins 10–12
+```
+
+Each worker has its own seeded random stream. The operating system may run worker 3 first,
+but worker 3 still plays its assigned three spins from its assigned stream. Repeating the
+same setup therefore repeats the same work.
+
+### Check your understanding
+
+Why not let the next free worker take the next spin from one shared queue?
+
+<details><summary>Answer</summary>
+
+The result would depend on timing. A different worker could claim a spin on the next run,
+which changes which random stream supplies that spin. Fixed quotas remove that timing choice.
+
+</details>
 
 ## Determinism is also a scheduling problem
 
@@ -43,9 +69,8 @@ simple to reproduce efficiently.
 So the engine uses **N logical workers with fixed, pre-assigned quotas**, one task
 and one RNG stream per worker, decided before the first spin runs. `Task.Run` uses
 .NET's thread pool; this is not a promise of permanently dedicated operating-system
-threads. Article 2 covers why a fixed quota beats a scheduler
-that steals work, with the newspaper-route comparison; this article is the
-mechanics of that decision:
+threads. Article 2 explains fixed quotas with a newspaper-route example. Here is
+how the code assigns those quotas:
 
 ```csharp
 var spinsPerWorker = _plan.TargetSpins / _plan.WorkerCount;
@@ -82,8 +107,8 @@ than its determinism.
 
 ## The hot loop and the two-tier counter
 
-Each worker runs batches of up to 4,096 spins, accumulating into **plain local
-`long`s**, no synchronization of any kind inside a batch:
+Each worker runs up to 4,096 spins in a batch. It adds the results to local `long`
+variables. No other worker can touch those local values.
 
 ```csharp
 private void WorkerLoop(int workerId, long quota, /* … */)
@@ -123,9 +148,9 @@ cancellation responsiveness against the cost of checking the token on every spin
 4,096 is the current engineering choice and should be benchmarked if workloads
 change.
 
-At the batch boundary, four `Interlocked.Add` calls publish the subtotals (article
-1 covers what "atomic" means for this call; the new fact here is *when* it's
-called, not what it does):
+At the end of the batch, four `Interlocked.Add` calls publish the subtotals. Article
+1 explains what an atomic addition is. Here it happens once per batch instead of
+once per spin:
 
 ```csharp
 public sealed class RunTotals
@@ -200,7 +225,7 @@ flowchart LR
 ```
 
 > 🧪 **Try it live.** The companion site's chapter 5 page (<http://localhost:5090>,
-> then `#/ch05`) exercises both halves of this design. **Lab 1 — Same seed, same
+> then `#/ch06`) exercises both halves of this design. **Lab 1 — Same seed, same
 > answer, any day** re-runs a configuration and compares the totals down to the
 > millicent, including what changing the worker count does to them. **Lab 2 — Starve
 > the telemetry, keep the truth** throttles the sample consumer so you can drop chart
@@ -249,7 +274,7 @@ return () =>                                    // called once per worker
 ```
 
 This delegate prevents the scheduling policy from being copied into each game.
-When article 6 loads Orca Dive, the project's fictional worked game, it brings its
+When article 7 loads Orca Dive, the project's fictional worked game, it brings its
 own wild, scatter, and pick rules through `SpinPlay` and reuses the
 quota partitioning, seeded streams, batched counters, and telemetry. Keeping one
 worker loop prevents the two game paths from drifting into different scheduling
@@ -294,3 +319,10 @@ reproducing the figures in a public third-party slot deconstruction.
 
 *Source files: `Simulation/SimulationEngine.cs`, `Simulation/RunTotals.cs`,
 `Simulation/SimulationConfig.cs`.*
+
+## Optimization notebook
+
+The engine already makes the large structural choices: one scratch buffer per worker and
+batched shared counters. Leave batch size, worker count, delegates, and telemetry cadence
+alone until a complete Release run supplies a baseline. Episode 9 shows why: forced inlining
+and manual loop unrolling both looked attractive and made the measured run slower.

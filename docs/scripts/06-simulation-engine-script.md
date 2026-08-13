@@ -1,17 +1,17 @@
-# Episode 5 — The Engine: Ten Million Spins, Same Answer Every Time
+# Episode 6 — The Engine: Ten Million Spins, Same Answer Every Time
 
 **Target:** 24–26 min. **Format:** create the file, paste the finished source, then
 walk it. The typing is a jump cut; the walkthrough is the episode.
 **Subject:** the engine. The companion site appears three times, for under three
 minutes total, and only to make an engine claim visible.
-**Companion article:** `docs/articles/05-simulation-engine.md`
-**Companion site:** MMP.SlotDemo, branch `main`, page `#/ch05`
+**Companion article:** `docs/articles/06-simulation-engine.md`
+**Companion site:** MMP.SlotDemo, branch `main`, page `#/ch06`
 **Files created on camera:** `CSharp/src/MMP.SlotGame.Core/Simulation/RunTotals.cs`,
 `SimulationEngine.cs`.
 
 > **Discipline note for this recording.** The labs illustrate; they do not carry the
 > episode. If a beat can be made in Rider, make it in Rider. Cut to the browser only
-> where the engine's behaviour is easier to see than to describe, and cut back inside
+> where the engine's behavior is easier to see than to describe, and cut back inside
 > a minute.
 
 ---
@@ -30,7 +30,7 @@ minutes total, and only to make an engine claim visible.
 **Companion site — the illustration**
 - [ ] `E:\dev\MMP.SlotDemo`, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
-- [ ] `http://localhost:5090/#/ch05`, the engine lab and the telemetry lab each run once
+- [ ] `http://localhost:5090/#/ch06`, the engine lab and the telemetry lab each run once
 - [ ] `logs/` cleared so the viewer starts empty
 
 **OBS**
@@ -205,7 +205,7 @@ live fields.
   total and a ratio that disagree.
 - **One thing to be careful about:** `IsHit` is true when *anything* paid, base game or
   feature. The published hit frequency for a real machine is usually line pays only.
-  Same word, two quantities: episode 6's check against the published Orca Dive numbers
+  Same word, two quantities: episode 7's check against the published Orca Dive numbers
   uses the line-only one, and this counter is the any-award one.
 
 > **Illustration (40 seconds, BROWSER).** Chapter 5 page, telemetry lab. Run with the
@@ -236,7 +236,7 @@ namespace MMP.SlotGame.Core.Simulation;
 /// <summary>Per-spin diagnostic hook. Null by default and therefore free. Avoid it on 10M-spin runs.</summary>
 public delegate void SpinObserver(in SpinOutcome outcome);
 
-/// <summary>The seeding policy as a one-behaviour seam: tests inject scripted streams with one lambda.</summary>
+/// <summary>The seeding policy as a one-behavior seam: tests inject scripted streams with one lambda.</summary>
 public delegate SpinRng SpinRngFactory(int workerId);
 
 /// <summary>
@@ -431,7 +431,7 @@ Before the class, four one-line contracts. Read each and say what it buys.
   2, still visible in the type system.
 - `SpinPlayFactory` — builds one play per worker.
 
-Each of these is one behaviour with no identity and no lifetime, so each is a delegate
+Each of these is one behavior with no identity and no lifetime, so each is a delegate
 rather than an interface. "Four interfaces, four files, and a registration would express
 the same ideas and give the reader more to open."
 
@@ -446,7 +446,7 @@ Slow down at `SpinPlayFactory`. Each worker gets its own play and scratch buffer
   written.
 - **What that gives a loaded game:** a game with its own rules (wilds, scatter-triggered
   bonuses, picks simulated round by round) supplies a play and inherits determinism,
-  quota partitioning, batching, and telemetry unchanged. "Episode 6's game supplies its
+  quota partitioning, batching, and telemetry unchanged. "Episode 7's game supplies its
   own play. The engine never learns what a scatter is."
 - The factory is a one-line shape choice made before there was a second game, and it
   saved the retrofit.
@@ -580,7 +580,7 @@ Give this section real time.
   because they should not; repartitioning changes which spins exist. What must hold is
   that every partition converges on the same game, and that is what this asserts, with a
   band wide on purpose. **Why the wide band:** this test is asking "same game", rather
-  than "converged". Episode 7 asks the second question.
+  than "converged". Episode 8 asks the second question.
 - **`WorkerQuotasCoverTheTargetExactly_IncludingTheRemainder`** pins beat 9. An
   off-by-remainder here would quietly shrink every run whose spin count is not a multiple
   of the worker count, and nothing would report it.

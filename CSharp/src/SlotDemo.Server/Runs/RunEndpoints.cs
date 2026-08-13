@@ -4,8 +4,8 @@ using MMP.SlotGame.Core.Simulation;
 namespace SlotDemo.Server.Runs;
 
 /// <summary>
-/// The finale page's surface: describe what can be configured, start a run, watch it,
-/// stop it. Reads are safe at any time; there is one writer and it is the coordinator.
+/// HTTP endpoints for reading run options, starting a run, streaming its progress, and
+/// stopping it. The coordinator is the only component that changes run state.
 /// </summary>
 public static class RunEndpoints
 {
@@ -26,12 +26,12 @@ public static class RunEndpoints
             },
             workerCeiling = 64,
             games = SlotDemo.Server.Chapters.ReelSources.GameFiles(),
-            presets = ReelPreset.All.Values.Select(p => new
+            presets = StandardReelPresets.All.Values.Select(p => new
             {
                 name = p.Name,
                 reels = p.ReelCount,
                 rows = StripReelSet.DefaultRows,
-                stopsPerReel = p.StopsPerReel,
+                stopsPerReel = p.StopCounts,
                 paylines = p.Paylines.Count,
             }),
         }));
@@ -51,8 +51,7 @@ public static class RunEndpoints
         app.MapPost("/api/run/cancel", (RunCoordinator runs) =>
             runs.Cancel() ? Results.Accepted() : Results.Conflict(new { title = "No run is active" }));
 
-        // Same SSE shape as the log relay: the browser subscribes, the server pushes, a
-        // client that falls behind drops its own oldest events.
+        // Stream run events with SSE. Each slow client drops its oldest queued events.
         app.MapGet("/api/run/stream", async (HttpContext context, RunStreamService stream) =>
         {
             context.Response.Headers.ContentType = "text/event-stream";

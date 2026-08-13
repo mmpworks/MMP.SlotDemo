@@ -2,7 +2,7 @@
 
 **Status:** Shipped. This document describes the system as built. **Target:** .NET 10 / C# 14.
 **Companions:** `PRD.md` (the harness this repo grew out of), `par-orca-dive.md` (the
-reference game's math and its public provenance), `articles/` (the seven-part series that
+reference game's math and its public provenance), `articles/` (the eight-part series that
 draws its invariant list and ADR from this page).
 Where this document says *invariant*, that word is load-bearing: a change that breaks one
 is a design change rather than a bug fix.
@@ -112,7 +112,7 @@ concept of a per-line share of it.
 
 ## 4. Public surface — classes, records, delegates
 
-The engine reaches for concrete types and one-behaviour delegates rather than an interface
+The engine reaches for concrete types and one-behavior delegates rather than an interface
 per role.
 
 ```mermaid
@@ -189,11 +189,11 @@ classDiagram
     }
     class RtpCalculator {
         <<static>>
-        +Analyse(reels, lines, scaled, features, wager) RtpBreakdown$
+        +Analyze(reels, lines, scaled, features, wager) RtpBreakdown$
     }
     class GameAnalyzer {
         <<static>>
-        +Analyse(GameDefinition definition) GameAnalysis$
+        +Analyze(GameDefinition definition) GameAnalysis$
     }
     class GameDefinitionLoader {
         <<static>>
@@ -295,7 +295,7 @@ buffers: the window array, the cell array, the pick-bonus scratch.
 
 ### Why those are delegates rather than interfaces
 
-A delegate is the idiomatic seam when the thing abstracted is **one behaviour with no
+A delegate is the idiomatic seam when the thing abstracted is **one behavior with no
 identity and no lifetime**. Wrapping any of these in an interface adds a type, a file, and a
 registration for no gain.
 
@@ -312,7 +312,7 @@ registration for no gain.
   small diagnostic run. Telemetry, rather than the observer, carries a 10M-spin run.
 
 `FeatureSchedule` is a record rather than a delegate, because a feature has a name, a
-trigger probability, a declared contribution, an award table, and behaviour — identity plus
+trigger probability, a declared contribution, an award table, and behavior — identity plus
 state.
 
 ---
@@ -345,7 +345,7 @@ sequenceDiagram
         CO-->>SPA: 409 { title, status }
     else valid
         VAL-->>CO: SimulationConfig / GameDefinition
-        CO->>AN: RtpCalculator.Analyse(realized) or GameAnalyzer.Analyse(definition)
+        CO->>AN: RtpCalculator.Analyze(realized) or GameAnalyzer.Analyze(definition)
         AN-->>CO: base RTP, feature RTP, total, sigma
         CO-->>SPA: 201 { runId, config echo, analytic breakdown, empty curve }
         CO->>ENG: RunAsync(telemetryWriter, observer, ct)
@@ -501,7 +501,7 @@ distribution of line pay and feature trigger exactly, which matters because a sc
 window costs that reel a payline symbol, so adding the two variances independently would be
 wrong.
 
-Reel count is a loop bound rather than a constant; the same recursive descent analyses a
+Reel count is a loop bound rather than a constant; the same recursive descent analyzes a
 3-reel classic and a 5-reel video game. `MaxEnumeration` (200 000 000) fails loudly on a
 definition far past what enumeration should attempt. **Known limit:** exact analysis covers
 single-payline games. Multi-line definitions simulate correctly and raise
@@ -633,30 +633,43 @@ whatever a `SpinObserver` emits during an explicit diagnostic run.
 
 ## 10. CUPID / DRY notes, and the seams left open
 
+The configuration boundary follows the same rule for strips and paylines. `Payline`
+and `StripReelSet` hold the data used during play. `GameDefinitionBuilder` validates
+explicit PAR-sheet transcriptions and builds those types directly. The historical
+demo recipes live separately in `StandardPaylines` and `StandardReelPresets`.
+Loaded games may therefore use a payline absent from the catalog and a different
+stop count on every reel. The evaluator does not need to know which source produced
+the data.
+
 **Composable.** Core has no host, no logger, no ASP.NET. `SimulationEngine`'s constructors
 take what they need and nothing they might want. The telemetry contract is a
 `ChannelWriter<T>` the caller owns and the caller closes.
+
+`StripReelSet` accepts one read-only symbol list per reel and copies those lists into a
+private snapshot. A run may combine 26-, 29-, and 36-stop reels. Changing geometry means
+constructing a new snapshot for a later run, not mutating arrays shared by active workers.
 
 **Unix philosophy.** `StripReelSet` produces windows and reports probabilities.
 `LinePayEvaluator` and `WinEvaluator` turn a window into money. `FeatureSchedule`
 contributes RTP. `PaytableSolver` finds one scalar. `ConvergenceRecorder` turns a flood of
 snapshots into a curve. Each does one job.
 
-**Predictable.** Every surprising behaviour above is a named invariant — M1, M2, R1, R2,
+**Predictable.** Every surprising behavior above is a named invariant — M1, M2, R1, R2,
 R3 — with a test attached. Telemetry drops are declared. Config rejection is loud and
 collected. The worker-count and seed interaction is disclosed in the UI. Terminal run status
 lands only after the final snapshot is in the recorder, so a poller that sees `completed`
 sees the finished totals with it.
 
 **Idiomatic.** `Channels`, `Interlocked`, `readonly record struct`, `Span<T>`, `Lock`,
-`CancellationToken`, minimal APIs, delegates for one-behaviour seams. No DI container
+`CancellationToken`, minimal APIs, delegates for one-behavior seams. No DI container
 inside Core.
 
 **Domain-based.** `Reels`, `Paytables`, `Paylines`, `Features`, `Millicents`, `RunTotals`,
 `RtpBreakdown`, `PayCategory`, `CurvePoint`. The vocabulary is a gaming mathematician's.
 
-**DRY, on the third occurrence.** Presets share one `ReelPreset` record rather than five
-near-identical classes. The RTP cap has one home (§8) and the SPA reads it. The paytable has
+**DRY, on the third occurrence.** Presets share `ReelPreset`; the count-only demo
+presets share `EvenlySpacedStripBuilder` rather than copying its ordering policy into
+five classes. Exact PAR strips bypass that policy. The RTP cap has one home (§8) and the SPA reads it. The paytable has
 one scaled instance (R1). The level order has one home (§9). Both feature kinds share
 `FeatureSchedule` because they share the money contract, while a free-spin session and a
 pick-until-terminator round remain separate knowledge in the loaded-game path. `SpinRng` and
@@ -675,7 +688,7 @@ versions would erase the lesson.
 | Persisted run history | `RunPlan.RunId` is a stable id stamped on every telemetry sample and log line beside `MasterSeed` | 1 field |
 | Multiple concurrent runs | `RunCoordinator` holds one `ActiveRun` behind a `Lock`; the type already carries per-run state | the 409 is the deliberate policy |
 | Cross-process or replayable telemetry | `ChannelWriter<TelemetrySample>` is the boundary a broker sits behind | 0 lines |
-| A taller window | `StripReelSet` takes `rows` as an argument and validates 3..5; geometry is data throughout | already parameterised |
+| A taller window | `StripReelSet` takes `rows` as an argument and validates 3..5; geometry is data throughout | already parameterized |
 
 None of these gets an abstract base class, a plugin loader, or a config flag today.
 

@@ -59,5 +59,5 @@ public static class TestGame
         Solve(Config(presetName, baseBp, freeSpinsBp, pickBonusBp, masterSeed, workerCount, targetSpins));
 
     public static IEnumerable<object[]> AllPresetNames() =>
-        ReelPreset.All.Keys.Order().Select(name => new object[] { name });
+        StandardReelPresets.All.Keys.Order().Select(name => new object[] { name });
 }

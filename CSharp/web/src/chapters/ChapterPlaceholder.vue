@@ -10,6 +10,12 @@ defineProps<{ title: string; blurb: string }>()
       The interactive lab lands with the episode. Every part it names already has its own
       page in the nav above.
     </p>
+    <aside class="optimization-note">
+      <strong>Optimization notebook:</strong> identify the likely hot paths during design,
+      but keep the first implementation clear enough to verify independently. Episode 9
+      measures those candidates after the complete system has a trusted baseline.
+      <a href="#/ch09">Open the optimization lab →</a>
+    </aside>
   </section>
 </template>
 
@@ -37,4 +43,7 @@ defineProps<{ title: string; blurb: string }>()
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+
+.optimization-note { margin-top: 1.5rem; padding: 1rem; border-left: 3px solid #39c6a3; color: var(--color-text-secondary); }
+.optimization-note a { display: block; margin-top: .5rem; }
 </style>

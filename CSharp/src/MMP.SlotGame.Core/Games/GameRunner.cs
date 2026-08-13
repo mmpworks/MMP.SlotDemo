@@ -51,7 +51,10 @@ public sealed record GameRunResult(
 /// Keeping that machinery in one place prevents loaded games from developing a different
 /// scheduling or determinism policy.
 /// </summary>
-public sealed class GameRunner(GameDefinition definition, RunPlan plan)
+public sealed class GameRunner(
+    GameDefinition definition,
+    RunPlan plan,
+    GameAnalysis? preparedAnalysis = null)
 {
     public async Task<GameRunResult> RunAsync(
         ChannelWriter<TelemetrySample>? telemetry = null,
@@ -74,8 +77,12 @@ public sealed class GameRunner(GameDefinition definition, RunPlan plan)
             bonusTriggers += tally.BonusTriggers;
         }
 
+        // A server request may calculate the exact result before starting the run so it
+        // can draw the analytic band immediately. Reuse that result instead of enumerating
+        // the same game a second time after the simulation finishes.
+        var analytic = preparedAnalysis ?? GameAnalyzer.Analyze(definition);
         return new GameRunResult(
-            totals, lineMillicents, bonusMillicents, lineHits, bonusTriggers, GameAnalyzer.Analyse(definition));
+            totals, lineMillicents, bonusMillicents, lineHits, bonusTriggers, analytic);
     }
 
     /// <summary>
@@ -96,20 +103,20 @@ public sealed class GameRunner(GameDefinition definition, RunPlan plan)
         var evaluator = new WinEvaluator(definition);
         var bonus = definition.Bonus;
         var wager = SimulationConfig.Wager;
-        var window = new Symbol[reels.WindowSize];
+        var window = new byte[reels.WindowSize];
         var cells = new byte[definition.ReelCount];
         var scratch = new int[bonus?.Bonus.GiftCount ?? 0];
         var rows = reels.Rows;
 
         return (ref SpinRng rng) =>
         {
-            reels.DrawWindow(ref rng, window);
+            reels.DrawWindowIds(ref rng, window);
 
-            var multiplier = evaluator.EvaluateWindow(window, cells);
+            var multiplier = evaluator.EvaluateWindowIds(window, cells);
             var linePay = wager.ScaledMultiply(multiplier);
 
             var bonusPay = Millicents.Zero;
-            if (bonus is not null && WinEvaluator.IsTriggered(window, rows, bonus))
+            if (bonus is not null && WinEvaluator.IsTriggeredIds(window, rows, bonus))
             {
                 bonusPay = wager * bonus.Bonus.Play(ref rng, scratch);
                 tally.BonusTriggers++;

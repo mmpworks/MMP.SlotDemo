@@ -58,6 +58,15 @@ public struct SpinRng
 
         var range = (ulong)bound;
         var threshold = unchecked(0UL - range) % range;
+        return NextInt(range, threshold);
+    }
+
+    /// <summary>
+    /// Hot-path form for a range and Lemire rejection threshold calculated when the reel
+    /// set was built. Both values remain constant for the life of that reel set.
+    /// </summary>
+    internal int NextInt(ulong range, ulong threshold)
+    {
         while (true)
         {
             var product = (UInt128)NextUInt64() * range;

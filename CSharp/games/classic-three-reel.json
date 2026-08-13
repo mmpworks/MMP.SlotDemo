@@ -1,6 +1,6 @@
 {
   "name": "Classic Three Reel",
-  "source": "Hand-built example. Proves the loader and the analyser are agnostic to reel count, symbol count and per-reel stop count.",
+  "source": "Hand-built example. Proves the loader and the analyzer are agnostic to reel count, symbol count and per-reel stop count.",
   "windowRows": 3,
   "symbols": [
     {
@@ -43,7 +43,7 @@
   ],
   "paylines": [
     {
-      "name": "Centre",
+      "name": "Center",
       "rows": [1, 1, 1]
     }
   ],

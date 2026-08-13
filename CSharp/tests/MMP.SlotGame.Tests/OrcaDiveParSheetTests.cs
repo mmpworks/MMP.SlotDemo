@@ -46,7 +46,7 @@ public sealed class OrcaDiveParSheetTests
     [Fact]
     public void CombinationTable_ReproducesThePublishedCountsExactly()
     {
-        var analysis = GameAnalyzer.Analyse(Game);
+        var analysis = GameAnalyzer.Analyze(Game);
 
         Assert.Equal(StopCombinations, analysis.StopCombinations);
 
@@ -82,7 +82,7 @@ public sealed class OrcaDiveParSheetTests
     [Fact]
     public void ExpectedReturns_MatchThePublishedPercentages()
     {
-        var analysis = GameAnalyzer.Analyse(Game);
+        var analysis = GameAnalyzer.Analyze(Game);
 
         Assert.Equal(8_809_880.0 / StopCombinations, analysis.LineRtp, 12);
         Assert.Equal(0.59601, analysis.LineRtp, 5);
@@ -152,7 +152,7 @@ public sealed class OrcaDiveParSheetTests
                 + $"{game.Reels.Rows}-row window (gaps {gap}/{wrappedGap}), so their trigger windows overlap.");
         }
 
-        var analysis = GameAnalyzer.Analyse(game);
+        var analysis = GameAnalyzer.Analyze(game);
         Assert.Equal(Math.Pow(6.0 / 26.0, 3), analysis.TriggerProbability, 12);
         Assert.Equal(0.0122895, analysis.TriggerProbability, 7);
     }
@@ -178,7 +178,7 @@ public sealed class OrcaDiveParSheetTests
 
     /// <summary>
     /// The honest pick simulation against its own closed form. The bonus is played by drawing
-    /// real gifts without replacement, so this is the cheap check that the draw is actually
+    /// real pool entries without replacement, so this is the cheap check that the draw is actually
     /// uniform and actually without replacement: a with-replacement bug, an off-by-one in the
     /// swap, or a blank counted as a prize all move this mean well outside four sigma.
     /// </summary>

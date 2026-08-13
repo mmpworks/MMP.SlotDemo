@@ -5,7 +5,7 @@ namespace MMP.SlotGame.Tests;
 /// <summary>
 /// INVARIANT R3 (RT-15) — randomness in Core exists ONLY as <c>ref SpinRng</c>.
 ///
-/// This is a source scan, not a behavioural test, and that is the point: AC-6 says the
+/// This is a source scan, not a behavioral test, and that is the point: AC-6 says the
 /// same seed must give the same result, and no amount of seeded-run testing can prove
 /// that when a single <c>Random.Shared.Next()</c> or <c>DateTime.UtcNow</c> hiding in a
 /// rarely-taken branch would break it. The structural check is the one that holds.

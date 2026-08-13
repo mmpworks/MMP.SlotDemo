@@ -74,9 +74,9 @@ public sealed class OrcaDiveLineRulesTests
         AssertWin(Evaluate(W, W, W, C, L), "Mackerel", 4, 10);
     }
 
-    /// <summary>Rule 3: mixed 7s pay as their own category, and a single colour always beats it.</summary>
+    /// <summary>Rule 3: mixed 7s pay as their own category, and a single color always beats it.</summary>
     [Fact]
-    public void MixedSevens_PayAsACategory_ButPureColourWins()
+    public void MixedSevens_PayAsACategory_ButPureColorWins()
     {
         AssertWin(Evaluate(G, B, J, C, C), "MixedSeven", 3, 5);
         AssertWin(Evaluate(G, G, G, C, C), "Green7", 3, 25);

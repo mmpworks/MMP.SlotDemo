@@ -13,7 +13,7 @@ namespace MMP.SlotGame.Tests;
 ///
 /// The failure mode this suite exists for: a solver that reports its target back as its
 /// analytic RTP. That solver looks perfect and is lying. Every assertion here recomputes
-/// RTP from the realized ScaledPaytable via RtpCalculator.Analyse and compares THAT
+/// RTP from the realized ScaledPaytable via RtpCalculator.Analyze and compares THAT
 /// against the target.
 ///
 /// Budgets (RT-10): realized-vs-target ≤ 0.005 pp per preset (half of AC-2's 0.01 pp).
@@ -32,7 +32,7 @@ public sealed class SolverTests
     public void DefaultConfig_RealizedRtp_IsWithinBudgetOf98Percent(string preset)
     {
         var game = TestGame.Build(preset);
-        var breakdown = game.Analyse();
+        var breakdown = game.Analyze();
 
         AssertRealized(preset, game, breakdown, target: 0.98);
     }
@@ -43,7 +43,7 @@ public sealed class SolverTests
     {
         // 7600 + 1300 + 1000 = 9900 bp exactly.
         var game = TestGame.Build(preset, baseBp: 7600, freeSpinsBp: 1300, pickBonusBp: 1000);
-        var breakdown = game.Analyse();
+        var breakdown = game.Analyze();
 
         AssertRealized(preset, game, breakdown, target: 0.99);
 
@@ -58,7 +58,7 @@ public sealed class SolverTests
     public void LowConfigWithNoFeatures_RealizedRtp_IsWithinBudget(string preset)
     {
         var game = TestGame.Build(preset, baseBp: 5000, freeSpinsBp: 0, pickBonusBp: 0);
-        var breakdown = game.Analyse();
+        var breakdown = game.Analyze();
 
         Assert.Empty(breakdown.Features);
         AssertRealized(preset, game, breakdown, target: 0.50);
@@ -69,7 +69,7 @@ public sealed class SolverTests
     public void Breakdown_TermsSumToTotal_AndFeaturesMatchTheirConfiguredShare(string preset)
     {
         var game = TestGame.Build(preset);
-        var breakdown = game.Analyse();
+        var breakdown = game.Analyze();
 
         var sum = breakdown.BaseRtp + breakdown.Features.Sum(f => f.Rtp);
         Assert.Equal(breakdown.TotalRtp, sum, 12);
@@ -99,8 +99,8 @@ public sealed class SolverTests
     [Fact]
     public void BaseRtp_ScalesLinearlyWithTheBaseTarget()
     {
-        var low = TestGame.Build("Video5x64", baseBp: 2500, freeSpinsBp: 0, pickBonusBp: 0).Analyse();
-        var high = TestGame.Build("Video5x64", baseBp: 5000, freeSpinsBp: 0, pickBonusBp: 0).Analyse();
+        var low = TestGame.Build("Video5x64", baseBp: 2500, freeSpinsBp: 0, pickBonusBp: 0).Analyze();
+        var high = TestGame.Build("Video5x64", baseBp: 5000, freeSpinsBp: 0, pickBonusBp: 0).Analyze();
 
         var ratio = high.BaseRtp / low.BaseRtp;
         Assert.True(
@@ -112,7 +112,7 @@ public sealed class SolverTests
     [Fact]
     public void ZeroEvCanonicalPaytable_ThrowsInsteadOfDividingByZero()
     {
-        var preset = ReelPreset.All["Classic3"];
+        var preset = StandardReelPresets.All["Classic3"];
         var reels = preset.BuildReels();
         var empty = new Paytable(new Dictionary<(byte, int), double>());
 

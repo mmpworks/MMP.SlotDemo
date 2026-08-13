@@ -3,14 +3,14 @@ using MMP.SlotGame.Core.Simulation;
 namespace MMP.SlotGame.Core.Games.Definition;
 
 /// <summary>
-/// A pick-until-you-lose bonus, configured from data: a bag of prize gifts plus some number
+/// A pick-until-you-lose bonus, configured from data: a pool of prizes plus some number
 /// of blanks that end the round for a fixed consolation. Orca Dive fills it with 24
 /// prizes and 6 blanks, but nothing here knows that.
 ///
-/// <see cref="Play"/> draws gifts without replacement. The closed forms below provide an
+/// <see cref="Play"/> draws entries without replacement. The closed forms below provide an
 /// independent analytic check of that play path.
 ///
-/// The moments come out of one observation about a uniformly random order of all the gifts.
+/// The moments come from a uniformly random order of all pool entries.
 /// Prize i is collected exactly when it precedes every blank, which by symmetry happens with
 /// probability 1/(b+1); prizes i and j are both collected when they lead the (b+2)-item
 /// subset made of themselves and the blanks, probability 2/((b+2)(b+1)). Summing those over
@@ -67,7 +67,7 @@ public sealed class PickBonus
     public double Variance => MeanSquared - Mean * Mean;
 
     /// <summary>
-    /// Play one round for real. Draws uniformly from the gifts still in the bag by swapping
+    /// Plays one round. Draws uniformly from the entries still in the pool by swapping
     /// the drawn slot with the last live one, which is a partial Fisher-Yates and therefore
     /// picking WITHOUT replacement rather than merely picking repeatedly. Always terminates:
     /// once only blanks remain the next draw must be one.
@@ -90,10 +90,10 @@ public sealed class PickBonus
         while (true)
         {
             var slot = rng.NextInt(remaining);
-            var gift = pool[slot];
+            var entry = pool[slot];
             pool[slot] = pool[--remaining];
-            if (gift == BlankMarker) return won + Consolation;
-            won += gift;
+            if (entry == BlankMarker) return won + Consolation;
+            won += entry;
         }
     }
 

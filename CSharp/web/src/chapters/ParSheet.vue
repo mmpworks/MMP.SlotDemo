@@ -118,7 +118,7 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   geometry: {
     title: 'Geometry',
-    body: 'Five reels, each its own strip with its own length, showing three rows in the window. Ragged strip lengths (26/29/26/29/26) are normal on real machines. This game reads one payline across the centre row; more paylines would change the feel but, for regular line pays, RTP stays the same because bet and wins scale together.',
+    body: 'Five reels, each its own strip with its own length, showing three rows in the window. Ragged strip lengths (26/29/26/29/26) are normal on real machines. This game reads one payline across the center row; more paylines would change the feel but, for regular line pays, RTP stays the same because bet and wins scale together.',
   },
   summary: {
     title: 'The summary table',
@@ -150,7 +150,7 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   hits: {
     title: 'Hits (combinations)',
-    body: 'How many of the 14,781,416 stop combinations produce this exact win. Textbook formulas compute these as products of per-reel symbol counts, then subtract overlaps where a line matches two rules ("prioritisation discounts"). Example: naive counting gives exactly-four Red 7s 100 hits, but 20 of those carry another seven on reel 5 and pay as Mixed 7 five-of-a-kind instead, leaving the 80 shown here.',
+    body: 'How many of the 14,781,416 stop combinations produce this exact win. Textbook formulas compute these as products of per-reel symbol counts, then subtract overlaps where a line matches two rules ("prioritization discounts"). Example: naive counting gives exactly-four Red 7s 100 hits, but 20 of those carry another seven on reel 5 and pay as Mixed 7 five-of-a-kind instead, leaving the 80 shown here.',
   },
   probability: {
     title: 'Probability and hit rate',
@@ -170,11 +170,11 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   feature: {
     title: 'The bonus feature',
-    body: 'Three Penguins (reels 1, 3, 5) start a pick game: a bag of 30 gifts (24 prizes and 6 blanks) picked one at a time until a blank, keeping what was picked plus a 1× consolation. Because picking is without replacement, the average award has an exact closed form: 21.57 bets. Trigger rate times average award gives the bonus\'s 26.51% RTP slice.',
+    body: 'Three Penguins (reels 1, 3, 5) start a dive through 30 treasure chests: 24 hold prizes and 6 release a rogue wave. Open chests until a rogue wave ends the dive, then keep the prizes plus a 1× safe-return award. Because chests are opened without replacement, the average award has an exact closed form: 21.57 bets. Trigger rate times average award gives the bonus\'s 26.51% RTP slice.',
   },
   prizeTiers: {
     title: 'Prize tiers',
-    body: 'The bag\'s contents by value. Many small prizes and few large ones shape the bonus the same way the paytable shapes the base game. The 5× tier carries more of the expected value than any other: nine prizes at 5× come to 45 of the bag\'s 144, ahead of the single 20× and the three 10× together. The max award is every prize plus the consolation, 145× bet.',
+    body: 'The treasure chests by value. Many small prizes and a few large ones shape the bonus. The 5× tier carries more of the expected value than any other: nine prizes at 5× come to 45 of the prize pool\'s 144, ahead of the single 20× and the three 10× together. The maximum award is every prize plus the safe-return award, 145× bet.',
   },
   volatility: {
     title: 'Sigma and the volatility index',
@@ -190,7 +190,7 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   paylines: {
     title: 'Payline patterns',
-    body: 'A payline is a fixed path across the window: one row picked per reel. The diagram shows which cell each reel contributes. Orca Dive reads a single Centre line, the classic single-line shape. Multi-line games add paths (Top, Bottom, V, zigzags), and for ordinary line pays the extra lines leave RTP unchanged, because the bet scales with the line count. The chapter 3 lab draws every pattern for the multi-line presets.',
+    body: 'A payline is a fixed path across the window: one row picked per reel. The diagram shows which cell each reel contributes. Orca Dive reads a single Center line, the classic single-line shape. Multi-line games add paths (Top, Bottom, V, zigzags), and for ordinary line pays the extra lines leave RTP unchanged, because the bet scales with the line count. The chapter 3 lab draws every pattern for the multi-line presets.',
   },
   strips: {
     title: 'Strip order',
@@ -398,8 +398,8 @@ const symbolName = computed(() => {
             </tbody>
           </table>
           <p class="lab-note">
-            Pick until a blank; keep what you picked plus {{ sheet.feature.consolation }}× consolation.
-            {{ sheet.feature.giftCount }} gifts in the bag, prize total {{ sheet.feature.prizeTotal }}×,
+            Open treasure chests until a rogue wave; keep the prizes plus a {{ sheet.feature.consolation }}× safe-return award.
+            {{ sheet.feature.giftCount }} chests in the dive, prize total {{ sheet.feature.prizeTotal }}×,
             maximum award {{ sheet.feature.maxAward }}× bet.
           </p>
         </section>

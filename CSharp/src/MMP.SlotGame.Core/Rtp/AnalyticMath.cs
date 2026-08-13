@@ -5,29 +5,19 @@ using MMP.SlotGame.Core.Reels;
 namespace MMP.SlotGame.Core.Rtp;
 
 /// <summary>
-/// Analytic paytable calculations. They enumerate or combine the modeled outcomes rather
-/// than sampling them; probabilities and moments are represented as <see cref="double"/>:
+/// Calculates RTP and standard deviation from the reel strips and paytable. These methods
+/// use probabilities instead of random spins, so they return the same answer on every call.
 ///
-///  - Line EV uses the closed form over per-reel marginals. Rows of one line sit on
-///    different reels, and reels are independent, so marginals suffice for EV.
-///  - Line variance needs more: two lines share reels, and rows within a reel are
-///    correlated by strip adjacency. Cov(line i, line j) therefore uses the per-reel
-///    joint row-pair distribution, obtained by enumerating the S stops per reel. Joint
-///    probability across reels still factorizes, because reels are independent.
-///
-/// σ here is the analytic, configuration-derived source of the convergence band; the
-/// empirical Welford estimate cross-checks it.
+/// A single line can be calculated from each reel's symbol frequencies. Several lines need
+/// an extra calculation because two lines can read different rows of the same reel. Those
+/// two cells are connected by their positions on the strip and are not independent.
 /// </summary>
 public static class AnalyticMath
 {
     /// <summary>
-    /// The unscaled base-game EV: the canonical (dimensionless) paytable's expected
-    /// payout, summed across every payline, in wager-multiplier units. "Unscaled"
-    /// because this reads the canonical table directly, before <c>paytableScaleFactor</c>
-    /// (<see cref="Paytables.PaytableSolver.Solve"/>) turns it into real millicents.
-    /// Summing across lines here, and in <see cref="RealizedBaseRtp"/> on the scaled
-    /// table, fixes the basis for every RTP number this pipeline produces: the total
-    /// spin wager, not one line's share of it.
+    /// Calculates the average base-game payout from the original multiplier table, before
+    /// the solver rounds pays to millicents. The result is a multiple of the total spin wager.
+    /// For example, 0.72 means an average base-game return of 72%.
     /// </summary>
     public static double BaseEvMultiplier(StripReelSet reels, IReadOnlyList<Payline> lines, Paytable canonical)
     {
@@ -41,12 +31,9 @@ public static class AnalyticMath
     }
 
     /// <summary>
-    /// Realized base RTP from the integer paytable actually shipped, recomputed here
-    /// rather than trusted from <c>paytableScaleFactor</c>: round-half-even
-    /// (<see cref="Paytables.PaytableSolver.Solve"/>) removes systematic rounding bias,
-    /// but it does not guarantee the rounded table lands exactly on the target — each
-    /// pay rounds independently, so the realized total can drift a hair. This recompute
-    /// is the authoritative number; the target RTP is only ever a target.
+    /// Calculates base-game RTP from the rounded millicent pays that the game will actually
+    /// use. It recalculates the result because rounding each pay can move the final RTP slightly
+    /// away from the requested target.
     /// </summary>
     public static double RealizedBaseRtp(StripReelSet reels, IReadOnlyList<Payline> lines, ScaledPaytable scaled, Millicents wager)
     {
@@ -60,8 +47,9 @@ public static class AnalyticMath
     }
 
     /// <summary>
-    /// P(line shows exactly k leading copies of symbol s): match reels 0..k-1,
-    /// mismatch reel k (or k == ReelCount). Reels independent → product of marginals.
+    /// Returns the chance that a line begins with exactly <paramref name="k"/> copies of one
+    /// symbol. The first k reels must match. If another reel follows, it must not match.
+    /// Because the reels spin independently, their probabilities are multiplied.
     /// </summary>
     public static double ExactlyKLeading(StripReelSet reels, Payline line, byte symbolId, int k)
     {
@@ -74,10 +62,10 @@ public static class AnalyticMath
     }
 
     /// <summary>
-    /// Variance of the total per-spin return (base + features), per unit wagered.
-    /// Base: Var(Σ lines) = Σ Var + 2 Σ Cov over line pairs.
-    /// Features trigger independently of the window and of each other in the v1
-    /// model, so their variances simply add.
+    /// Calculates the standard deviation of one spin's total return, divided by the wager.
+    /// It includes each line's variance and the covariance between line pairs. Covariance is
+    /// needed because two paylines can read cells from the same reel. Version 1 features are
+    /// independent of the reel window and of each other, so their variances can be added.
     /// </summary>
     public static double SigmaPerUnitWagered(
         StripReelSet reels,
@@ -89,7 +77,7 @@ public static class AnalyticMath
         var joints = JointRowSymbolTables.Build(reels);
         var w = (double)wager.Value;
 
-        // Per-line pay distributions in millicents.
+        // Record the average payout and average squared payout for each line.
         var lineMean = new double[lines.Count];
         var lineMeanSq = new double[lines.Count];
         for (var i = 0; i < lines.Count; i++)
@@ -122,9 +110,9 @@ public static class AnalyticMath
     }
 
     /// <summary>
-    /// E[pay_i · pay_j]: sum over both lines' (symbol, exact-run) outcomes of
-    /// pay·pay·P(joint). Joint P = product over reels of the per-reel probability that
-    /// BOTH lines' cell conditions hold, read from the joint row-pair tables.
+    /// Calculates the average product of two lines' payouts. This value is used to find
+    /// their covariance. Every pair of paying outcomes is multiplied by the chance that
+    /// both outcomes occur on the same spin.
     /// </summary>
     private static double ExpectedPairProduct(
         StripReelSet reels,
@@ -148,6 +136,11 @@ public static class AnalyticMath
         return total;
     }
 
+    /// <summary>
+    /// Returns the chance that two specified line wins occur together. On each reel, each
+    /// line may need its symbol to match, not match, or no longer matter after its run ends.
+    /// The per-reel chances are multiplied because separate reels are independent.
+    /// </summary>
     private static double JointRunProbability(
         StripReelSet reels,
         JointRowSymbolTables joints,
@@ -157,8 +150,8 @@ public static class AnalyticMath
         var p = 1.0;
         for (var reel = 0; reel < reels.ReelCount && p > 0; reel++)
         {
-            // Cell condition per line on this reel: Match (reel < run),
-            // Mismatch (reel == run), or Any (reel > run).
+            // Before a run ends, the cell must match. The next cell must differ.
+            // Cells after the run ends do not affect that line's win.
             var condA = reel < runA ? Cond.Match : reel == runA ? Cond.Mismatch : Cond.Any;
             var condB = reel < runB ? Cond.Match : reel == runB ? Cond.Mismatch : Cond.Any;
             p *= joints.Probability(reel, lineA.Rows[reel], lineB.Rows[reel], condA, symA, condB, symB);
@@ -169,17 +162,17 @@ public static class AnalyticMath
     internal enum Cond { Match, Mismatch, Any }
 
     /// <summary>
-    /// Per reel, per (rowA, rowB) pair: the joint distribution of the two window
-    /// cells' symbols, built by one O(S) stop enumeration each. 3×3 row pairs × R
-    /// reels, tiny and exact. When rowA == rowB the two cells are the same cell and
-    /// the table is automatically diagonal — no special case needed.
+    /// Stores the chance of seeing two symbols at two visible rows of the same reel.
+    /// The tables are built by checking every stop on each reel. When both paylines use
+    /// the same row, both symbols come from the same cell and the table records that naturally.
     /// </summary>
     internal sealed class JointRowSymbolTables
     {
-        private readonly double[][,][,] _tables; // [reel][rowA,rowB][symA,symB] — jagged over reels
+        private readonly double[][,][,] _tables; // [reel][rowA,rowB][symbolA,symbolB]
         private readonly double[][][] _marginals; // [reel][row][sym]
         private readonly int _symbolCount;
 
+        /// <summary>Stores the completed probability tables and the number of symbol ids they cover.</summary>
         private JointRowSymbolTables(double[][,][,] tables, double[][][] marginals, int symbolCount)
         {
             _tables = tables;
@@ -187,6 +180,10 @@ public static class AnalyticMath
             _symbolCount = symbolCount;
         }
 
+        /// <summary>
+        /// Checks every stop on every reel and builds the single-cell and two-cell probability
+        /// tables used by the line-pair calculation.
+        /// </summary>
         public static JointRowSymbolTables Build(StripReelSet reels)
         {
             var symbolCount = 0;
@@ -229,10 +226,13 @@ public static class AnalyticMath
             return new JointRowSymbolTables(tables, marginals, symbolCount);
         }
 
-        /// <summary>P(cell@rowA satisfies condA vs symA AND cell@rowB satisfies condB vs symB) on one reel.</summary>
+        /// <summary>
+        /// Returns the chance that two cells on one reel satisfy their requested match rules.
+        /// Each rule may require a symbol, require a different symbol, or accept any symbol.
+        /// </summary>
         public double Probability(int reel, int rowA, int rowB, Cond condA, byte symA, Cond condB, byte symB)
         {
-            // Inclusion–exclusion over the joint == table; marginals cover the Any/Mismatch sides.
+            // Derive mismatch cases by subtracting matching cases from the stored probabilities.
             return (condA, condB) switch
             {
                 (Cond.Any, Cond.Any) => 1.0,
@@ -247,9 +247,11 @@ public static class AnalyticMath
             };
         }
 
+        /// <summary>Returns the chance that one cell matches, or does not match, a symbol.</summary>
         private double Single(int reel, int row, Cond cond, byte sym) =>
             cond == Cond.Match ? _marginals[reel][row][sym] : 1.0 - _marginals[reel][row][sym];
 
+        /// <summary>Returns the chance of seeing both requested symbols at the two rows.</summary>
         private double Joint(int reel, int rowA, int rowB, byte symA, byte symB) =>
             symA < _symbolCount && symB < _symbolCount ? _tables[reel][rowA, rowB][symA, symB] : 0.0;
     }

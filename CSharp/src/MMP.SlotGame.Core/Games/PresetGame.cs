@@ -45,14 +45,14 @@ public sealed class PresetGame
         var reels = preset.BuildReels();
         var canonical = MMP.SlotGame.Core.Paytables.Paytable.CanonicalFor(
             preset.ReelCount,
-            preset.SymbolWeights.Count);
+            preset.Symbols.Count);
         var paytable = PaytableSolver.Solve(
             reels,
             preset.Paylines,
             canonical,
             config.BaseRtpBasisPoints / 10_000.0,
             SimulationConfig.Wager);
-        var analysis = RtpCalculator.Analyse(
+        var analysis = RtpCalculator.Analyze(
             reels,
             preset.Paylines,
             paytable,
@@ -62,7 +62,7 @@ public sealed class PresetGame
         return new PresetGame(config, reels, preset.Paylines, paytable, analysis);
     }
 
-    public RtpBreakdown Analyse() => Analysis;
+    public RtpBreakdown Analyze() => Analysis;
 
     public LinePayEvaluator Evaluator() => new(Lines, Paytable);
 

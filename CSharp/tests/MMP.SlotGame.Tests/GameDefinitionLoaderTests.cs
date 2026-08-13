@@ -80,6 +80,43 @@ public sealed class GameDefinitionLoaderTests
     }
 
     [Fact]
+    public void ParTranscription_CanDefinePaylinesOutsideTheStandardCatalog()
+    {
+        var document = JsonNode.Parse(GameFiles.ReadJson(GameFiles.OrcaDive))!.AsObject();
+        document["paylines"] = new JsonArray(new JsonObject
+        {
+            ["name"] = "PAR custom path",
+            ["rows"] = new JsonArray(0, 2, 1, 0, 2),
+        });
+
+        var loaded = GameDefinitionLoader.TryLoad(document.ToJsonString(), out var definition, out var errors);
+
+        Assert.True(loaded, string.Join(Environment.NewLine, errors));
+        var line = Assert.Single(definition!.Paylines);
+        Assert.Equal("PAR custom path", line.Name);
+        Assert.Equal([0, 2, 1, 0, 2], line.Rows);
+    }
+
+    [Fact]
+    public void ParTranscription_CanDefineDifferentStripLengthsPerReel()
+    {
+        var document = JsonNode.Parse(GameFiles.ReadJson(GameFiles.OrcaDive))!.AsObject();
+        var reels = document["reels"]!.AsArray();
+
+        // Remove the optional PAR cross-check fields, then add one valid stop to reel 1.
+        // The loader must use the strips themselves rather than a built-in stop count.
+        document.Remove("reelStops");
+        document.Remove("symbolCounts");
+        reels[0]!.AsArray().Add(reels[0]![0]!.GetValue<string>());
+
+        var loaded = GameDefinitionLoader.TryLoad(document.ToJsonString(), out var definition, out var errors);
+
+        Assert.True(loaded, string.Join(Environment.NewLine, errors));
+        Assert.Equal(27, definition!.Reels.StopCount(0));
+        Assert.Equal(29, definition.Reels.StopCount(1));
+    }
+
+    [Fact]
     public void BadPaytableEntries_AreReported()
     {
         AssertReports("not a declared symbol", d => d["paytable"]![0]!["symbol"] = "Nope");
@@ -101,7 +138,7 @@ public sealed class GameDefinitionLoaderTests
         AssertReports("not marked scatter", d => d["features"]![0]!["scatter"] = "Seal");
         AssertReports("outside 0..4", d => d["features"]![0]!["requiredReels"] = new JsonArray(9));
         AssertReports("at least one blank", d => d["features"]![0]!["blanks"]!["count"] = 0);
-        AssertReports("not recognised", d => d["features"]![0]!["kind"] = "someFutureThing");
+        AssertReports("not recognized", d => d["features"]![0]!["kind"] = "someFutureThing");
     }
 
     /// <summary>

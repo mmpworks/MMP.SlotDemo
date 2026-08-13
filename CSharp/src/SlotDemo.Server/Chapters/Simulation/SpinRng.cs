@@ -30,9 +30,9 @@ public struct SpinRng
     }
 
     /// <summary>
-    /// Demo seam: the naive seeding the episode argues against — the master seed and the
-    /// worker id added, with no mixing step. Exists so the demo page can put correlated
-    /// streams next to mixed ones on the same screen.
+    /// Creates the deliberately flawed stream used by the seeding lab. It adds the worker id
+    /// to the master seed without mixing, allowing the page to compare correlated streams
+    /// with the production seeding method.
     /// </summary>
     public static SpinRng ForWorkerUnmixed(ulong masterSeed, int workerId)
     {
@@ -85,9 +85,9 @@ public struct SpinRng
     }
 
     /// <summary>
-    /// Demo seam: the modulo reduction the episode rejects, kept as the named counterpart
-    /// to NextInt. The bias lab narrows the draw space itself, so this method currently has
-    /// no callers.
+    /// Uses the deliberately biased modulo reduction discussed in the lab. It remains here
+    /// for comparison with <see cref="NextInt"/>; the current bias lab implements the same
+    /// operation over a smaller draw range.
     /// </summary>
     public int NextIntModulo(int bound) => (int)(NextUInt64() % (ulong)bound);
 

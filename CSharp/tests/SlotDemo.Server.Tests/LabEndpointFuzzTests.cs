@@ -19,7 +19,7 @@ public sealed class LabEndpointFuzzTests : IClassFixture<WebApplicationFactory<P
     private static readonly string[] PostRoutes =
     [
         "/api/ch2/money", "/api/ch2/rng", "/api/ch2/bias",
-        "/api/ch3/spin", "/api/ch3/census",
+        "/api/ch3/spin", "/api/ch3/census", "/api/ch3/reel-snapshots",
         "/api/ch4/solve", "/api/ch4/band",
         "/api/ch6/validate",
         "/api/ch7/enumerate",

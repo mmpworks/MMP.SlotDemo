@@ -69,15 +69,29 @@ public delegate Millicents PayoutScaler(double rawPayMultiplier);
 /// </summary>
 public sealed record ScaledPaytable
 {
+    private readonly Millicents[] _densePays;
+    private readonly int _countStride;
+
     public ScaledPaytable(IReadOnlyDictionary<(byte SymbolId, int Count), Millicents> pays)
     {
         ArgumentNullException.ThrowIfNull(pays);
         Pays = new System.Collections.ObjectModel.ReadOnlyDictionary<(byte SymbolId, int Count), Millicents>(
             new Dictionary<(byte SymbolId, int Count), Millicents>(pays));
+
+        var maxSymbol = pays.Count == 0 ? 0 : pays.Keys.Max(key => key.SymbolId);
+        var maxCount = pays.Count == 0 ? 0 : pays.Keys.Max(key => key.Count);
+        _countStride = maxCount + 1;
+        _densePays = new Millicents[(maxSymbol + 1) * _countStride];
+        foreach (var (key, value) in pays)
+            _densePays[key.SymbolId * _countStride + key.Count] = value;
     }
 
     public IReadOnlyDictionary<(byte SymbolId, int Count), Millicents> Pays { get; }
 
-    public Millicents PayFor(byte symbolId, int count) =>
-        Pays.GetValueOrDefault((symbolId, count), Millicents.Zero);
+    public Millicents PayFor(byte symbolId, int count)
+    {
+        if ((uint)count >= (uint)_countStride) return Millicents.Zero;
+        var index = symbolId * _countStride + count;
+        return (uint)index < (uint)_densePays.Length ? _densePays[index] : Millicents.Zero;
+    }
 }

@@ -18,6 +18,18 @@ Try this in any C# REPL:
 That single line hides three separate failure modes, and a slot simulator runs
 into all three.
 
+### Check your understanding
+
+Imagine adding one million wagers of 0.1 credit. Which total is safer: a `double` that stores
+`0.1`, or an integer that stores each wager as `10,000` millicents?
+
+<details><summary>Answer</summary>
+
+The integer total. Every addition uses a whole number. The `double` begins with an
+approximation of 0.1, and repeated addition can collect rounding error.
+
+</details>
+
 **Failure 1: representation error.** Binary floating point stores numbers as
 fractions with a power-of-two denominator, the same way you can write 1/4 or 3/8
 exactly but not 1/3. Most decimal fractions, including 0.1 and 0.2, have no exact
@@ -241,7 +253,7 @@ way, quoting awards in line-bet units where a 10-line machine divides the stake
 across lines first. Transcribe such a PAR sheet's line pays directly into a
 multi-payline game file here and the simulated RTP reads many times too high.
 Real game data must convert to the total-wager basis on the way in. Orca
-Dive in article 6 is a single-line game, where the two conventions coincide
+Dive in article 7 is a single-line game, where the two conventions coincide
 and the difference is invisible; a multi-line transcription is where it bites.
 
 ## Millicents always works in whole numbers
@@ -644,3 +656,10 @@ single-symbol probability right and every two-symbol probability wrong.
   among common submission materials.
 
 *Source files: `Money/Millicents.cs`, `Simulation/SpinRng.cs`.*
+
+## Optimization notebook
+
+`NextInt` runs once per reel per spin, so its setup cost may matter at tens of millions of
+spins. Keep the validated API while building the system. After reel lengths become stable
+construction-time data, measure whether their Lemire ranges and rejection thresholds are
+worth calculating once. Episode 9 performs that experiment.

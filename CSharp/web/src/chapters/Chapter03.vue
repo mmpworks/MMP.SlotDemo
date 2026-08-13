@@ -2,7 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { getJson, postJson } from '../api/labs'
 import PaylinePattern from '../components/PaylinePattern.vue'
-import type { CensusView, SourceView, SpinView } from '../api/labs'
+import ComprehensionCheck from '../components/ComprehensionCheck.vue'
+import OptimizationPreview from '../components/OptimizationPreview.vue'
+import type { CensusView, ReelSnapshotView, SourceView, SpinView } from '../api/labs'
 
 defineProps<{ title: string; blurb: string }>()
 
@@ -16,6 +18,7 @@ const activeLine = ref(0)
 const censusSpins = ref(200_000)
 const censusSymbolId = ref(4) // Wild Orca
 const census = ref<CensusView | null>(null)
+const reelSnapshots = ref<ReelSnapshotView | null>(null)
 
 const error = ref('')
 const busy = ref(false)
@@ -77,6 +80,18 @@ async function runCensus(): Promise<void> {
   }
 }
 
+async function compareReelSnapshots(): Promise<void> {
+  busy.value = true
+  error.value = ''
+  try {
+    reelSnapshots.value = await postJson<ReelSnapshotView>('/api/ch3/reel-snapshots', { seed: seed.value })
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Reel snapshot comparison failed.'
+  } finally {
+    busy.value = false
+  }
+}
+
 function onLineCell(reel: number, row: number): boolean {
   const line = spin.value?.lines[activeLine.value]
   return line !== undefined && line.rows[reel] === row
@@ -103,12 +118,11 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
     <section class="chapter-brief">
       <h3>What the episode builds</h3>
       <p>
-        A reel is a strip: an ordered cycle of symbols the window slides over. That is a
-        different object from a weighted die. Adjacent stops travel together into the
-        window, so the strip's layout shapes what a multi-row window can show. In Orca Dive
-        the reels are 26/29/26/29/26 stops, every reel its own strip, and the Penguin
-        scatter exists only on reels 1, 3, and 5. A payline is a row path across the window,
-        and the evaluator walks it left to right.
+        Each reel owns a separate strip. One random stop on that strip fills the reel's
+        visible column: its top, middle, and bottom symbol positions are neighbors on that
+        strip. A five-reel
+        game therefore draws five stop numbers, not fifteen cell values. A payline then
+        chooses one visible symbol position from each reel and reads those five cells left to right.
       </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Reels/StripReelSet.cs</code>,
@@ -120,7 +134,9 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
     <section class="lab">
       <h3>Lab 1 — The window over the strip</h3>
       <p class="lab__lede">
-        Pick a source, draw a window, and step through the deterministic spin stream. The
+        Pick a source, draw a window, and compare the cells within each reel column. The
+        three visible symbol positions in one column come from neighboring locations on that reel's strip. The
+        next column belongs to a different reel with its own strip and stop number. The
         same seed and index always produce the same window, because the generator is passed
         explicitly the way episode 2 set it up.
         On Orca Dive, ★ marks the Wild Orca and ◆ the Penguin scatter.
@@ -155,6 +171,11 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
       </div>
 
       <p v-if="error" class="lab__error">{{ error }}</p>
+
+      <p v-if="source" class="lab-note">
+        Configuration source: <strong>{{ source.configurationSource }}</strong>. Both paths
+        produce the same reel-set and payline types before a spin begins.
+      </p>
 
       <div v-if="spin && source" class="results">
         <div class="window-grid" :style="{ gridTemplateColumns: `repeat(${source.reelCount}, 1fr)` }">
@@ -199,7 +220,7 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
     <section class="lab">
       <h3>Lab 2 — Counting what the strip produces</h3>
       <p class="lab__lede">
-        Count how often a symbol lands in the centre row over many spins and compare with
+        Count how often a symbol lands in the center row over many spins and compare with
         the strip's exact ratio. The engine holds no probability table. The strip layout
         sets the odds. On Orca Dive the expectation differs
         per reel: Wild Orca sits at 2/26 on reel 1 and 1/29 on reel 2, and Penguin's
@@ -245,6 +266,38 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
       </div>
     </section>
 
+    <section class="lab">
+      <h3>Lab 3 — Replace a reel between runs</h3>
+      <p class="lab__lede">
+        Build one immutable snapshot from a 26-stop strip and another from a 36-stop strip.
+        The same seed repeats the 26-stop result. Selecting the 36-stop snapshot changes the
+        next run without changing the earlier snapshot.
+      </p>
+      <button type="button" :disabled="busy" @click="compareReelSnapshots">Compare snapshots</button>
+
+      <div v-if="reelSnapshots" class="results">
+        <table class="lab-table">
+          <thead><tr><th>Snapshot</th><th>Stops</th><th>Visible symbol positions</th></tr></thead>
+          <tbody>
+            <tr><td>Run A</td><td>26</td><td>{{ reelSnapshots.shortSnapshot.window.join(' · ') }}</td></tr>
+            <tr><td>Run A repeated</td><td>26</td><td>{{ reelSnapshots.repeatedShortSnapshot.window.join(' · ') }}</td></tr>
+            <tr><td>Run B</td><td>36</td><td>{{ reelSnapshots.longSnapshot.window.join(' · ') }}</td></tr>
+          </tbody>
+        </table>
+        <p class="lab-note">
+          Run A repeated exactly: <strong>{{ reelSnapshots.shortSnapshotRepeatedExactly ? 'yes' : 'no' }}</strong>.
+          Editing the original 26-stop source array changed the snapshot: <strong>{{ reelSnapshots.shortSnapshotKeptOriginalFirstSymbol ? 'no' : 'yes' }}</strong>.
+        </p>
+      </div>
+
+      <ComprehensionCheck
+        question="Why create a new reel-set snapshot instead of editing the active strip array?"
+        :choices="['To preserve deterministic runs and safe sharing between workers.', 'Because C# arrays cannot be edited.', 'To force every reel to have the same length.']"
+        :answer="0"
+        explanation="The analyzer and all workers must read one stable geometry. The next run may receive a different immutable snapshot."
+      />
+    </section>
+
     <section class="chapter-brief">
       <h3>Carried into episode 4</h3>
       <p>
@@ -253,6 +306,16 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
         enumeration all read the strips, so a game can be priced without running it.
       </p>
     </section>
+    <ComprehensionCheck
+      question="A symbol appears twice on a 20-stop reel. What is its chance of landing on one chosen row?"
+      :choices="['2%', '10%', '20%']"
+      :answer="1"
+      explanation="Two matching stops divided by 20 total stops equals 0.10, or 10%."
+    />
+    <OptimizationPreview
+      question="How much does wraparound cost across 150 million visible-cell writes?"
+      later="The direct modulo formula stays until its geometry tests pass. Episode 9 races it against short wrapped drawing strips and byte-ID windows."
+    />
   </article>
 </template>
 

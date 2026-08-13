@@ -9,10 +9,9 @@ using MMP.SlotGame.Core.Simulation;
 namespace SlotDemo.Server.Chapters;
 
 /// <summary>
-/// Episode 7's lab — proving the machine. Exhaustive enumeration referees the
-/// simulation: the analyzer walks every stop combination and prices the game exactly;
-/// the runner plays spins with real randomness. Agreement between two implementations
-/// that share only the game data is the proof.
+/// Episode 7 endpoints for comparing simulation with exhaustive enumeration. The analyzer
+/// evaluates every stop combination, while the simulator samples outcomes with a seeded
+/// random-number generator. Agreement provides an independent check of both calculations.
 /// </summary>
 public static class ChapterSevenEndpoints
 {
@@ -45,11 +44,11 @@ public static class ChapterSevenEndpoints
         GameAnalysis analysis;
         try
         {
-            analysis = GameAnalyzer.Analyse(definition!);
+            analysis = GameAnalyzer.Analyze(definition!);
         }
         catch (NotSupportedException ex)
         {
-            // The analyzer refusing a shape it cannot price exactly is part of the design.
+            // Return the analyzer's validation error when the game cannot be enumerated exactly.
             return Results.Ok(new { supported = false, reason = ex.Message });
         }
 

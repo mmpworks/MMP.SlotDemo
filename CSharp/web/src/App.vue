@@ -32,11 +32,7 @@ void loadHello()
 
   <ChapterNav :current="chapter.id" @navigate="go" />
 
-  <!--
-    The log viewer sits outside the chapter slot on purpose: every lab logs through
-    Herald, and keeping one stream mounted across navigation means the record of what
-    you just did survives the jump to the next chapter.
-  -->
+  <!-- Keep the log viewer mounted across chapter navigation so its Herald event history survives. -->
   <main class="chapter-slot">
     <component
       :is="chapter.component"

@@ -26,6 +26,33 @@ Three terms will appear repeatedly:
 | **Expected value (EV)** | The long-run average payout per play |
 | **Variance / standard deviation** | How widely individual results spread around that average |
 
+## A ten-outcome paytable
+
+Start with a small game that has ten equally likely outcomes. Nine outcomes pay nothing.
+One outcome pays 5 credits on a 1-credit wager.
+
+```text
+expected payout = (9 × 0 + 1 × 5) ÷ 10
+                = 0.5 credit
+RTP             = 0.5 ÷ 1.0
+                = 50%
+```
+
+Expected value is a weighted average. A rare large pay and many zero pays can produce the
+same average as several small pays, but the two games will feel different because their
+spread is different.
+
+### Check your understanding
+
+If the one winning outcome pays 8 credits instead of 5, what is the new RTP?
+
+<details><summary>Answer</summary>
+
+`8 ÷ 10 = 0.8`, so the RTP is 80%. Nothing about the outcome chances changed; only the
+award changed.
+
+</details>
+
 ## What one payline pays, on average
 
 Set up the pieces. A payline shows one symbol per reel. In this engine, different
@@ -71,10 +98,9 @@ merely a few tenths of a percentage point.
 The code is a direct transcription. It lives in `AnalyticMath`, declared `public
 static class AnalyticMath`. A `static class` cannot be instantiated; there's no
 `new AnalyticMath()` anywhere, because nothing in it needs an instance to hold
-state between calls. Every method here takes its inputs as parameters and returns
-an answer computed purely from them, so the class is really a namespace for
-related math functions, grouped together for the reader rather than because they
-share any data:
+state between calls. Every method receives its inputs as parameters and returns a
+result. The methods share no changing data. `AnalyticMath` groups them because they
+solve related math problems:
 
 ```csharp
 /// <summary>
@@ -147,12 +173,9 @@ number an auditor could independently re-derive by adding the same integers. A
 `double`'s tiny representation error, harmless on its own, would make that
 re-derivation fail. What `ExactlyKLeading` returns is a probability, a
 dimensionless ratio between 0 and 1 with no accumulation-audit contract behind it
-at all; nothing sums a million probabilities end to end and hands the total to a
-regulator. And these particular probabilities are unusually well-behaved doubles:
-they're built from dividing small whole numbers of stops by a strip length, and
-the paytable's tests pin the resulting sums to the fourteenth decimal place
-against a from-scratch enumeration (article 7), so any representation error here
-gets caught rather than assumed away.
+at all. These probabilities come from small whole-number counts divided by a strip
+length. The tests compare their sums with a separate enumeration to fourteen decimal
+places. A change large enough to affect the answer will fail that comparison.
 
 That's also why `BaseEvMultiplier` returns a bare `double`, not a `Millicents`.
 Its answer, "how many bet-units does this paytable pay back on average," is a
@@ -217,7 +240,7 @@ by zero.
 
 `PayoutScaler` is declared `public delegate Millicents PayoutScaler(double
 rawPayMultiplier);`, and `scale` above is a lambda assigned to it. It is a delegate for
-the same reason article 5's `SpinPlay` is: one behavior, no object needed. The closure
+the same reason article 6's `SpinPlay` is: one behavior, no object needed. The closure
 captures `paytableScaleFactor` and `wager` from its surrounding scope, and the whole
 thing is a value the rest of `Solve` can pass to `ToDictionary` like any other argument.
 
@@ -421,7 +444,7 @@ play path, not a proof of the contribution by itself.
 ## What the analytic math is for
 
 Much of this article could be approximated by simulation: run many spins and
-measure the average and spread. The system does that in article 5. The analytic
+measure the average and spread. The system does that in article 6. The analytic
 calculation provides an independently derived expected value and band against which
 the simulation can be compared. Agreement does not prove that every part is free of
 bugs, but disagreement is strong evidence that at least one path is wrong.
@@ -432,8 +455,8 @@ there, but not for the 34.4-billion-combination largest preset. That smaller gro
 truth checks both RTP and variance without reusing the production evaluator's
 calculation logic.
 
-Next: the engine that plays those spins: fixed worker quotas, batched atomic
-counters, and a telemetry channel that's allowed to lose.
+Next: weighted enumeration. Article 5 starts with 24 possible outcomes, groups repeated
+symbols by count, and follows those counts through `GameAnalyzer` one method at a time.
 
 ## References
 
@@ -447,3 +470,10 @@ counters, and a telemetry channel that's allowed to lose.
 
 *Source files: `Rtp/AnalyticMath.cs`, `Paytables/PaytableSolver.cs`,
 `Paytables/Paytable.cs`, `Features/FeatureSchedule.cs`.*
+
+## Optimization notebook
+
+The dictionary paytable is an excellent construction and inspection format. It may be more
+work than the spin loop needs. Once tests pin every payout, benchmark a dense symbol-by-run
+lookup while retaining the dictionary as the public view. The representation change is safe
+only if both paths return the same money for every key.

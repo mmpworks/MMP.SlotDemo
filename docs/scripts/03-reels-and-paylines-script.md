@@ -12,7 +12,7 @@ minutes total, and only to make an engine claim visible.
 
 > **Discipline note for this recording.** The labs illustrate; they do not carry the
 > episode. If a beat can be made on the whiteboard or in Rider, make it there. Cut to
-> the browser only where the engine's behaviour is easier to see than to describe, and
+> the browser only where the engine's behavior is easier to see than to describe, and
 > cut back inside a minute.
 
 ---
@@ -77,10 +77,11 @@ for (var cell = 0; cell < 3; cell++) window[cell] = Draw();
 
 **Scene:** WHITEBOARD. Draw the strip, then slide a three-cell window along it.
 
-- "A real reel is an ordered cyclic strip. A spin picks one stop. The window shows that
-  stop and the two positions after it, wrapping at the end. One random number, three
-  symbols."
-- Then the correlation: "If Seven's neighbour on the strip is Bell, then Seven in
+- "Each reel has its own ordered cyclic strip. A spin picks one stop on this reel. Its
+  visible column shows that stop and the next two strip positions, wrapping at the end.
+  One random number fills three visible symbol positions on this reel. A five-reel game repeats that process
+  separately for each of its five strips."
+- Then the neighbor rule: "If Seven's neighbor on this reel's strip is Bell, then Seven in
   row zero forces Bell in row one. Probability one. The die model says four in
   twenty-two." (Seven and Bell are both real symbols in `classic-three-reel.json`, and
   Bell's count on reel 1 there is 4 of 22, so the whiteboard numbers check against a
@@ -141,10 +142,10 @@ the preset path they look like dead weight until you read what the comment says 
 - Adding a field later is a shape change that ripples through every JSON document,
   every builder, and every test fixture. Adding it now costs one line.
 - The comment names who does use them: a loaded game definition. Orca Dive ships a wild
-  and a scatter, and it arrives in episode 6 through this door.
+  and a scatter, and it arrives in episode 7 through this door.
 
 **The line to say:** "The presets keep the flags at false so their math stays a closed
-form. Episode 6 is the game that uses them."
+form. Episode 7 is the game that uses them."
 
 ### Beat 3 — the deferral is a math decision
 
@@ -157,7 +158,7 @@ Read the reason out of the comment.
   window rather than leaving it an independent term.
 - Keeping both off the preset strips is what lets the preset pipeline's analytic math
   stay a closed form. The games that want wilds and scatters get priced a different way:
-  `GameAnalyzer` enumerates them, which is episode 7's machinery. "Two pricing paths, and
+  `GameAnalyzer` enumerates them, which is episode 5's machinery. "Two pricing paths, and
   the comment says which game takes which."
 
 ## 8:00–9:00 — Create the second file
@@ -176,11 +177,12 @@ using MMP.SlotGame.Core.Simulation;
 namespace MMP.SlotGame.Core.Reels;
 
 /// <summary>
-/// A reel is an ordered cyclic strip. A spin draws one uniform stop index per reel; the
-/// visible window shows adjacent strip positions {s, s+1, ... s+Rows-1} mod S. Rows within
-/// a reel are therefore correlated by strip adjacency, while different reels are
-/// independent. A weighted multiset loses that adjacency, so it stops being equivalent the
-/// moment a multi-row window exists.
+/// Each reel owns one ordered cyclic strip. A spin chooses one stop on each reel. The visible
+/// symbol positions for that reel then read neighboring locations from that same strip: s, s+1, and so on,
+/// wrapping at the end. Separate reels choose their stops independently.
+///
+/// Symbol counts can give the chance for one cell, but they do not record which symbols are
+/// neighbors. Calculations that inspect two visible positions on the same reel need the ordered strip.
 ///
 /// Reel count, per-reel stop count and window height all arrive as arguments. Strips of
 /// differing lengths on the same machine are normal; Orca Dive, the fictional game this
@@ -202,18 +204,18 @@ public sealed class StripReelSet
 
     private readonly Symbol[][] _strips;
 
-    public StripReelSet(Symbol[][] strips, int rows = DefaultRows)
+    public StripReelSet(IReadOnlyList<IReadOnlyList<Symbol>> strips, int rows = DefaultRows)
     {
         ArgumentNullException.ThrowIfNull(strips);
-        if (strips.Length < 1)
+        if (strips.Count < 1)
             throw new ArgumentException("A reel set needs at least one reel.", nameof(strips));
         if (rows < MinRows || rows > MaxRows)
             throw new ArgumentOutOfRangeException(
                 nameof(rows), rows, $"A window must have {MinRows}..{MaxRows} rows.");
 
-        for (var reel = 0; reel < strips.Length; reel++)
+        for (var reel = 0; reel < strips.Count; reel++)
         {
-            if (strips[reel] is null || strips[reel].Length == 0)
+            if (strips[reel] is null || strips[reel].Count == 0)
                 throw new ArgumentException($"Reel {reel + 1} has no stops.", nameof(strips));
         }
 
@@ -225,7 +227,7 @@ public sealed class StripReelSet
 
     public int ReelCount => _strips.Length;
 
-    /// <summary>Visible rows per reel. The window is laid out [reel * Rows + row].</summary>
+    /// <summary>Number of visible symbol positions in each reel's column. Also the screen-row count. The window is laid out [reel * Rows + row].</summary>
     public int Rows { get; }
 
     public int WindowSize => ReelCount * Rows;
@@ -269,7 +271,7 @@ public sealed class StripReelSet
         return (double)count / n;
     }
 
-    /// <summary>Draw one spin window. One uniform stop per reel; rows are strip-adjacent.</summary>
+    /// <summary>Draws one stop per reel, then fills that reel's column from neighboring strip positions.</summary>
     public void DrawWindow(ref SpinRng rng, Span<Symbol> window)
     {
         // window layout: [reel * Rows + row]
@@ -300,16 +302,30 @@ public sealed class StripReelSet
 
 ### Beat 4 — geometry is data
 
-`Symbol[][]`, ragged on purpose. **Jump to `orca-dive.json`** and point at
+The constructor accepts read-only lists and copies them into a jagged `Symbol[][]`.
+**Jump to `orca-dive.json`** and point at
 `"reelStops": [26, 29, 26, 29, 26]`.
 
-- Real machines carry unequal strips, and Orca Dive is modelled on one.
+- Each inner list is one reel strip, so real machines may carry unequal strips.
+- The read-only parameter says the constructor borrows the caller's data. The private
+  arrays are the snapshot owned by the reel set.
 - "Had we stored a single stops-per-reel field, this file would be unloadable, and we
   would have discovered that the week we tried to validate against a published par
   sheet."
 - Reel count, per-reel length, and window height all arrive as arguments. Nothing in
   this type knows the number three. `Rows` is read from the definition and flows
   through every method.
+
+### Beat 4A — replacing geometry between runs
+
+**Scene:** BROWSER, chapter 3 Lab 3.
+
+- Run the 26-stop snapshot twice with one seed. The visible symbols repeat.
+- Show the 36-stop snapshot built from a different `Symbol[]`.
+- "The next run receives a new reel-set object. We never edit the arrays under workers
+  that are already spinning."
+- Tie the decision to CUPID: composable inputs, one geometry job, predictable snapshots,
+  idiomatic read-only boundaries, and reel-based domain names.
 
 A gaming mathematician would say "each reel has its own strip", and the type says it in
 the same shape.
@@ -379,8 +395,8 @@ The method that runs five times per spin, ten million spins per run.
   and reuses it forever, so this method allocates nothing at all.
 - `ref SpinRng` — rule R3 from episode 2, visible in the signature. Anything that can
   consume randomness says so where you can grep for it.
-- One `NextInt` per reel, then the rows are read as strip-adjacent positions. Five
-  random numbers produce fifteen symbols, and that ratio is the model.
+- One `NextInt` per reel, then that reel's visible symbol positions read neighboring locations from
+  its own strip. Five reels use five random numbers and produce fifteen visible cells.
 - The layout comment matters more than it looks: `window[reel * Rows + row]` is the
   contract every consumer depends on, and it appears here and in the doc comment on
   `Rows`. One authority, stated twice on the same screen.
@@ -396,7 +412,7 @@ The DRY beat.
   drift."
 - Compare against the alternative: a separate `ReelMath` class holding its own
   copy of the strips would be tidier by one measure, and would introduce the failure
-  mode episode 7 exists to catch.
+  mode episode 8 exists to catch.
 
 ## 17:00–17:45 — Create the third file
 
@@ -411,7 +427,8 @@ The DRY beat.
 namespace MMP.SlotGame.Core.Reels;
 
 /// <summary>
-/// A payline: one window row index per reel, evaluated left-to-right.
+/// One payline loaded from a game definition or supplied by a built-in preset.
+/// Rows contains one visible-position index for each reel.
 /// </summary>
 public sealed record Payline
 {
@@ -425,94 +442,19 @@ public sealed record Payline
 
     public string Name { get; }
 
-    /// <summary>A construction-time snapshot of the row selected on each reel.</summary>
+    /// <summary>A construction-time copy of the position selected on each reel.</summary>
     public IReadOnlyList<int> Rows { get; }
-
-    /// <summary>
-    /// Standard line patterns used by the stock presets: 1 center, 3 horizontals,
-    /// 5 adds V/Λ, and 9 adds zig-zags. This is a project convention rather than a
-    /// universal slot-game payline set. v1 supports 5 or 9 lines and windows of
-    /// <see cref="StripReelSet.MinRows"/>..<see cref="StripReelSet.MaxRows"/> rows
-    /// (validated by the caller, not here).
-    ///
-    /// Row geometry is derived from <paramref name="rows"/> on every call:
-    /// top = 0, bottom = rows - 1, middle = rows / 2 (integer division).
-    ///
-    /// An odd row count puts the middle at the true center: 5 rows give 0, 2, 4, a V/hat
-    /// spans the full window height, and both zig-zags swing by 2 rows. An even row count
-    /// has no center, and integer division rounds toward the bottom half: 4 rows put the
-    /// middle at index 2. A V/hat still spans 0 to rows-1, since middle is only an
-    /// intermediate ramp point, but the zig-zags become asymmetric. In a four-row window
-    /// ZigTop/ZagTop swing two rows (0 to 2) and ZigBottom/ZagBottom swing one (2 to 3).
-    /// </summary>
-    public static IReadOnlyList<Payline> For(int reels, int lineCount, int rows)
-    {
-        var topRow = 0;
-        var bottomRow = rows - 1;
-        var middleRow = rows / 2;
-
-        var mid = Repeat(reels, middleRow);
-        var top = Repeat(reels, topRow);
-        var bottom = Repeat(reels, bottomRow);
-        var vee = Bend(reels, topRow, bottomRow);      // top → bottom → top
-        var hat = Bend(reels, bottomRow, topRow);      // bottom → top → bottom
-        var zigTop = Alternate(reels, topRow, middleRow);
-        var zigBottom = Alternate(reels, bottomRow, middleRow);
-        var zagTop = Alternate(reels, middleRow, topRow);
-        var zagBottom = Alternate(reels, middleRow, bottomRow);
-
-        Payline[] lines =
-        [
-            new("Center", mid), new("Top", top), new("Bottom", bottom),
-            new("V", vee), new("Hat", hat),
-            new("ZigTop", zigTop), new("ZigBottom", zigBottom),
-            new("ZagTop", zagTop), new("ZagBottom", zagBottom),
-        ];
-        return lineCount switch
-        {
-            5 => lines[..5],
-            9 => lines,
-            _ => throw new ArgumentException($"Unsupported line count {lineCount}; v1 supports 5 or 9."),
-        };
-    }
-
-    /// <summary>The center-row payline used by classic one-line games.</summary>
-    public static Payline Center(int reels, int rows) => new("Center", Repeat(reels, rows / 2));
-
-    private static int[] Repeat(int reels, int row) =>
-        [.. Enumerable.Repeat(row, reels)];
-
-    /// <summary>
-    /// V-shape: start row, dip/peak to the far row at the middle reel, back. It interpolates
-    /// between the two row values it is given, so it works at any window height. The caller
-    /// derives <paramref name="edgeRow"/> and <paramref name="midRow"/>.
-    /// </summary>
-    private static int[] Bend(int reels, int edgeRow, int midRow)
-    {
-        var rows = new int[reels];
-        var middle = reels / 2;
-        for (var r = 0; r < reels; r++)
-        {
-            // linear ramp toward the middle then back; rounds to the nearest whole row
-            var distance = Math.Abs(r - middle);
-            var maxDistance = Math.Max(middle, reels - 1 - middle);
-            rows[r] = maxDistance == 0
-                ? midRow
-                : (int)Math.Round(midRow + (edgeRow - midRow) * (double)distance / maxDistance);
-        }
-        return rows;
-    }
-
-    private static int[] Alternate(int reels, int rowEven, int rowOdd)
-    {
-        var rows = new int[reels];
-        for (var r = 0; r < reels; r++) rows[r] = r % 2 == 0 ? rowEven : rowOdd;
-        return rows;
-    }
 }
 ```
 
-## 17:45–22:30 — Walk `Payline`
+**Open next:** `StandardPaylines.cs`. Explain that it owns Center, Top, Bottom, V,
+Hat, and zigzag recipes only for demo defaults. Then open `orca-dive.json` and show
+that its `paylines` arrays go straight through `GameDefinitionBuilder` into the same
+`Payline` record. Repeat the comparison with `StandardReelPresets.cs` and the JSON
+`reels` arrays. A custom PAR path and unequal strip lengths do not require evaluator
+changes.
+
+## 17:45–22:30 — Walk `Payline` and the default catalog
 
 ### Beat 11 — a payline is data, and it is frozen at construction
 
@@ -526,9 +468,14 @@ Name plus one row index per reel. Center on a five-reel three-row machine is
 - `IReadOnlyList<int>` as the parameter type says "I will read this", and the copy says
   "and I will not depend on you keeping it still".
 
-### Beat 12 — shapes are computed, never tabulated
+### Beat 12 — default shapes are computed, configured shapes are data
 
-`Repeat`, `Bend`, and `Alternate` build the nine standard lines from three row values.
+Open `StandardPaylines.cs`. `Repeat`, `Bend`, and `Alternate` build the nine demo
+lines from three position values. Then open the JSON `paylines` list.
+
+- Say the boundary plainly: "The catalog offers defaults. It does not define what a
+  valid game is. A PAR transcription supplies its own path and builds the same
+  `Payline` record."
 
 - `topRow`, `bottomRow`, and `middleRow` are derived from the `rows` argument on every
   call, which is why a four-row or five-row preset gets correct shapes without a code
@@ -543,8 +490,8 @@ Name plus one row index per reel. Center on a five-reel three-row machine is
 
 Read the doc comment's last paragraph aloud, then show the four-row result.
 
-- With an odd row count, `rows / 2` is the true centre and everything is symmetric.
-- With an even count there is no centre, integer division rounds toward the bottom
+- With an odd row count, `rows / 2` is the true center and everything is symmetric.
+- With an even count there is no center, integer division rounds toward the bottom
   half, and the zig-zags come out asymmetric: two rows of swing on one side, one on the
   other.
 - The article names what rounding the other way would do: put the shorter swing on the
@@ -553,19 +500,19 @@ Read the doc comment's last paragraph aloud, then show the four-row result.
   down what it costs. That paragraph is the difference between a documented convention
   and a bug somebody finds in a year."
 
-### Beat 14 — the throw that lists what works
+### Beat 14 — the catalog throw lists what the catalog offers
 
 `lineCount switch` with 5, 9, and a throw naming both supported values.
 
 - Same failure philosophy as the config boundary in episode 1 and the scaled-multiply
-  refusal in episode 2. The type refuses work it cannot do correctly, and the message
-  tells you what it can do.
+  refusal in episode 2. `StandardPaylines` refuses a default set it does not contain.
+  This does not reject a PAR-defined line; that line bypasses the catalog.
 - Returning a partial set for an unsupported count would be the quiet failure: the run
   finishes, the RTP is wrong by the missing lines, and nothing says so.
 
 ### Beat 15 — the seam, stated and left alone
 
-`Center` exists as its own method because a classic three-reel game has exactly one
+`StandardPaylines.Center` exists because a classic three-reel demo has exactly one
 line, and expressing that through `For` would mean supporting a line count of 1 in a
 method built around a nine-line convention.
 
@@ -578,7 +525,7 @@ method built around a nine-line convention.
 
 > **Illustration (45 seconds, BROWSER).** Chapter 3 page, payline lab. Set the window
 > height to 3, 4, and then 5, and the nine generated shapes redraw over the grid from
-> the engine's own `Payline.For` running server-side. Stop on 4 rows and point at the
+> the engine's own `StandardPaylines.For` running server-side. Stop on 4 rows and point at the
 > asymmetric zig-zags. "The comment said this would happen. Here it is." Cut back.
 
 ## 22:30–23:15 — Flash the evaluator
@@ -647,7 +594,7 @@ Two suites hold this episode's claims.
 
 - Engine-to-browser budget: roughly twenty-three minutes in Rider and on the
   whiteboard, under three in the browser. If a take runs long, browser time goes first.
-- Strongest visuals in order: the whiteboard forced-neighbour moment (Seven then Bell,
+- Strongest visuals in order: the whiteboard forced-neighbor moment (Seven then Bell,
   probability one), the ragged `reelStops` line in `orca-dive.json`, and the payline lab
   redrawing shapes as the window height changes. Rehearse the first one; it is the hook.
 - Zoom hotkey belongs on: the `reelStops` array, the `JointProbabilityOf` loop body, the

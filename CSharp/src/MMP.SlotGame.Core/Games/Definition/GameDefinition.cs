@@ -101,9 +101,9 @@ public sealed record ScatterPickBonus
 /// as data; nothing in this type or anything downstream of it knows how many reels, symbols
 /// or stops a real game has.
 ///
-/// The only way to build one is <see cref="GameDefinitionLoader"/>, so a GameDefinition that
-/// EXISTS is one that passed every check: the invariant rides on the type, the same way it
-/// does for <see cref="Simulation.SimulationConfig"/>. Callers never see the JSON shape.
+/// Only <see cref="GameDefinitionLoader"/> creates instances, after all validation succeeds.
+/// Downstream code can therefore use a GameDefinition without repeating validation or
+/// depending on the JSON document types.
 /// </summary>
 public sealed class GameDefinition
 {

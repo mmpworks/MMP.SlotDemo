@@ -1,6 +1,6 @@
-// Wire contract for SlotDemo.Server's /api/hello and /api/stats endpoints.
+// Response types for SlotDemo.Server's /api/hello and /api/stats endpoints.
 // Field names follow the server's JSON; keep them in lockstep with the C#
-// response models. These are the shapes after sanitize.ts normalizes the payload,
+// response models. These describe values after sanitize.ts normalizes the payload,
 // so a field's type here is what a component receives: level_rank is a string
 // because Herald serializes the rank as a quoted JSON value.
 
@@ -42,8 +42,8 @@ export interface StatsResponse {
   systems: AiSystemStats[]
 }
 
-// Wire contract for SlotDemo.Server's /api/logs/stream SSE endpoint.
-// Each `data:` frame is one JSON object matching this shape.
+// Event type for SlotDemo.Server's /api/logs/stream SSE endpoint.
+// Each `data:` frame contains one JSON object with these fields.
 
 export interface LogPropertyValue {
   value: unknown

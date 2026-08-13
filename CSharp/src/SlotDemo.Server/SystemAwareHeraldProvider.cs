@@ -11,8 +11,8 @@ namespace SlotDemo.Server;
 /// MEL provider that routes framework categories (Microsoft.*, System.*) to the
 /// <c>sys.*</c> levels and application categories to the plain levels of the
 /// <see cref="SlotDemoLevels"/> set, emitting into a native Herald pipeline.
-/// Herald's stock MEL provider maps to the standard level set only — this is the
-/// harness-owned variant that speaks the custom set.
+/// Herald's built-in MEL provider supports only its standard levels, so this provider
+/// performs the mapping to the demo's custom levels.
 /// </summary>
 public sealed class SystemAwareHeraldProvider : MEL.ILoggerProvider
 {
@@ -73,8 +73,8 @@ public sealed class SystemAwareHeraldProvider : MEL.ILoggerProvider
                 eventId.Id != 0 ? new LogEventId(eventId.Id, eventId.Name) : null);
         }
 
-        // Error and fatal are shared between system and app on purpose — see
-        // SlotDemoLevels. Only the noise-prone bands get a sys. variant.
+        // System and application errors use the same levels. Only the lower-severity,
+        // high-volume levels have separate sys.* variants.
         private LogLevel Map(MEL.LogLevel level) => level switch
         {
             MEL.LogLevel.Trace => _isSystem ? SlotDemoLevels.SysVerboseLevel : KnownLogLevels.Verbose,

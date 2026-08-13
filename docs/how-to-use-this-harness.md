@@ -198,7 +198,7 @@ ready to read at
 
 ### Notes for anyone reusing the logging setup
 
-Two behaviours of the logging engine shape how this repo configures it, and
+Two behaviors of the logging engine shape how this repo configures it, and
 both are pinned by tests in `HeraldLoggingTests.cs` marked `PINNED ENGINE
 BEHAVIOR` / `PINNED ENGINE BUG`: custom levels need their own floor re-check
 (`SlotDemoLevels.AtOrAbove(...)`, installed alongside `WithMinimumLevel` in
@@ -206,7 +206,7 @@ BEHAVIOR` / `PINNED ENGINE BUG`: custom levels need their own floor re-check
 handled differently on the native and Serilog-compat surfaces.
 
 Read those tests before changing the pipeline. If either starts failing, the
-engine changed the behaviour it pins. Revisit the workaround rather than
+engine changed the behavior it pins. Revisit the workaround rather than
 weakening the test.
 
 ## How to extend the harness

@@ -1,11 +1,11 @@
-# Episode 7 — Proving the Machine: Three Implementations, One Answer
+# Episode 8 — Proving the Machine: Three Implementations, One Answer
 
 **Target:** 26–28 min. **Format:** create the file, paste the finished source, then
 walk it. Today the file that goes in is a test, because the tests are the product.
 **Subject:** the engine. This is the one episode where the companion site gets a real
 segment: the closing ten-million-spin run, and it runs on camera.
-**Companion article:** `docs/articles/07-proving-the-machine.md`
-**Companion site:** MMP.SlotDemo, branch `main`, pages `#/ch07` and the finale run
+**Companion article:** `docs/articles/08-proving-the-machine.md`
+**Companion site:** MMP.SlotDemo, branch `main`, pages `#/ch08` and the finale run
 **Files created on camera:**
 `CSharp/tests/MMP.SlotGame.Tests/ExhaustiveGroundTruthTests.cs`.
 **Shown, not created:** `CSharp/src/MMP.SlotGame.Core/Games/GameAnalyzer.cs`.
@@ -31,7 +31,7 @@ segment: the closing ten-million-spin run, and it runs on camera.
 **Companion site — the finale**
 - [ ] `E:\dev\MMP.SlotDemo`, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
-- [ ] `http://localhost:5090/#/ch07`, the enumeration lab run once
+- [ ] `http://localhost:5090/#/ch08`, the enumeration lab run once
 - [ ] The finale run page loaded and a full ten-million-spin run completed once before
       recording, so the timing is known and the machine is warm
 - [ ] `logs/` cleared so the viewer starts empty
@@ -50,7 +50,7 @@ segment: the closing ten-million-spin run, and it runs on camera.
 - "Six episodes built a slot machine. This one asks how you know it is right."
 - "The answer is three separate implementations of the same game, written to disagree if
   any of them is wrong."
-- Name them: the analytic closed form from episode 4, the simulator from episode 5, and
+- Name them: the analytic closed form from episode 4, the simulator from episode 6, and
   a third one we write today that visits every outcome the game can produce: the
   *preset* three-reel game, so the enumeration is a clean 22 cubed.
 - "One file goes in on camera, and it is a test file. In this project the tests are the
@@ -74,7 +74,7 @@ The failure mode this structure exists for:
   routine cancels itself out, and every convergence test passes green on a wrong game."
 - "Two numbers agreeing is only evidence when the two numbers were produced
   independently."
-- So the third implementation shares data with the engine and shares no behaviour. Same
+- So the third implementation shares data with the engine and shares no behavior. Same
   strips, same paylines, same integer paytable. Its own window construction, its own run
   matching, its own averaging.
 
@@ -272,7 +272,7 @@ public sealed class ExhaustiveGroundTruthTests
     {
         Assert.Equal(3, game.Reels.ReelCount);
 
-        // --- copy out the raw data (ids, rows, pays). No behaviour comes with it. ---
+        // --- copy out the raw data (ids, rows, pays). No behavior comes with it. ---
         var strips = new byte[3][];
         for (var reel = 0; reel < 3; reel++)
         {
@@ -360,8 +360,8 @@ Read the two lists aloud.
   dictionary.
 - **Not shared:** window construction, run matching, probability weighting, expected-value
   summation, variance summation. All re-derived here.
-- "Sharing the data is required, because otherwise the two implementations are analysing
-  different games. Sharing any behaviour would defeat the point."
+- "Sharing the data is required, because otherwise the two implementations are analyzing
+  different games. Sharing any behavior would defeat the point."
 - The horizontal rule further down draws the same line at the boundary: nothing below it
   calls Core evaluation code.
 
@@ -471,7 +471,7 @@ Read the class comment's first paragraph.
   rather than every individual stop.
 - For Orca Dive that is tens of thousands of tuples instead of fourteen million, for the
   same exact answer.
-- **Why it works:** a payline reads exactly one cell per reel. "The optimisation follows
+- **Why it works:** a payline reads exactly one cell per reel. "The optimization follows
   from that rule, so a change to the domain will also change the count."
 
 ### Beat 10 — the scatter rides through as a second weight
@@ -485,7 +485,7 @@ The paragraph that makes this analysis correct.
 - **Then the consequence:** line pay and the feature are correlated, because a scatter in
   the window costs that reel a payline symbol. A sigma built by adding their variances
   would be wrong.
-- "Episode 6 said the scatter bonus breaks the independence assumption. This is the code
+- "Episode 7 said the scatter bonus breaks the independence assumption. This is the code
   that stopped leaning on it."
 
 ### Beat 11 — the recursion, and reel count as a loop bound
@@ -501,8 +501,8 @@ out of reels.
 
 ### Beat 12 — two guards, both loud
 
-- `Analyse` refuses a multi-payline game by name, and the message says multi-line games
-  simulate correctly and are not analysed here yet.
+- `Analyze` refuses a multi-payline game by name, and the message says multi-line games
+  simulate correctly and are not analyzed here yet.
 - `GuardEnumerationSize` refuses anything past 200 million symbol combinations, because a
   definition that large is likely a mistake and the analyzer throws instead of appearing
   to hang.
@@ -561,9 +561,10 @@ it is shaped the way it is.
 **Scene:** TERMINAL.
 
 - Run the full suite. Let it run. Green.
-- "Every claim made across seven episodes has a test in that output. The invariants from
+- "Every claim made across eight episodes has a test in that output. The invariants from
   episode 2, the geometry from episode 3, the closed forms from episode 4, the
-  determinism from episode 5, the validation boundary from episode 6, and today's three
+  weighted enumeration from episode 5, determinism from episode 6, the validation boundary
+  from episode 7, and today's three
   independent implementations agreeing."
 
 ## 22:00–26:00 — The finale run
@@ -579,7 +580,7 @@ it is shaped the way it is.
   toward the analytic target. Point at both together. "The line is the simulator. The band
   is the closed form. Neither one is watching the other."
 - **Point at the telemetry counters:** dropped samples in the thousands, and the spin
-  counter dead on pace. Episode 5's lossy lane, working as designed, at full speed.
+  counter dead on pace. Episode 6's lossy telemetry, working as designed, at full speed.
 - **At completion:** the final verdict, inside the band. Read the measured RTP against the
   analytic target and against the enumerated ground truth. Three numbers, three
   implementations. Name which hit-frequency the on-screen counter is showing before

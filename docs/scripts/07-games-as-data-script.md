@@ -1,11 +1,11 @@
-# Episode 6 — Games as Data: A Real Machine From a JSON File
+# Episode 7 — Games as Data: A Real Machine From a JSON File
 
 **Target:** 24–26 min. **Format:** create the file, paste the finished source, then
 walk it. Today one of the pastes is a game rather than a class.
 **Subject:** the engine. The companion site appears three times, for under three
 minutes total, and only to make an engine claim visible.
-**Companion article:** `docs/articles/06-games-as-data.md`
-**Companion site:** MMP.SlotDemo, branch `main`, page `#/ch06`
+**Companion article:** `docs/articles/07-games-as-data.md`
+**Companion site:** MMP.SlotDemo, branch `main`, page `#/ch07`
 **Files created on camera:** `CSharp/games/classic-three-reel.json`,
 `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinition.cs`,
 `GameDefinitionLoader.cs`. **Shown, not created:** `GameDefinitionBuilder.cs`,
@@ -13,7 +13,7 @@ minutes total, and only to make an engine claim visible.
 
 > **Discipline note for this recording.** The labs illustrate; they do not carry the
 > episode. If a beat can be made in Rider, make it in Rider. Cut to the browser only
-> where the engine's behaviour is easier to see than to describe, and cut back inside
+> where the engine's behavior is easier to see than to describe, and cut back inside
 > a minute.
 
 ---
@@ -36,14 +36,14 @@ minutes total, and only to make an engine claim visible.
 **Companion site — the illustration**
 - [ ] `E:\dev\MMP.SlotDemo`, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
-- [ ] `http://localhost:5090/#/ch06`, the definition lab and the validation lab each run
+- [ ] `http://localhost:5090/#/ch07`, the definition lab and the validation lab each run
       once
 - [ ] `logs/` cleared so the viewer starts empty
 
 **OBS**
 - [ ] Scenes: `RIDER`, `BROWSER`, `TERMINAL`
 - [ ] Zoom-to-mouse hotkey bound and tested at code-reading zoom
-- [ ] Rider font sized for capture, JSON syntax colours checked against the background
+- [ ] Rider font sized for capture, JSON syntax colors checked against the background
 
 ---
 
@@ -93,7 +93,7 @@ tell them everything they got wrong, all at once."
 ```json
 {
   "name": "Classic Three Reel",
-  "source": "Hand-built example. Proves the loader and the analyser are agnostic to reel count, symbol count and per-reel stop count.",
+  "source": "Hand-built example. Proves the loader and the analyzer are agnostic to reel count, symbol count and per-reel stop count.",
   "windowRows": 3,
   "symbols": [
     {
@@ -136,7 +136,7 @@ tell them everything they got wrong, all at once."
   ],
   "paylines": [
     {
-      "name": "Centre",
+      "name": "Center",
       "rows": [1, 1, 1]
     }
   ],
@@ -511,12 +511,12 @@ required reel.
   triggers depends on the symbols that came up.
 - **Say the consequence:** episode 4 added feature variances with no covariance
   term because features were independent. A window-coupled bonus is a different model,
-  and this game gets its return checked by exhaustive enumeration in episode 7 rather
+  and this game gets its return checked by exhaustive enumeration in episode 8 rather
   than by that closed form alone.
 - "The seam on `Symbol` said scatter-count triggering couples features to the window.
   Here it is."
 
-### Beat 12 — `StopCombinations`, a number that sets up episode 7
+### Beat 12 — `StopCombinations`, a number that sets up episode 8
 
 The product of the per-reel stop counts: the size of the whole outcome space.
 
@@ -629,7 +629,7 @@ sheet fixes the file in one pass.
 - **Demonstrate it on camera.** Load the broken game file staged in the prep checklist.
   Six problems, one list, one run.
 - **The framing to say:** "Fail-fast is the right default for a program talking to a
-  program. A human editing a data file is a different consumer, and the right behaviour
+  program. A human editing a data file is a different consumer, and the right behavior
   for them is fail-completely."
 
 ### Beat 14 — three entry points, one implementation
@@ -705,14 +705,14 @@ The loader is seventy-nine lines and the builder is six hundred.
   games in the repo load clean, every build.
 - **`EveryProblemIsReportedTogether`** is beat 13 as an assertion. **Why it needs its own
   test:** every other error test would pass against a loader that stops at the first
-  problem. This is the one that pins the behaviour.
+  problem. This is the one that pins the behavior.
 - The error suite maps one to one onto beat 15's list:
   **`StripsReferencingUnknownSymbols_AreReported`**,
   **`DeclaredGeometryThatDisagreesWithTheStrips_IsReported`**,
   **`BadPaylines_AreReported`**, **`BadPaytableEntries_AreReported`**,
   **`BadSubstitutions_AreReported`**, **`BadFeatures_AreReported`**, and
   **`DuplicateSymbolNames_AreReported`**. **Why one test per category:** each names a real
-  transcription mistake, so the suite reads as a catalogue of what the format protects
+  transcription mistake, so the suite reads as a catalog of what the format protects
   against.
 - **`MalformedJson_FailsWithASlotMessageNotAParserStackTrace`** is beat 16, and the test
   name is the requirement.

@@ -27,7 +27,7 @@ public sealed class FractionalPayUnitTests
           "payUnit": "tenths",
           "symbols": [ { "name": "Seven" }, { "name": "Blank" } ],
           "reels": [ ["Seven", "Blank"], ["Seven", "Blank"], ["Seven", "Blank"] ],
-          "paylines": [ { "name": "Centre", "rows": [0, 0, 0] } ],
+          "paylines": [ { "name": "Center", "rows": [0, 0, 0] } ],
           "paytable": [ { "symbol": "Seven", "pays": { "3": 15 } } ]
         }
         """;
@@ -40,7 +40,7 @@ public sealed class FractionalPayUnitTests
           "payUnit": "hundredths",
           "symbols": [ { "name": "Seven" }, { "name": "Blank" } ],
           "reels": [ ["Seven", "Blank"], ["Seven", "Blank"], ["Seven", "Blank"] ],
-          "paylines": [ { "name": "Centre", "rows": [0, 0, 0] } ],
+          "paylines": [ { "name": "Center", "rows": [0, 0, 0] } ],
           "paytable": [ { "symbol": "Seven", "pays": { "3": 225 } } ]
         }
         """;
@@ -52,7 +52,7 @@ public sealed class FractionalPayUnitTests
           "windowRows": 3,
           "symbols": [ { "name": "Seven" }, { "name": "Blank" } ],
           "reels": [ ["Seven", "Blank"], ["Seven", "Blank"], ["Seven", "Blank"] ],
-          "paylines": [ { "name": "Centre", "rows": [0, 0, 0] } ],
+          "paylines": [ { "name": "Center", "rows": [0, 0, 0] } ],
           "paytable": [ { "symbol": "Seven", "pays": { "3": 1.5 } } ]
         }
         """;
@@ -147,7 +147,7 @@ public sealed class FractionalPayUnitTests
     }
 
     [Fact]
-    public void UnrecognisedPayUnit_IsReported()
+    public void UnrecognizedPayUnit_IsReported()
     {
         var broken = TenthsGame.Replace("\"tenths\"", "\"fifths\"");
 
@@ -176,7 +176,7 @@ public sealed class FractionalPayUnitTests
             ["A", "B", "C", "Blank", "Blank", "Blank", "Blank", "Blank"],
             ["A", "B", "C", "Blank", "Blank", "Blank", "Blank", "Blank"]
           ],
-          "paylines": [ { "name": "Centre", "rows": [1, 1, 1] } ],
+          "paylines": [ { "name": "Center", "rows": [1, 1, 1] } ],
           "paytable": [
             { "symbol": "A", "pays": { "3": 50 } },
             { "symbol": "B", "pays": { "3": 90 } },
@@ -191,7 +191,7 @@ public sealed class FractionalPayUnitTests
         var loaded = GameDefinitionLoader.TryLoad(ThreeFractionalPaysGame, out var definition, out var errors);
         Assert.True(loaded, "Fractional-pays fixture failed to load:\n  " + string.Join("\n  ", errors));
 
-        var analytic = GameAnalyzer.Analyse(definition!);
+        var analytic = GameAnalyzer.Analyze(definition!);
 
         var plan = new RunPlan("fractional-pays", 0x0F0F_1234_5678_9ABCUL, WorkerCount: 4, TargetSpins: 2_000_000);
         var result = await new GameRunner(definition!, plan).RunAsync();
