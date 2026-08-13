@@ -92,3 +92,11 @@ framework noise, plain levels carry application signal. The HttpJson sink posts 
 `/api/logs/ingest` and fans out over SSE to the always-mounted viewer. Set
 `SLOTDEMO_LOG_INGEST_URL=` (empty) to drop the relay sink; the test host does this
 so the file-sink drain never waits on a port nothing bound.
+
+## Copyright and license
+
+Copyright (c) 2026 Steven Muchow.
+
+MMP.SlotDemo is open-source software licensed under the
+[Apache License 2.0](LICENSE). Attribution information is also recorded in
+[NOTICE](NOTICE).

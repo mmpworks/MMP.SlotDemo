@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <Authors>Steven Muchow</Authors>
+    <Copyright>Copyright (c) 2026 Steven Muchow</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+  </PropertyGroup>
+</Project>
