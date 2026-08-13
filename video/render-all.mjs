@@ -68,6 +68,10 @@ for (const target of targets) {
     codec: 'h264',
     crf: 16,
     imageFormat: 'jpeg',
+    // Every composition is silent by convention — these cut under live
+    // narration. Dropping the track keeps the file's duration exactly the
+    // composition's, rather than the silent track's slightly longer one.
+    muted: true,
     outputLocation,
     overwrite: true,
   });
