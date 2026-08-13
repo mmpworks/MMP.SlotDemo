@@ -13,7 +13,7 @@ import { progressAt } from '../components/motion';
  * it does not bounce back.
  *
  * Geometry: `position` counts cells travelled. The cell at `position % cycle`
- * is the one centred in the window, so landing on a chosen glyph is a matter
+ * is the one centered in the window, so landing on a chosen glyph is a matter
  * of ending `position` at a whole number of revolutions plus that glyph's
  * index. Three cycles are rendered and the strip is offset back by one, so
  * the window never runs off either end of the list.

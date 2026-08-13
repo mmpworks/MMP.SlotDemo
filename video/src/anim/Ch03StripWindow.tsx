@@ -6,13 +6,13 @@ import { AnimStage, Cell, Label } from './primitives';
 import { GREEN7_STOPS, REEL_ONE, SYMBOL_MARK } from '../data/orcaDive';
 
 /**
- * Chapter 3 — a reel is a strip, and the window reads neighbours.
+ * Chapter 3 — a reel is a strip, and the window reads neighbors.
  *
  * The strip is Orca Dive's reel 1, all 26 stops in order, straight out of
  * `CSharp/games/orca-dive.json`. A three-cell window slides along it, and
  * because Green7 sits at stops 3, 16 and 24, the gaps between copies are 13,
  * 8 and 5 — every one of them larger than the window, so no single stop can
- * ever show two Green7s on this reel. That is a fact about neighbours on a
+ * ever show two Green7s on this reel. That is a fact about neighbors on a
  * wire, and it is the fact a weighted-die model cannot produce.
  */
 const CELL = 30;

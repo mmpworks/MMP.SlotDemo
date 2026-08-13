@@ -95,7 +95,7 @@ export const SeriesOpener: React.FC = () => {
               color: colors.brass,
               opacity: line1,
               letterSpacing: `${interpolate(line1, [0, 1], [0.42, 0.16])}em`,
-              // Letterspacing pads the right edge; nudge back to optical centre.
+              // Letterspacing pads the right edge; nudge back to optical center.
               marginRight: `-${interpolate(line1, [0, 1], [0.42, 0.16])}em`,
               whiteSpace: 'nowrap',
             }}

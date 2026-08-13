@@ -4,7 +4,7 @@ import { colors } from '../tokens';
 
 /**
  * The radiating brass rays behind the lockup — the era's poster device for
- * "this is the thing you came to see." Rays widen from the centre and fade
+ * "this is the thing you came to see." Rays widen from the center and fade
  * out well before the frame edge, so they never compete with the type.
  *
  * `reveal` grows the rays outward; `spin` rotates the whole fan by a few

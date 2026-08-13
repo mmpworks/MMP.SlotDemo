@@ -13,7 +13,7 @@ const f = (seconds: number) => Math.round(seconds * FPS);
 export const OPENER_FRAMES = f(6);
 
 export const OPENER = {
-  /** The horizon line opens from the centre — the machine takes power. */
+  /** The horizon line opens from the center — the machine takes power. */
   horizonIn: f(0.0),
   horizonDuration: f(0.7),
   /** Drums drop into frame, then turn. Columns are staggered. */
