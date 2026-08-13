@@ -121,8 +121,15 @@ layer, a 288-site subtraction pass per the MMP.Humanization runbook
 article-01 rewrite as the series front door with a chapter-by-chapter roadmap.
 README's hand-maintained test counts were removed rather than fixed. Verified
 green after the pass: engine 197+9 gated, server 80, SPA 45, build 0 warnings.
-First action for whoever picks this up: push `main` when Steve says publish, and
-decide the Chapter 1 blueprint page question above.
+2026-08-13: the Codex-authored `codex/optimization-lab` branch (series renumbered
+to 9 articles + optimization lab, byte-id hot path) went through the two-lane house
+review (no criticals), a 12-item fix pass (`a99e040`), and a teaching-sync of every
+chapter page to the articles' register (Heather; caught 2 more renumber bugs).
+Verified green: engine 205 + 11 gated, server 88, web 51, build 0 warnings. Steve
+returns to this branch tomorrow; merge is his call. Queued idea: a test that walks
+the scripts' `### Block` listings and diffs each against its named source file, so
+paste-block sync stops depending on agent discipline. The Chapter 1 blueprint page
+question above remains open.
 
 ## Stop condition
 Halt and return to Steve when: (a) work would add a new chapter page or change the
