@@ -377,7 +377,7 @@ one the 99% cap is checked against.
 
 1. **Why sigma at all.** The band on the chart is z times sigma over the square root of
    N. "Without an exact sigma the band is a guess, and every statistical test in episode
-   7 would need a hand-tuned tolerance instead."
+   8 would need a hand-tuned tolerance instead."
 2. **Write the identity.** Var of a sum equals the sum of the variances plus twice the
    sum of the covariances over distinct pairs.
 3. **Per-line variance is easy:** the same probabilities that gave expected value.
@@ -824,8 +824,10 @@ wagered and the band works at any bet size.
   argument, the `Probability` switch expression, and the `2.0 *` covariance term.
 - Do not derive the covariance algebra on camera. Point at the variance-of-a-sum identity
   and move to the code; the companion article carries the derivation.
-- The three paste blocks are the finished files verbatim. If a paste lands wrong, cut and
-  re-paste rather than hand-fixing: the file has to match the repo.
+- The three paste blocks are the initial-system files verbatim (the state before the
+  episode-9 optimization branch; episode 9 shows the optimized versions side by side).
+  If a paste lands wrong, cut and re-paste rather than hand-fixing: the file has to
+  match that state.
 - Running long? Show only the Match/Match and Mismatch/Mismatch cases of the switch and
   say inclusion and exclusion covers the rest. Drop the feature-schedule flash. Keep beat
   5 (invariant R1), beat 8 (rounding), and the test section whole.

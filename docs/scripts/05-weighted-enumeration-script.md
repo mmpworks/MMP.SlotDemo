@@ -123,7 +123,7 @@ Explain its purpose: spins where the line and bonus pay together must be include
 
 ## 18:30–20:00 — Run the analyzer
 
-**Scene:** chapter 7 enumeration lab or a focused test.
+**Scene:** the chapter 8 enumeration lab (`#/ch08`) or a focused test.
 
 Run Classic Three Reel, then Orca Dive. Show physical stop combinations beside weighted symbol
 combinations and compare the RTP result with exhaustive enumeration.

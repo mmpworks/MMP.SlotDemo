@@ -47,7 +47,7 @@ segment: the closing ten-million-spin run, and it runs on camera.
 
 **Scene:** RIDER, the test project tree.
 
-- "Six episodes built a slot machine. This one asks how you know it is right."
+- "Seven episodes built a slot machine. This one asks how you know it is right."
 - "The answer is three separate implementations of the same game, written to disagree if
   any of them is wrong."
 - Name them: the analytic closed form from episode 4, the simulator from episode 6, and
@@ -509,7 +509,7 @@ out of reels.
 - **The class comment calls the first one a known limit.** "A limitation in a doc comment
   is a design decision. The same limitation discovered at runtime is a bug report."
 
-> **Illustration (40 seconds, BROWSER).** Chapter 7 page, enumeration lab. Run the
+> **Illustration (40 seconds, BROWSER).** Chapter 8 page, enumeration lab. Run the
 > analyzer over the classic three-reel game and over Orca Dive, side by side, with the
 > combination counts shown. Point at the enumerated tuple count against the raw stop
 > count for Orca Dive: tens of thousands against fourteen million, and the RTP figures
@@ -598,8 +598,8 @@ it is shaped the way it is.
 **Scene:** RIDER, the Core project tree.
 
 - Walk the folders one last time and name what each episode left: `Money` and
-  `Simulation/SpinRng` from episode 2, `Reels` from 3, `Paytables` and `Rtp` from 4, the
-  engine from 5, `Games/Definition` from 6.
+  `Simulation/SpinRng` from episode 2, `Reels` from 3, `Paytables` and `Rtp` from 4,
+  `Games/GameAnalyzer` from 5, the engine from 6, `Games/Definition` from 7.
 - The chain, said once: exact money made parallel totals provable, provable totals made
   determinism testable, an exact closed form made the band real, a real band made
   convergence checkable, and games as data made a published par sheet an outside
@@ -608,6 +608,9 @@ it is shaped the way it is.
   that the next one got to be ordinary."
 - Close on the three implementations. "One counts probabilities, one plays spins, one
   visits every outcome. They agree."
+- Then hand off the follow-up: "One more episode after this one, and it is about speed.
+  Three implementations have the answer pinned down, so now we can rewrite the hot path
+  and still have something to check the faster version against."
 
 ---
 

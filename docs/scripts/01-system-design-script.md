@@ -56,7 +56,10 @@ own; the illustrations borrow `#/finale` and `#/ch06`.
   to compute the return and the confidence band without playing a spin. Episode 5, how
   weighted counting replaces millions of repeated outcomes. Episode 6, how to play
   millions of spins in parallel and still reproduce them bit for bit. Episode 7, how
-  the game itself becomes a data file. Episode 8, why you should believe the numbers.
+  the game itself becomes a data file. Episode 8, why you should believe the numbers. Then
+  episode 9, what a correctness-first build costs in speed and how much of it comes back.
+  Any one of episodes 2 through 9 works on its own if that is the subject you came for.
+  Watch them in order and each one hands the next its foundation.
 - Set the format for the series: "Every later episode creates a file on camera, pastes
   the finished source, and then I tell you why every line is the way it is. Today is the
   design those files come out of."

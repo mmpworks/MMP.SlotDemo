@@ -204,6 +204,10 @@ public sealed class StripReelSet
 
     private readonly Symbol[][] _strips;
 
+    /// <summary>
+    /// Copies one ordered symbol list per reel. Inner lists may have different lengths.
+    /// Create a new reel set to change strips for a later run; this snapshot never changes.
+    /// </summary>
     public StripReelSet(IReadOnlyList<IReadOnlyList<Symbol>> strips, int rows = DefaultRows)
     {
         ArgumentNullException.ThrowIfNull(strips);
@@ -428,7 +432,7 @@ namespace MMP.SlotGame.Core.Reels;
 
 /// <summary>
 /// One payline loaded from a game definition or supplied by a built-in preset.
-/// Rows contains one visible-position index for each reel.
+/// <see cref="Rows"/> contains one visible-position index for each reel.
 /// </summary>
 public sealed record Payline
 {
@@ -442,7 +446,11 @@ public sealed record Payline
 
     public string Name { get; }
 
-    /// <summary>A construction-time copy of the position selected on each reel.</summary>
+    /// <summary>
+    /// A construction-time copy of the visible position selected on each reel.
+    /// For example, [0, 1, 2] runs from the top of reel 1 through the middle of
+    /// reel 2 to the bottom of reel 3 in a three-position window.
+    /// </summary>
     public IReadOnlyList<int> Rows { get; }
 }
 ```
@@ -599,8 +607,10 @@ Two suites hold this episode's claims.
   redrawing shapes as the window height changes. Rehearse the first one; it is the hook.
 - Zoom hotkey belongs on: the `reelStops` array, the `JointProbabilityOf` loop body, the
   defensive-copy line, and the even-row-count paragraph in the `Payline` doc comment.
-- The three paste blocks are the finished files verbatim. If a paste lands wrong, cut
-  and re-paste rather than hand-fixing: the file has to match the repo.
+- The three paste blocks are the initial-system files verbatim (the state before the
+  episode-9 optimization branch; episode 9 shows the optimized versions side by side).
+  If a paste lands wrong, cut and re-paste rather than hand-fixing: the file has to
+  match that state.
 - Running long? Compress beat 12 to one sentence and drop the evaluator flash. Keep
   beat 8 whole, keep beat 13 whole, and keep the test section whole.
 - The companion site runs the engine's own reel code server-side, so if a lab ever

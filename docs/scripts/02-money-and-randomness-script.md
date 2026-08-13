@@ -460,8 +460,10 @@ Give this section real time.
   correlation, the modulo histogram's step. Hold on each for a beat.
 - Zoom hotkey belongs on: the compiler error, the exception message, the shared-prefix
   row, and the histogram step. Everything else reads at normal size.
-- The two paste blocks are the finished files verbatim. If a paste lands wrong, cut
-  and re-paste rather than hand-fixing: the file has to match the repo.
+- The two paste blocks are the initial-system files verbatim (the state before the
+  episode-9 optimization branch; episode 9 shows the optimized versions side by side).
+  If a paste lands wrong, cut and re-paste rather than hand-fixing: the file has to
+  match that state.
 - Running long? Compress beat 2 (`record struct` freebies) to one sentence and drop
   `NextDouble`. Keep every beat that names an invariant, and keep the test section
   whole.

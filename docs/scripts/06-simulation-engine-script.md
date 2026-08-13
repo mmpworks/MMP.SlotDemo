@@ -205,10 +205,10 @@ live fields.
   total and a ratio that disagree.
 - **One thing to be careful about:** `IsHit` is true when *anything* paid, base game or
   feature. The published hit frequency for a real machine is usually line pays only.
-  Same word, two quantities: episode 7's check against the published Orca Dive numbers
+  Same word, two quantities: episode 8's check against the published Orca Dive numbers
   uses the line-only one, and this counter is the any-award one.
 
-> **Illustration (40 seconds, BROWSER).** Chapter 5 page, telemetry lab. Run with the
+> **Illustration (40 seconds, BROWSER).** Chapter 6 page, telemetry lab. Run with the
 > consumer throttled hard. The drop counter climbs into the thousands while the spin
 > total stays on pace, and the chart keeps its shape. Then point at the final row: after
 > the run quiesces, the last sample matches the counters. "Thousands of dropped frames,
@@ -534,7 +534,7 @@ Read the doc comment, then the closure.
   swap the draw and the features and every stream desynchronizes while nothing looks
   wrong.
 
-> **Illustration (45 seconds, BROWSER).** Chapter 5 page, engine lab. Run the same seed
+> **Illustration (45 seconds, BROWSER).** Chapter 6 page, engine lab. Run the same seed
 > at 1, 4, and 16 workers and put the three final snapshots side by side. The one-worker
 > and sixteen-worker totals differ, because the partition differs and each worker draws
 > its own stream. Then run each configuration twice: every configuration reproduces
@@ -615,8 +615,10 @@ Give this section real time.
 - Zoom hotkey belongs on: the four `Interlocked.Add` lines, the quota and remainder
   calculation, the `TryWrite` line with its comment, and the four statements inside the
   play closure.
-- The two paste blocks are the finished files verbatim. If a paste lands wrong, cut and
-  re-paste rather than hand-fixing: the file has to match the repo.
+- The two paste blocks are the initial-system files verbatim (the state before the
+  episode-9 optimization branch; episode 9 shows the optimized versions side by side).
+  If a paste lands wrong, cut and re-paste rather than hand-fixing: the file has to
+  match that state.
 - Running long? Compress beat 8 (the constructor chain) to one sentence and drop the
   terminal proof, since the tests cover it. Keep beat 7 (the play factory), beat 9
   (fixed quotas), beat 12 (`TryWrite`), and the test section whole.

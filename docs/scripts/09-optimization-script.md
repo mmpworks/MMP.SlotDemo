@@ -43,8 +43,13 @@ evaluator needs bytes. Show the equivalence test before showing throughput.
 
 ## 14:30-18:00 — Run the web lab
 
-Open `#/ch09`, select Video5x64, and run two million windows per trial. Read the correctness
-gate first. Then compare the median bars, random selections, visible writes, and memory cost.
+Open `#/ch09`, select Video5x64, and run two million windows per trial. Five trials alternate
+which implementation runs first, so each one gets an equal share of the warmer CPU.
+
+Read the shared checksum first. Both implementations hash every symbol id they draw, and the
+panel prints that value only when the two hashes agree. A disagreement returns an error
+instead of a result, so there is no speedup number to read on a run that drew different
+streams. Then compare the median bars, random selections, visible writes, and memory cost.
 
 Repeat with Orca Dive. Mention that a browser-triggered benchmark is a teaching measurement,
 not a laboratory-grade hardware comparison.
@@ -56,8 +61,9 @@ view. Both are construction-time transformations; neither changes the game data.
 
 ## 21:00-24:00 — Show what lost
 
-List the measured results for unrolling, flattened reel storage, forced inlining, and local
-field caching. Open the dated performance note for exact batches.
+List the measured results for unrolling, flattened reel storage, and forced inlining, then the
+one that came back neutral: skipping the positive-bound validation. Open
+`docs/_editing/csharp-performance-audit-2026-08-12.md` for the exact batches.
 
 Say: "The JIT declined several suggestions by running them slower. We listened."
 
