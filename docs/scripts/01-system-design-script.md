@@ -118,7 +118,8 @@ recursive. Three sentences of restraint buy back months of work.
 - Sixteen cores at roughly a million spins per second each puts ten million spins near
   one second. **Draw a box around the conclusion:** one process, one machine. No queue
   and no cluster. (That is the conservative back-of-envelope the design was sized
-  against. The finished engine beats it by an order of magnitude — episode 9 measures
+  against. The finished engine beats it by roughly six and a half times — episode 9
+  measures
   it.)
 - Then the number that shapes everything: workers can generate ten million events per
   second, and a browser chart wants about ten updates per second. Write both numbers
@@ -311,7 +312,8 @@ what turns it into a fact.
 
 **Scene:** RIDER, expanding the Core project tree slowly.
 
-- Point at the namespaces: `Money`, `Reels`, `Paytables`, `Rtp`, `Simulation`, `Games`.
+- Point at the namespaces: `Money`, `Reels`, `Paylines`, `Paytables`, `Rtp`,
+  `Simulation`, `Games`, `Features`.
   "Domain names. No Services folder, no Helpers, no Managers. If a folder name would
   not appear in a conversation between two gaming mathematicians, it is the wrong
   name."

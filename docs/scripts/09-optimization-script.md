@@ -106,9 +106,11 @@ uses repeated trials and a median.
 
 ## 25:00-28:00 — Show what lost
 
-List the measured results for unrolling, flattened reel storage, and forced inlining, then the
-one that came back neutral: skipping the positive-bound validation. The measured figures
-for all four are in `docs/articles/09-optimization.md`, in the section on what lost —
+List the measured results for the four that lost — separate unrolled methods per window
+height, one flattened drawing array with reel offsets, forced `AggressiveInlining`, and
+copying common fields into locals — then the one that came back neutral: removing the
+positive-bound validation. The measured figures for all five are in
+`docs/articles/09-optimization.md`, in the section on what lost —
 read them from there, since the working audit notes under `docs/_editing/` are gitignored
 and will not be in a fresh clone.
 

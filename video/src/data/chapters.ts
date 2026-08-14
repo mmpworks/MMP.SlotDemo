@@ -428,13 +428,15 @@ export const CHAPTERS: Chapter[] = [
         kind: 'code',
         heading: 'The batch publishes four numbers',
         source: 'CSharp/src/MMP.SlotGame.Core/Simulation/RunTotals.cs',
+        // Verbatim, parameter names included — only the signature's line break is
+        // ours, to fit the panel. A `kind: 'code'` slide shows real source.
         lines: [
-          'public void AddBatch(long spins, long wagered,',
-          '                     long returned, long hits)',
+          'public void AddBatch(long spins, long wageredMillicents,',
+          '                     long returnedMillicents, long hits)',
           '{',
           '    Interlocked.Add(ref _spins, spins);',
-          '    Interlocked.Add(ref _wageredMillicents, wagered);',
-          '    Interlocked.Add(ref _returnedMillicents, returned);',
+          '    Interlocked.Add(ref _wageredMillicents, wageredMillicents);',
+          '    Interlocked.Add(ref _returnedMillicents, returnedMillicents);',
           '    Interlocked.Add(ref _hits, hits);',
           '}',
         ],
@@ -539,7 +541,10 @@ export const CHAPTERS: Chapter[] = [
         stats: [
           { value: '10.26%', label: 'line hit frequency — line wins only' },
           { value: '11.45%', label: 'any-award union, counting bonus triggers' },
-          { value: '31', label: 'integer line-win combination counts matched' },
+          // 32, per docs/par-orca-dive.md ("all 32 integer combination counts
+          // reproduce exactly") and OrcaDiveParSheetTests.Published, which holds
+          // 32 entries. Article 07 says 31 and is the odd one out — reported.
+          { value: '32', label: 'integer line-win combination counts matched' },
         ],
         note: 'Over a 10,000,000-spin statistical suite. Article 7.',
       },

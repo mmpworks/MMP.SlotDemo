@@ -27,7 +27,8 @@ minutes total, and only to make an engine claim visible.
       beat
 - [ ] `CSharp/games/orca-dive.json` open in a background tab, scrolled to `reelStops`
 - [ ] Scratch file ready for the wrong-model snippet
-- [ ] Test runner loaded: `MultiRowWindowTests`, `PaylineGeometryFuzzTests`
+- [ ] Test runner loaded: `MultiRowWindowTests` (4- and 5-row theories),
+      `PaylineGeometryFuzzTests`
 - [ ] Clipboard manager staged with Block A, then Block B, then Block C
 - [ ] Whiteboard or Excalidraw with a 10–12 symbol strip pre-drawn (the full 22 is too
       slow to draw on camera)
@@ -440,7 +441,8 @@ Slow down here.
 
 ### Beat 9 — `DrawWindow`, the hot path
 
-The method that runs five times per spin, ten million spins per run.
+The method that runs once per spin, ten million spins per run, drawing one stop per
+reel and filling the whole window in that single call.
 
 - The caller owns the `Span<Symbol>`. The engine allocates one window buffer per worker
   and reuses it forever, so this method allocates nothing at all.
@@ -506,8 +508,10 @@ public sealed record Payline
 Hat, and zigzag recipes only for demo defaults. Then open `orca-dive.json` and show
 that its `paylines` arrays go straight through `GameDefinitionBuilder` into the same
 `Payline` record. Repeat the comparison with `StandardReelPresets.cs` and the JSON
-`reels` arrays. A custom PAR path and unequal strip lengths do not require evaluator
-changes.
+`reels` arrays. Unequal strip lengths do not require evaluator changes — that one is
+demonstrated by Orca Dive's own 26/29/26/29/26. Leave the custom line paths out of the
+claim here; the catalog and the JSON both produce the same `Payline` record, which is
+the point, and the shape comparison belongs to beat 12.
 
 ## 17:45–22:30 — Walk `Payline` and the default catalog
 
@@ -627,11 +631,14 @@ Two suites hold this episode's claims.
   the window height to prove the wrap is cyclic rather than clamped. **Why this shape:**
   the copy and the wrap are the two ways this type can silently be wrong, and neither
   one shows up in a normal run.
-- **`SyntheticGame_AnalyticNumbers_MatchTheHandDerivedValues`** runs across 3, 4, and 5
-  row windows against a fixture built so every probability is a hand-derivable rational
-  with a power-of-two denominator. **Why that fixture:** it makes the assertions hard
-  equalities rather than tolerance bands. "A test with a tolerance in it is a test that
-  can be tuned until it passes. This one cannot."
+- **`SyntheticGame_AnalyticNumbers_MatchTheHandDerivedValues`** runs across 4- and
+  5-row windows against a fixture built so every probability is a hand-derivable
+  rational with a power-of-two denominator. **Why that fixture:** every fraction in it
+  has a power-of-two denominator, so each expected value is exact in binary floating
+  point and the assertions compare to twelve decimal places rather than sitting inside
+  a convergence band. "Twelve decimals is not a band you can widen until a wrong number
+  fits. It is the float-comparison floor, on values that are exact." The three-row case
+  is covered by the preset fixtures in episode 8.
 - **`SyntheticGame_SimulatedRtp_ConvergesOnTheAnalyticValue`** takes the same fixture
   the other way round: run the simulator and check it lands on the number the analytic
   path computed. That is the two-implementation agreement from episode 1, at the scale

@@ -25,13 +25,15 @@ segment: the closing ten-million-spin run, and it runs on camera.
 - [ ] `ConcurrencyTests.cs`, `NoAmbientRngTests.cs`, `DomainDataImmutabilityTests.cs`,
       `GameConvergenceTests.cs` open in background tabs
 - [ ] Test runner loaded with the whole suite, run once so nothing pays a cold start
-- [ ] A terminal ready for the full suite run
+- [ ] A terminal ready for the full suite run, with `SLOTGAME_SLOW_TESTS=1` exported in
+      it — the two convergence tests this episode leads with are `[SlowFact]` and are
+      skipped without it, so an ungated run shows them as skips on camera
 - [ ] Clipboard manager staged with Block A
 
 **Companion site — the finale**
 - [ ] `E:\dev\MMP.SlotDemo`, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
-- [ ] `http://localhost:5090/#/ch08`, the enumeration lab run once
+- [ ] `http://localhost:5090/#/ch08`, Lab 1 — "The census" — run once
 - [ ] The finale run page loaded and a full ten-million-spin run completed once before
       recording, so the timing is known and the machine is warm
 - [ ] `logs/` cleared so the viewer starts empty
@@ -495,9 +497,12 @@ out of reels.
 
 - Symbols absent from a reel are skipped, so a game whose reels carry different symbol
   sets costs nothing for the ones it does not use.
-- The `Enumeration` class exists because the descent carries eight accumulators, and the
-  comment says so: a recursive signature would have to thread all eight through every
-  call. "A class chosen for readability, with the reasoning written down."
+- The `Enumeration` class exists because the descent carries state a recursive signature
+  would have to thread through every call: five running totals — `_hits`, `_payUnits`,
+  `_paySquareUnits`, `_payTriggerUnits`, `_triggerWeight` — plus a `_counts` dictionary
+  keyed by category and run length. Point at the fields rather than quoting a number;
+  the comment explains the choice without counting them. "A class chosen for
+  readability."
 
 ### Beat 12 — two guards, both loud
 
@@ -509,12 +514,16 @@ out of reels.
 - **The class comment calls the first one a known limit.** "A limitation in a doc comment
   is a design decision. The same limitation discovered at runtime is a bug report."
 
-> **Illustration (40 seconds, BROWSER).** Chapter 8 page, enumeration lab. Run the
-> analyzer over the classic three-reel game and over Orca Dive, side by side, with the
-> combination counts shown. Point at the enumerated tuple count against the raw stop
-> count for Orca Dive: tens of thousands against fourteen million, and the RTP figures
-> match the published sheet. "Same answer, three orders of magnitude less work, and the
-> reason is one sentence about paylines." Cut back.
+> **Illustration (40 seconds, BROWSER).** Chapter 8 page, Lab 1 — "The census." Run the
+> analyzer over the classic three-reel game and over Orca Dive. Read the two figures the
+> response actually carries: `stopCombinations` — 14,781,416 for Orca Dive — and the
+> per-category combination counts beside it, which are the winning outcomes the walk
+> found. Then read the RTP figures against the published sheet. "Same answer as the
+> sheet, off a walk that never visited fourteen million stops, and the reason is one
+> sentence about paylines." Cut back.
+>
+> The lab reports `stopCombinations` and per-category counts; there is no single
+> "enumerated tuple" total in the response, so do not go looking for one on camera.
 
 ## 17:30–21:00 — The rest of the proof
 
@@ -541,8 +550,8 @@ it is shaped the way it is.
   repo. It asserts a property that looks like a defect,
   because the whole determinism design depends on it. "Somebody will try to make this
   readonly to be tidy. This is what stops them, with a name that explains why."
-- **`DomainDataImmutabilityTests`** — three tests, one per shared type, each asserting the
-  constructor copied the caller's data. Beat 6 of episode 3 and beat 4 of episode 4,
+- **`DomainDataImmutabilityTests`** — nine tests across the shared types, each asserting
+  the constructor copied the caller's data. Beat 6 of episode 3 and beat 4 of episode 4,
   collected. **Why they live together:** the rule is one rule, so the failures should read
   as one class.
 - **`StatisticalConvergenceTests.Coverage_32Seeds_3MSpins_LandInThe99PercentBand`** — the
@@ -560,7 +569,11 @@ it is shaped the way it is.
 
 **Scene:** TERMINAL.
 
-- Run the full suite. Let it run. Green.
+- Run the full suite with the slow tier enabled:
+  `SLOTGAME_SLOW_TESTS=1 dotnet test`. Let it run. Green.
+- Say why the variable is there: the convergence and stress classes are gated by cost,
+  never by confidence. "The gate is opt-in so the fast loop stays fast. It is not a
+  quarantine — nothing in there is allowed to be flaky."
 - "Every claim made across eight episodes has a test in that output. The invariants from
   episode 2, the geometry from episode 3, the closed forms from episode 4, the
   weighted enumeration from episode 5, determinism from episode 6, the validation boundary
@@ -629,6 +642,6 @@ it is shaped the way it is.
   rather than hand-fixing: the file has to match the repo.
 - Warm the finale page before recording. A cold first run on camera is the one demo
   failure this series cannot absorb, because it is the last thing viewers see.
-- Running long? Compress beat 11 and beat 12 into one minute and drop the enumeration lab
+- Running long? Compress beat 11 and beat 12 into one minute and drop the census lab
   illustration. Keep beat 1 (independence), beat 3 (no probabilities), beat 5 (per-window),
   the chi-square honesty beat, and the entire finale.

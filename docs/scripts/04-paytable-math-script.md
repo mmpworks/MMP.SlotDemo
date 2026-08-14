@@ -79,8 +79,9 @@ minutes total, and only to make an engine claim visible.
 4. **Sum it up.** Expected value is the sum over symbols, run lengths, and lines of the
    pay times its probability. Cost is on the order of reels times symbols per line.
    Microseconds.
-5. **Land the scale.** "The five-reel stop space here is about 11.5 billion combinations.
-   We just declined to visit them and got the exact answer anyway."
+5. **Land the scale.** "The largest stock preset is five reels of 128 stops — 128 to the
+   fifth, about 34.4 billion combinations. We just declined to visit them and got the
+   exact answer anyway."
 6. **Then the consequence:** the analytic result returns synchronously on
    every configuration change, so the chart knows its target before spin one.
 
@@ -88,7 +89,7 @@ minutes total, and only to make an engine claim visible.
 
 **Scene:** RIDER.
 
-- New directory `Paytables`, new file. **Path on screen and said out loud:**
+- New file in the existing `Paytables` directory. **Path on screen and said out loud:**
   `CSharp/src/MMP.SlotGame.Core/Paytables/Paytable.cs`
 - Paste **Block A**. "Two records and a generator. The comments outweigh the code."
 
@@ -212,7 +213,7 @@ public sealed record ScaledPaytable
 ### Beat 3 — `MinimumWinningRun`, and a constant that names its own coupling
 
 The longest comment in the file sits on a `const int` equal to 3. Read it aloud, then
-say why it runs thirteen lines.
+say why it runs eleven lines.
 
 - The paytable generator and the line evaluator both need the same idea of the shortest
   paying run. Lower one and not the other and you get one of two silent failures: pay
@@ -255,7 +256,7 @@ evaluator both read *this instance*.
 **Scene:** RIDER.
 
 - New file. **Path on screen:** `CSharp/src/MMP.SlotGame.Core/Paytables/PaytableSolver.cs`
-- Paste **Block B**. "Thirty-nine lines, half of them comment, and one line carries the
+- Paste **Block B**. "Thirty-eight lines, half of them comment, and one line carries the
   idea."
 
 ### Block B — `CSharp/src/MMP.SlotGame.Core/Paytables/PaytableSolver.cs`
@@ -406,15 +407,18 @@ one the 99% cap is checked against.
 
 **Scene:** RIDER.
 
-- New directory `Rtp`, new file. **Path on screen:**
+- New file in the existing `Rtp` directory. **Path on screen:**
   `CSharp/src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`
 - Paste **Block C**. It is the longest file in the series so far. "We walk four methods
   and read past the rest."
 
 ### Block C — `CSharp/src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`
 
-> **Recording note:** this is the full file, pasted verbatim from
-> `CSharp/src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`. Paste it whole on camera; the
+> **Recording note:** this is the full file as it stood at the initial system, before
+> the episode-9 branch — a pinned copy, not today's `AnalyticMath.cs`. Every difference
+> from HEAD is comment prose (the tenth-grade teaching rewrite); no executable line
+> differs, and beats 11, 14 and 15 read the pinned comments aloud. Paste it whole on
+> camera; the
 > walkthrough below covers `BaseEvMultiplier`, `ExactlyKLeading`,
 > `SigmaPerUnitWagered`, and `JointRowSymbolTables`, and reads past the two private
 > helpers between them.
@@ -846,3 +850,9 @@ wagered and the band works at any bet size.
 - Running long? Show only the Match/Match and Mismatch/Mismatch cases of the switch and
   say inclusion and exclusion covers the rest. Drop the feature-schedule flash. Keep beat
   5 (invariant R1), beat 8 (rounding), and the test section whole.
+- Strongest visuals in order: the exactly-k trailing factor on the whiteboard, Lab 1's
+  four readouts moving together as the target changes, and Lab 2's band ladder shrinking
+  a decimal place per factor of a hundred. The first is the hook.
+- Neither lab has a rounding-mode control or a covariance toggle, and neither runs a
+  simulation. Every claim about rounding bias or about the cost of ignoring covariance
+  is made on the whiteboard, off the derivation — do not go looking for a switch.
