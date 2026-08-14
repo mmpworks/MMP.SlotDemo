@@ -1,0 +1,29 @@
+{
+  "name": "slotdemo-video",
+  "version": "1.0.0",
+  "description": "Chapter slide decks, animations, and the series title sequence for Programming Gems / Slot Games",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "remotion studio",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "render:all": "node render-all.mjs",
+    "render:titles": "node render-all.mjs --only=titles",
+    "render:decks": "node render-all.mjs --only=decks"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.509",
+    "@remotion/cli": "4.0.509",
+    "@remotion/google-fonts": "4.0.509",
+    "@remotion/renderer": "4.0.509",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.509"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7",
+    "@types/web": "0.0.166",
+    "typescript": "5.9.3"
+  }
+}

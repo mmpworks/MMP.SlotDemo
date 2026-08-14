@@ -385,14 +385,20 @@ Here that hazard is turned into discipline.
   a test assert an exact total three years from now.
 
 > **Illustration (50 seconds, BROWSER).** RNG lab, the strongest visual in the
-> episode. Click **seed + workerId**: workers 0 and 1 share **51 leading bits** of
-> their first draw and every reduced stop comes out 0. "Fifty-one shared bits means
-> those two workers are walking nearly the same stream." Click **SplitMix64**: shared
-> prefix drops to 0 and the stops spread. Point at the replay row: same seed, same
-> worker, same first value. Cut back.
+> episode. Click **seed + workerId**: workers 0 and 1 share **50 leading bits** of
+> their first draw, and their first three reduced stops are identical. At the lab's
+> defaults — seed 20260810, bound 26, six draws — worker 0 reads `0, 0, 0, 1, 1, 17`
+> and worker 1 reads `0, 0, 0, 0, 0, 17`. "Fifty shared bits means those two workers
+> are walking nearly the same stream, and the first three stops they draw are the same
+> stops." Click **SplitMix64**: shared prefix drops to 0 and the stops spread. Point at
+> the replay row: same seed, same worker, same first value. Cut back.
+>
+> Say "the first three," never "every one." The two rows visibly separate at the fourth
+> draw, and they happen to land on 17 together at the sixth — so an "every stop"
+> claim is contradicted on screen while you are making it.
 
 > **Asset (OVERLAY):** `slotdemo-series/episodes/ep02/ep02-2.4-correlated-seeds-1080p.mp4`
-> — cut to it full frame on "fifty-one shared bits" and let it play through the lit
+> — cut to it full frame on "fifty shared bits" and let it play through the lit
 > prefix and the SplitMix64 pass; it holds its last frame, so talk over the hold rather
 > than racing it. Back to the lab for the replay row.
 
@@ -480,7 +486,7 @@ Give this section real time.
 
 - Engine-to-browser budget: roughly 22 minutes in Rider and the test runner, under
   three in the browser. If a take runs long, the browser time goes first.
-- Strongest visuals in order: the red squiggle on `total * 0.98`, the 51-shared-bits
+- Strongest visuals in order: the red squiggle on `total * 0.98`, the 50-shared-bits
   correlation, the modulo histogram's step. Hold on each for a beat.
 - Zoom hotkey belongs on: the compiler error, the exception message, the shared-prefix
   row, and the histogram step. Everything else reads at normal size.

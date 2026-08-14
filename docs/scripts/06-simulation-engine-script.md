@@ -534,18 +534,24 @@ Read the doc comment, then the closure.
   swap the draw and the features and every stream desynchronizes while nothing looks
   wrong.
 
-> **Illustration (45 seconds, BROWSER).** Chapter 6 page, engine lab. Run the same seed
-> at 1, 4, and 16 workers and put the three final snapshots side by side. The one-worker
-> and sixteen-worker totals differ, because the partition differs and each worker draws
-> its own stream. Then run each configuration twice: every configuration reproduces
-> itself exactly. "The contract is the pair, seed and worker count, and the lab shows
-> both halves." Cut back.
+> **Illustration (45 seconds, BROWSER).** Chapter 6 page, Lab 1 — "Same seed, same
+> answer." The lab runs one configuration at a time, so run them in sequence and read
+> each snapshot before changing the worker count: same seed at 1 worker, then at 4, then
+> at 16. Say the totals aloud as they land — the one-worker and sixteen-worker totals
+> differ, because the partition differs and each worker draws its own stream. Then
+> repeat one of them: it reproduces itself exactly. "The contract is the pair, seed and
+> worker count." Cut back.
+>
+> Nothing on the page puts three runs side by side; if you want them side by side in the
+> cut, that is an edit, not a lab feature.
 
 ## 20:30–21:15 — Prove it in the terminal
 
 **Scene:** TERMINAL, CPU meter visible.
 
-- Run ten million spins. Every core pegged, about a second.
+- Run ten million spins. Every core pegged, and it lands inside a second on the
+  recording machine. Time one take before you record and say the number you actually
+  see; the multicore median moved a long way in episode 9.
 - Run it again with the same seed and worker count, and diff the two totals. Identical,
   field for field.
 - Change the seed by one and run again. Different totals. "Determinism that ignores the
