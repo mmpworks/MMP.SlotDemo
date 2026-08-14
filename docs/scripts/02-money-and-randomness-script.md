@@ -386,14 +386,16 @@ Here that hazard is turned into discipline.
 
 > **Illustration (50 seconds, BROWSER).** RNG lab, the strongest visual in the
 > episode. Click **seed + workerId**: workers 0 and 1 share **50 leading bits** of
-> their first draw, and their first three reduced stops come out identical — worker 0
-> reads 0, 0, 0, 1, 1, 17. "Fifty shared bits means those two workers are walking
-> nearly the same stream, and the first stops they draw are the same stops." Click
-> **SplitMix64**: shared prefix drops to 0 and the stops spread. Point at the replay
-> row: same seed, same worker, same first value. Cut back.
+> their first draw, and their first three reduced stops are identical. At the lab's
+> defaults — seed 20260810, bound 26, six draws — worker 0 reads `0, 0, 0, 1, 1, 17`
+> and worker 1 reads `0, 0, 0, 0, 0, 17`. "Fifty shared bits means those two workers
+> are walking nearly the same stream, and the first three stops they draw are the same
+> stops." Click **SplitMix64**: shared prefix drops to 0 and the stops spread. Point at
+> the replay row: same seed, same worker, same first value. Cut back.
 >
-> Say "the first three" rather than "every one" — the divergence shows up by the fourth
-> draw, and claiming all six on camera is a claim the lab visibly contradicts.
+> Say "the first three," never "every one." The two rows visibly separate at the fourth
+> draw, and they happen to land on 17 together at the sixth — so an "every stop"
+> claim is contradicted on screen while you are making it.
 
 > **Asset (OVERLAY):** `slotdemo-series/episodes/ep02/ep02-2.4-correlated-seeds-1080p.mp4`
 > — cut to it full frame on "fifty shared bits" and let it play through the lit
