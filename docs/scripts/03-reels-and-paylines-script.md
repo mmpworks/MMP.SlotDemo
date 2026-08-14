@@ -633,12 +633,10 @@ Two suites hold this episode's claims.
   one shows up in a normal run.
 - **`SyntheticGame_AnalyticNumbers_MatchTheHandDerivedValues`** runs across 4- and
   5-row windows against a fixture built so every probability is a hand-derivable
-  rational with a power-of-two denominator. **Why that fixture:** every fraction in it
-  has a power-of-two denominator, so each expected value is exact in binary floating
-  point and the assertions compare to twelve decimal places rather than sitting inside
-  a convergence band. "Twelve decimals is not a band you can widen until a wrong number
-  fits. It is the float-comparison floor, on values that are exact." The three-row case
-  is covered by the preset fixtures in episode 8.
+  rational. **Why that fixture:** the expected values are worked out on paper, so the
+  assertions compare to twelve decimal places rather than sitting inside a convergence
+  band. "Twelve decimals is not a band you can widen until a wrong number fits." The
+  three-row case is covered by the preset fixtures in episode 8.
 - **`SyntheticGame_SimulatedRtp_ConvergesOnTheAnalyticValue`** takes the same fixture
   the other way round: run the simulator and check it lands on the number the analytic
   path computed. That is the two-implementation agreement from episode 1, at the scale
