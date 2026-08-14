@@ -103,8 +103,10 @@ public sealed class MultiRowWindowTests
         // Hand-derived exact rationals: P(AAA) = (4/stripLength)^3; a reel's scatter-trigger
         // probability is (2 Stars * rows) / stripLength, cubed for 3 required reels; the bonus
         // mean (6) and its RTP contribution follow from PickBonus's own closed form, unrelated
-        // to window height. All are exact in binary floating point (every fraction here has a
-        // power-of-two denominator), so these are hard equalities, not convergence bands.
+        // to window height. The expected values are hand-derived on paper, so the assertions
+        // compare to twelve decimal places rather than sitting inside a convergence band.
+        // (The 5-row case's rationals - 1/125, 1/25, 79/100 - are NOT exactly representable
+        // in binary, which is why these are 12-decimal comparisons and not hard equalities.)
         Assert.Equal(expectedHitFrequency, analysis.HitFrequency, 12);
         Assert.Equal(expectedLineRtp, analysis.LineRtp, 12);
         Assert.Equal(expectedTriggerProbability, analysis.TriggerProbability, 12);

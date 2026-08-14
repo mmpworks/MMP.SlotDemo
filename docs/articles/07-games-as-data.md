@@ -437,7 +437,7 @@ still simulate correctly; `GameAnalyzer` cannot check them yet.
 
 ## What the tests show
 
-The deterministic analytic tests reproduce the deconstruction's 31 integer
+The deterministic analytic tests reproduce the deconstruction's 32 integer
 line-win combination counts and its reported return components. Separately, the
 statistical suite runs ten million spins and checks measured line return, bonus
 return, **line** hit frequency (10.26% for Orca Dive — line wins only, rather than the
