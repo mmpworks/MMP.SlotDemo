@@ -1,9 +1,15 @@
 /**
  * Design tokens for every composition in this project.
  *
- * Colors mirror `CSharp/web/src/tokens.css` — the companion site's token file,
- * which is the source of truth. A color that is not in that file does not
- * belong here, so the video and the site cannot drift apart.
+ * Colors mirror `CSharp/web/src/tokens.css` — the companion site's token file
+ * — with two exceptions, marked VIDEO-ONLY below. Those two are shades this
+ * project needs and the site has no use for: an outer vignette stop darker
+ * than the page ground, and a facet shade for a dimmed glyph. They were added
+ * here rather than to the site file, because the site is not ours to widen.
+ *
+ * Everything else must exist in that file. Adding a third video-only color is
+ * a decision to make deliberately, not a habit — the whole point is that a
+ * viewer moving between the site and the video sees one house.
  *
  * Kept as a flat const object rather than CSS custom properties because
  * Remotion's interpolate() math reads numeric values directly.
@@ -13,12 +19,12 @@ export const colors = {
   surface: '#12151c', // deep-slate — panel background
   surfaceRaised: '#181c25', // raised-slate — emphasized panel
   surfaceDormant: '#0d0f13', // dormant-slate — receded panel
-  groundDeep: '#06080b', // deep-void — the vignette's outer stop, darker than ground
+  groundDeep: '#06080b', // VIDEO-ONLY. deep-void — vignette's outer stop, below the site's darkest ground
 
   brass: '#d1a355', // primary accent
   brassBright: '#f0c988', // bright brass — highlight/emphasis
   brassDim: '#7a6238', // dim brass — inactive rules, kickers
-  brassShadow: '#4d3f24', // shadowed brass — facet shading on a dimmed glyph
+  brassShadow: '#4d3f24', // VIDEO-ONLY. shadowed brass — facet shading on a dimmed glyph
 
   textPrimary: '#ece7dd', // parchment
   textSecondary: '#9a978f', // parchment-dim

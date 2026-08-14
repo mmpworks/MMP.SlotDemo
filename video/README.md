@@ -115,6 +115,15 @@ npm run typecheck
   footer, so `bodyHeight` is a constant; the code panel solves its type size
   against that height and its longest line. The shell clips as a backstop — a
   body that miscalculates gets cut off, never printed over the footer.
+- **The mechanism animations are set entirely in mono.** Every label, figure,
+  and node caption in `src/anim/` uses `fonts.mono`, including prose that would
+  take the serif anywhere else in the deck. This is deliberate and signed off:
+  the animations are diagrams of machinery, the register says so at a glance,
+  and it keeps a number and the sentence about it on the same footing. Slides
+  keep the display/serif/mono split; the animations do not.
+- **Exponents in mono are written `10^18`, not `10¹⁸`.** Unicode superscripts
+  occupy full-width cells in JetBrains Mono and read with gaps at stat size.
+  Superscripts are fine in `points` prose, which is set in the serif.
 
 ## Visual register
 

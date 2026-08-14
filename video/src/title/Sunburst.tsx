@@ -28,7 +28,15 @@ export const Sunburst: React.FC<{ reveal: number; spin: number; opacity?: number
         style={{ transform: `rotate(${spin}deg)` }}
       >
         <defs>
-          <radialGradient id="rayFade" cx="50%" cy="50%" r="50%">
+          {/*
+            `gradientUnits="userSpaceOnUse"` is load-bearing. The default,
+            objectBoundingBox, maps the gradient to EACH path's own bounding
+            box — so all 24 wedges got their own private bullseye, each with a
+            transparent center, and the fan read as a ring of dark clots. In
+            user space the wedges all sample one gradient centered on the burst
+            origin, which is the shape this is meant to be.
+          */}
+          <radialGradient id="rayFade" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="100">
             <stop offset="0%" stopColor={colors.brass} stopOpacity="0" />
             <stop offset="14%" stopColor={colors.brass} stopOpacity="0.30" />
             <stop offset="46%" stopColor={colors.brass} stopOpacity="0.14" />

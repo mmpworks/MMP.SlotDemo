@@ -382,7 +382,7 @@ export const CHAPTERS: Chapter[] = [
         kind: 'stat',
         heading: 'Guarding the work',
         stats: [
-          { value: '8⁵ = 32,768', label: 'branches for 8 symbols on 5 reels' },
+          { value: '8^5 = 32,768', label: 'branches for 8 symbols on 5 reels' },
           { value: '200,000,000', label: 'branch ceiling the analyzer refuses to pass' },
         ],
         note: 'Repeated physical stops add weight, never branches. Article 5.',
@@ -571,7 +571,7 @@ export const CHAPTERS: Chapter[] = [
         kind: 'stat',
         heading: 'The anchor: enumerate everything',
         stats: [
-          { value: '22³ = 10,648', label: 'equally likely Classic3 outcomes' },
+          { value: '22^3 = 10,648', label: 'equally likely Classic3 outcomes' },
         ],
         note: 'The test writes its own window builder and its own evaluation loop. That duplication is what gives the comparison its value. Total pay / total wager is the RTP, not an estimate of it. Article 8.',
       },
@@ -579,8 +579,8 @@ export const CHAPTERS: Chapter[] = [
         kind: 'stat',
         heading: 'Overflow headroom, itemized',
         stats: [
-          { value: '9.22 × 10¹⁸', label: 'signed 64-bit ceiling' },
-          { value: '1.0 × 10¹²', label: 'millicents wagered in a 10M-spin soak' },
+          { value: '9.22 × 10^18', label: 'signed 64-bit ceiling' },
+          { value: '1.0 × 10^12', label: 'millicents wagered in a 10M-spin soak' },
           { value: '~107 trillion', label: 'spins to reach the ceiling at 86.1% return' },
         ],
         note: 'Article 8.',
@@ -597,7 +597,9 @@ export const CHAPTERS: Chapter[] = [
       },
       {
         kind: 'code',
-        heading: 'Determinism you can assert with ==',
+        // Kept under the one-line budget for the heading zone; the longer
+        // phrasing wrapped and stranded "==" alone on the second line.
+        heading: 'Determinism asserted with ==',
         source: 'CSharp/tests/MMP.SlotGame.Tests/ConcurrencyTests.cs',
         lines: [
           '[Theory]',
