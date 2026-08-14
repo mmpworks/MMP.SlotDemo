@@ -546,7 +546,9 @@ export const CHAPTERS: Chapter[] = [
           // 32 entries. Article 07 says 31 and is the odd one out — reported.
           { value: '32', label: 'integer line-win combination counts matched' },
         ],
-        note: 'Over a 10,000,000-spin statistical suite. Article 7.',
+        // Hit frequencies are article 7's; the count of 32 is the PAR document's
+        // and the test fixture's, because article 7 says 31 there and is wrong.
+        note: 'Hit frequencies over a 10,000,000-spin statistical suite (article 7). Combination counts per docs/par-orca-dive.md.',
       },
     ],
   },

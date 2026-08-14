@@ -78,6 +78,7 @@ export const StatBody: React.FC<{ stats: Stat[]; note?: string }> = ({ stats, no
         justifyContent: 'center',
         gap: Math.round(width * 0.035),
         width: '100%',
+        height: '100%',
       }}
     >
       <div
@@ -87,6 +88,11 @@ export const StatBody: React.FC<{ stats: Stat[]; note?: string }> = ({ stats, no
           gap: Math.round(width * 0.045),
           rowGap: Math.round(width * 0.03),
           alignItems: 'flex-end',
+          // Takes the room the note does not; `minHeight: 0` lets it give room
+          // back rather than pushing the note past the bottom of the body.
+          flex: 1,
+          minHeight: 0,
+          alignContent: 'center',
         }}
       >
         {stats.map((stat, i) => {
@@ -129,7 +135,17 @@ export const StatBody: React.FC<{ stats: Stat[]; note?: string }> = ({ stats, no
       </div>
 
       {note ? (
-        <div style={{ opacity: notep, maxWidth: Math.round(width * 0.72) }}>
+        // Fixed two-line reserve. A note that runs longer is a copy problem to
+        // fix in the data, not a slide that quietly grows into the footer.
+        <div
+          style={{
+            opacity: notep,
+            maxWidth: Math.round(width * 0.86),
+            flexShrink: 0,
+            height: Math.ceil(Math.round(width * 0.0155) * 1.42 * 2),
+            overflow: 'hidden',
+          }}
+        >
           <Body size={Math.round(width * 0.0155)} color={colors.textMuted}>
             {note}
           </Body>
