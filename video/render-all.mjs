@@ -11,7 +11,7 @@
  * reused across every composition, so a full run pays the bundler cost once.
  */
 import { bundle } from '@remotion/bundler';
-import { renderMedia, selectComposition } from '@remotion/renderer';
+import { getCompositions, renderMedia, selectComposition } from '@remotion/renderer';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,31 +19,24 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(ROOT, 'out');
 
-const CHAPTER_IDS = ['01', '02', '03', '04', '05', '06', '07', '08', '09'];
-
-const GROUPS = {
-  titles: [
-    { id: 'series-opener', out: 'titles/series-opener.mp4' },
-    ...CHAPTER_IDS.map((c) => ({
-      id: `chapter-card-${c}`,
-      out: `titles/chapter-card-${c}.mp4`,
-    })),
-  ],
-  decks: CHAPTER_IDS.map((c) => ({ id: `deck-${c}`, out: `decks/deck-${c}.mp4` })),
-  mechanisms: CHAPTER_IDS.map((c) => ({
-    id: `mechanism-${c}`,
-    out: `mechanisms/mechanism-${c}.mp4`,
-  })),
-};
+/**
+ * Which output folder a composition belongs in, by its id prefix. Nothing here
+ * knows how many chapters exist — the compositions come from the bundle, which
+ * builds them from `src/data/chapters.ts`. A tenth chapter is a tenth row in
+ * that file and nothing in this script changes.
+ */
+const GROUP_OF = [
+  { group: 'titles', match: (id) => id === 'series-opener' || id.startsWith('chapter-card-') },
+  { group: 'decks', match: (id) => id.startsWith('deck-') },
+  { group: 'mechanisms', match: (id) => id.startsWith('mechanism-') },
+];
 
 const only = process.argv.find((a) => a.startsWith('--only='))?.slice('--only='.length);
-const groups = only ? [only] : Object.keys(GROUPS);
+const groupNames = GROUP_OF.map((g) => g.group);
 
-for (const group of groups) {
-  if (!GROUPS[group]) {
-    console.error(`Unknown group "${group}". Expected one of: ${Object.keys(GROUPS).join(', ')}`);
-    process.exit(1);
-  }
+if (only && !groupNames.includes(only)) {
+  console.error(`Unknown group "${only}". Expected one of: ${groupNames.join(', ')}`);
+  process.exit(1);
 }
 
 console.log('Bundling…');
@@ -52,7 +45,20 @@ const serveUrl = await bundle({
   onProgress: () => undefined,
 });
 
-const targets = groups.flatMap((g) => GROUPS[g]);
+const targets = (await getCompositions(serveUrl))
+  .map(({ id }) => {
+    const entry = GROUP_OF.find((g) => g.match(id));
+    return entry ? { id, group: entry.group, out: `${entry.group}/${id}.mp4` } : null;
+  })
+  .filter((t) => t !== null)
+  .filter((t) => !only || t.group === only)
+  .sort((a, b) => a.out.localeCompare(b.out));
+
+if (targets.length === 0) {
+  console.error('No compositions matched. Has a composition id prefix changed?');
+  process.exit(1);
+}
+
 let done = 0;
 
 for (const target of targets) {
@@ -67,7 +73,9 @@ for (const target of targets) {
     serveUrl,
     codec: 'h264',
     crf: 16,
-    imageFormat: 'jpeg',
+    // PNG, not JPEG. The opener's sunburst is low-opacity brass over
+    // near-black; JPEG's chroma subsampling bands it into visible rings.
+    imageFormat: 'png',
     // Every composition is silent by convention — these cut under live
     // narration. Dropping the track keeps the file's duration exactly the
     // composition's, rather than the silent track's slightly longer one.

@@ -6,7 +6,9 @@
  */
 import { Config } from '@remotion/cli/config';
 
-Config.setVideoImageFormat('jpeg');
+// PNG, not JPEG — see the note in render-all.mjs. Near-black gradients band
+// badly under chroma subsampling, and this project is almost entirely those.
+Config.setVideoImageFormat('png');
 Config.setOverwriteOutput(true);
 Config.setCodec('h264');
 Config.setCrf(16);

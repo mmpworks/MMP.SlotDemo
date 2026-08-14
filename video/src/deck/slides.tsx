@@ -3,6 +3,8 @@ import { interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 import { colors, tracking } from '../tokens';
 import { fonts } from '../tokens/fonts';
 import { progressAt } from '../components/motion';
+import { fitMonoBlock } from '../components/fitText';
+import { slideMetrics } from './metrics';
 import { Body, Display, Kicker } from '../components/Type';
 import type { Chapter, Slide, Stat } from '../data/chapters';
 import { ChapterAnimation } from '../anim';
@@ -137,26 +139,52 @@ export const StatBody: React.FC<{ stats: Stat[]; note?: string }> = ({ stats, no
   );
 };
 
+/** Vertical rhythm inside the code panel. */
+const CODE_LINE_HEIGHT = 1.55;
+
 export const CodeBody: React.FC<{ lines: string[]; source: string; caption?: string }> = ({
   lines,
   source,
   caption,
 }) => {
   const frame = useCurrentFrame();
-  const { width } = useVideoConfig();
+  const { width, height } = useVideoConfig();
   const panel = progressAt(frame, 12, 18, 'out');
 
+  const m = slideMetrics(width, height);
+  const gap = Math.round(width * 0.014);
+  const panelPadY = Math.round(width * 0.018);
+  const panelPadX = Math.round(width * 0.022);
+
+  // The source line and, when present, the caption sit under the panel and
+  // take their room first. Whatever is left is what the code has to fit in.
+  const sourceSize = Math.round(width * 0.0115);
+  const captionSize = Math.round(width * 0.0155);
+  const attributionHeight =
+    Math.ceil(sourceSize * 1.5) + (caption ? Math.ceil(captionSize * 1.42) + 6 : 0);
+
+  const panelHeight = m.bodyHeight - attributionHeight - gap;
+  const codeSize = fitMonoBlock(
+    lines,
+    { width: m.bodyWidth - panelPadX * 2, height: panelHeight - panelPadY * 2 },
+    CODE_LINE_HEIGHT,
+    { min: 15, max: Math.round(width * 0.0175) },
+  );
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: Math.round(width * 0.014) }}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap }}>
       <div
         style={{
           opacity: panel,
           transform: `translateY(${interpolate(panel, [0, 1], [16, 0])}px)`,
           backgroundColor: colors.surface,
           border: `1px solid ${colors.brassDim}`,
-          padding: `${Math.round(width * 0.018)}px ${Math.round(width * 0.022)}px`,
-          flex: 1,
-          minHeight: 0,
+          padding: `${panelPadY}px ${panelPadX}px`,
+          height: panelHeight,
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
         }}
       >
         {lines.map((line, i) => {
@@ -166,8 +194,8 @@ export const CodeBody: React.FC<{ lines: string[]; source: string; caption?: str
               key={`${i}-${line}`}
               style={{
                 fontFamily: fonts.mono,
-                fontSize: Math.round(width * 0.0175),
-                lineHeight: 1.55,
+                fontSize: codeSize,
+                lineHeight: CODE_LINE_HEIGHT,
                 color: colors.textPrimary,
                 opacity: p,
                 whiteSpace: 'pre',
@@ -179,12 +207,13 @@ export const CodeBody: React.FC<{ lines: string[]; source: string; caption?: str
         })}
       </div>
 
-      <div style={{ opacity: panel }}>
+      <div style={{ opacity: panel, height: attributionHeight, flexShrink: 0 }}>
         {/* A file path keeps its own casing — it is a path, not a label. */}
         <div
           style={{
             fontFamily: fonts.mono,
-            fontSize: Math.round(width * 0.0115),
+            fontSize: sourceSize,
+            lineHeight: 1.5,
             letterSpacing: tracking.smallCaps,
             color: colors.textMuted,
           }}
@@ -192,7 +221,7 @@ export const CodeBody: React.FC<{ lines: string[]; source: string; caption?: str
           {source}
         </div>
         {caption ? (
-          <Body size={Math.round(width * 0.0155)} color={colors.textSecondary} style={{ marginTop: 6 }}>
+          <Body size={captionSize} color={colors.textSecondary} style={{ marginTop: 6 }}>
             {caption}
           </Body>
         ) : null}

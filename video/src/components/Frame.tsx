@@ -1,6 +1,7 @@
 import React from 'react';
 import { AbsoluteFill } from 'remotion';
 import { colors } from '../tokens';
+import { WaitForFonts } from './WaitForFonts';
 
 /**
  * The deco frame every slide and card sits inside: near-black ground, a thin
@@ -33,7 +34,9 @@ export const Frame: React.FC<{
       {CORNERS.map(([x, y, sx, sy]) => (
         <Corner key={`${x}-${y}`} x={x} y={y} scaleX={sx} scaleY={sy} opacity={reveal} />
       ))}
-      {children}
+      {/* Every composition sits inside a Frame, so the font gate lives here
+          rather than as a rule each composition has to remember. */}
+      <WaitForFonts>{children}</WaitForFonts>
     </AbsoluteFill>
   );
 };
@@ -76,7 +79,7 @@ const Corner: React.FC<{
 const Vignette: React.FC = () => (
   <AbsoluteFill
     style={{
-      background: `radial-gradient(ellipse at 50% 45%, ${colors.surface} 0%, ${colors.ground} 62%, #06080b 100%)`,
+      background: `radial-gradient(ellipse at 50% 45%, ${colors.surface} 0%, ${colors.ground} 62%, ${colors.groundDeep} 100%)`,
     }}
   />
 );

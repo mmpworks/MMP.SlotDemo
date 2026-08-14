@@ -2,11 +2,15 @@
  * Type stacks.
  *
  * The artistic-direction anchor names Futura, which is a licensed commercial
- * face and is not redistributable inside this repo. Jost is the OFL equivalent
- * the channel token doc keeps in the stack as the fallback, and it is what
- * renders here so a clean checkout produces the same frames on any machine.
- * A machine with a licensed Futura installed gets Futura, because it sits
- * ahead of Jost in the stack.
+ * face and is not redistributable inside this repository. Jost is the OFL
+ * equivalent the channel token doc keeps in the stack as the fallback, and it
+ * is what renders here.
+ *
+ * Futura is deliberately NOT in the stack. It used to sit ahead of Jost, which
+ * meant a machine with Futura installed rendered different frames from a clean
+ * CI box — and worse, `components/fitText.ts` solves display sizes against
+ * Jost's metrics, so the Futura frames were being laid out to the wrong
+ * numbers. One face, one set of metrics, identical output everywhere.
  */
 import { loadFont as loadJost } from '@remotion/google-fonts/Jost';
 import { loadFont as loadJetBrainsMono } from '@remotion/google-fonts/JetBrainsMono';
@@ -21,14 +25,17 @@ const sourceSerif = loadSourceSerif('normal', { weights: ['400'], subsets: ['lat
 
 export const fonts = {
   /** Wordmark lockup, titles, slide headings. */
-  display: `"Futura Std ExtraBold", Futura, ${jost.fontFamily}, Avenir, "Century Gothic", sans-serif`,
+  display: `${jost.fontFamily}, Avenir, "Century Gothic", sans-serif`,
   /** Body prose on a slide. The workhorse serif. */
   body: `${sourceSerif.fontFamily}, Georgia, "Times New Roman", serif`,
   /** Numbers, code, RTP percentages, benchmark figures. */
   mono: `${jetBrains.fontFamily}, ui-monospace, "Cascadia Code", Consolas, monospace`,
 } as const;
 
-/** Await this before a composition measures or paints text. */
+/**
+ * Every family this project paints with, ready to await.
+ * `WaitForFonts` consumes it; nothing else should need to.
+ */
 export const fontsReady = Promise.all([
   jost.waitUntilDone(),
   jetBrains.waitUntilDone(),

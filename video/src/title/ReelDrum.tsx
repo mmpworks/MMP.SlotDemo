@@ -62,27 +62,61 @@ export const ReelDrum: React.FC<{
         overflow: 'hidden',
         backgroundColor: colors.surfaceDormant,
         border: `1px solid ${colors.brassDim}`,
-        boxShadow: `inset 0 ${Math.round(height * 0.3)}px ${Math.round(height * 0.26)}px -${Math.round(height * 0.18)}px #000, inset 0 -${Math.round(height * 0.3)}px ${Math.round(height * 0.26)}px -${Math.round(height * 0.18)}px #000`,
+        // The drum's curvature, as an inset shadow top and bottom. Shaded to
+        // groundDeep rather than pure black — the palette has no pure black.
+        boxShadow: `inset 0 ${Math.round(height * 0.3)}px ${Math.round(height * 0.26)}px -${Math.round(height * 0.18)}px ${colors.groundDeep}, inset 0 -${Math.round(height * 0.3)}px ${Math.round(height * 0.26)}px -${Math.round(height * 0.18)}px ${colors.groundDeep}`,
       }}
     >
+      {/* The payline band sits BEHIND the glyphs and lights the landed cell,
+          so the row the drums stopped on is the brightest thing in the frame
+          rather than a hairline over it. */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: `calc(50% - ${CELL / 2}px)`,
+          height: CELL,
+          background: `linear-gradient(180deg, transparent 0%, ${colors.brassDim} 18%, ${colors.brass} 50%, ${colors.brassDim} 82%, transparent 100%)`,
+          opacity: settle * 0.22,
+          transform: `scaleX(${interpolate(settle, [0, 1], [0.3, 1])})`,
+        }}
+      />
+
       <div style={{ position: 'absolute', left: 0, right: 0, top: offset }}>
-        {cells.map((name, i) => (
-          <div
-            key={`${name}-${i}`}
-            style={{
-              height: CELL,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              filter: blur > 0.4 ? `blur(${blur}px)` : undefined,
-            }}
-          >
-            <Glyph name={name} size={CELL * 0.62} />
-          </div>
-        ))}
+        {cells.map((name, i) => {
+          // Distance of this cell's center from the payline, in cells. The
+          // neighbor rows recede so the landed row owns the frame; while the
+          // drum is still turning nothing is dimmed, because there is no
+          // landed row yet.
+          const centerY = offset + i * CELL + CELL / 2;
+          const distance = Math.abs(centerY - height / 2) / CELL;
+          const recede = settle * Math.min(1, distance);
+
+          return (
+            <div
+              key={`${name}-${i}`}
+              style={{
+                height: CELL,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: interpolate(recede, [0, 1], [1, 0.28]),
+                filter:
+                  blur > 0.4
+                    ? `blur(${blur}px)`
+                    : recede > 0.05
+                      ? `blur(${(recede * 2.2).toFixed(2)}px) brightness(${interpolate(recede, [0, 1], [1, 0.6]).toFixed(2)})`
+                      : undefined,
+              }}
+            >
+              <Glyph name={name} size={CELL * (0.62 + settle * (1 - Math.min(1, distance)) * 0.14)} />
+            </div>
+          );
+        })}
       </div>
 
-      {/* The payline bar strikes across the landed cell as the drum settles. */}
+      {/* The payline rule itself, struck across the lit band. */}
       <div
         style={{
           position: 'absolute',
@@ -91,7 +125,7 @@ export const ReelDrum: React.FC<{
           top: '50%',
           height: 2,
           backgroundColor: colors.brassBright,
-          opacity: settle * 0.55,
+          opacity: settle * 0.5,
           transform: `scaleX(${interpolate(settle, [0, 1], [0.2, 1])})`,
         }}
       />

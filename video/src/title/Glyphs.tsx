@@ -21,7 +21,7 @@ export const Glyph: React.FC<{ name: GlyphName; size: number; dim?: boolean }> =
   dim = false,
 }) => {
   const fill = dim ? colors.brassDim : colors.brass;
-  const facet = dim ? '#4d3f24' : colors.brassBright;
+  const facet = dim ? colors.brassShadow : colors.brassBright;
 
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: 'block' }}>
@@ -31,12 +31,26 @@ export const Glyph: React.FC<{ name: GlyphName; size: number; dim?: boolean }> =
 };
 
 const SHAPES: Record<GlyphName, (fill: string, facet: string) => React.ReactNode> = {
+  /**
+   * The gem is what the opener lands on, so it has to hold the frame against
+   * a row of heavy bold sevens sitting right below the payline. It is drawn
+   * as a wide brilliant cut — full-bleed table, filled crown facets, a bright
+   * pavilion highlight — rather than a narrow outlined diamond, which read as
+   * the weakest mark in the row.
+   */
   gem: (fill, facet) => (
     <g>
-      <polygon points="50,12 82,38 50,88 18,38" fill={fill} />
-      <polygon points="50,12 82,38 50,38" fill={facet} />
-      <polygon points="18,38 82,38 50,88" fill={fill} opacity={0.72} />
-      <line x1="18" y1="38" x2="82" y2="38" stroke={facet} strokeWidth="2" />
+      {/* Pavilion — the body of the stone. */}
+      <polygon points="6,36 94,36 50,96 6,36" fill={fill} />
+      {/* Crown — table plus the two shoulder facets. */}
+      <polygon points="6,36 24,10 76,10 94,36" fill={facet} />
+      <polygon points="24,10 76,10 68,36 32,36" fill={fill} />
+      {/* Pavilion facet breaks, bright, to catch the eye at the payline. */}
+      <polygon points="6,36 32,36 50,96" fill={facet} opacity={0.55} />
+      <polygon points="68,36 94,36 50,96" fill={facet} opacity={0.35} />
+      <line x1="6" y1="36" x2="94" y2="36" stroke={facet} strokeWidth="2.5" />
+      <line x1="32" y1="36" x2="50" y2="96" stroke={facet} strokeWidth="1.5" opacity={0.8} />
+      <line x1="68" y1="36" x2="50" y2="96" stroke={facet} strokeWidth="1.5" opacity={0.8} />
     </g>
   ),
   seven: (fill, facet) => (

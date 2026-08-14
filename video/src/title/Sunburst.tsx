@@ -35,6 +35,7 @@ export const Sunburst: React.FC<{ reveal: number; spin: number; opacity?: number
             <stop offset="100%" stopColor={colors.brass} stopOpacity="0" />
           </radialGradient>
           <mask id="rayReach">
+            {/* Mask channel, not a color — white means "show this much". */}
             <circle cx="0" cy="0" r={100 * reveal} fill="#fff" />
           </mask>
         </defs>

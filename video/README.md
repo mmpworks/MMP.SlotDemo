@@ -95,7 +95,8 @@ npm run typecheck
 | `src/deck/` | The deck shell, the four slide kinds, and the deck timing table. |
 | `src/anim/` | One mechanism animation per chapter, plus the SVG primitives they share. |
 | `src/components/` | Frame chrome, type roles, easing helpers, the display-size solver. |
-| `render-all.mjs` | The one-command render. Bundles once, renders every target. |
+| `src/deck/metrics.ts` | The slide's geometry, solved once. The shell paints to it; the code panel sizes itself against it. |
+| `render-all.mjs` | The one-command render. Bundles once, enumerates the compositions out of the bundle, renders every target. |
 
 ## Conventions this project holds to
 
@@ -107,7 +108,13 @@ npm run typecheck
   wrong and has to be corrected — there is no second place a number lives.
 - **Timing lives in a table**, not in the JSX.
 - **Data over duplication.** Nine chapters share one card component, one deck
-  component, and one shell. A tenth chapter is a tenth row.
+  component, and one shell, and `render-all.mjs` enumerates its targets out of
+  the bundle rather than holding a list. A tenth chapter is a tenth row in
+  `src/data/chapters.ts` and nothing else changes.
+- **A slide body never overflows.** `deck/metrics.ts` reserves the heading and
+  footer, so `bodyHeight` is a constant; the code panel solves its type size
+  against that height and its longest line. The shell clips as a backstop — a
+  body that miscalculates gets cut off, never printed over the footer.
 
 ## Visual register
 
@@ -118,6 +125,9 @@ letterspaced rather than condensed, restrained motion.
 
 Type: the anchor names **Futura**, which is licensed and cannot be
 redistributed in this repository. **Jost** is the OFL equivalent the channel
-token doc already keeps in the stack, and it is what renders here, so a clean
-checkout produces the same frames on any machine. A machine with a licensed
-Futura installed gets Futura — it sits ahead of Jost in the stack.
+token doc already keeps in the stack, and it is the only display face here.
+Futura is deliberately absent: with it ahead of Jost, a machine that happened
+to have Futura installed rendered different frames from a clean CI box, and
+the size solvers in `components/fitText.ts` are calibrated to Jost's metrics,
+so those frames were laid out to the wrong numbers. One face, one set of
+metrics, identical output everywhere.

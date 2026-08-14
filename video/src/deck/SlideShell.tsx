@@ -5,6 +5,7 @@ import { fonts } from '../tokens/fonts';
 import { Frame } from '../components/Frame';
 import { progressAt } from '../components/motion';
 import { Display, Kicker } from '../components/Type';
+import { slideMetrics } from './metrics';
 
 /**
  * The chrome every content slide sits in: the deco frame, a heading that
@@ -26,40 +27,53 @@ export const SlideShell: React.FC<{
   const rule = progressAt(frame, 2, 14, 'out');
   const head = progressAt(frame, 5, 16, 'out');
 
-  const marginX = Math.round(width * 0.085);
+  const m = slideMetrics(width, height);
 
   return (
     <Frame>
       <AbsoluteFill
         style={{
-          paddingLeft: marginX,
-          paddingRight: marginX,
-          paddingTop: Math.round(height * 0.11),
-          paddingBottom: Math.round(height * 0.1),
+          paddingLeft: m.padX,
+          paddingRight: m.padX,
+          paddingTop: m.padTop,
+          paddingBottom: m.padBottom,
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-        <div style={{ opacity: head }}>
+        {/* Fixed height, whether the heading runs to one line or two — the
+            body's room must not depend on how long a heading happens to be. */}
+        <div style={{ opacity: head, height: m.headingBlock, flexShrink: 0, overflow: 'hidden' }}>
           <div
             style={{
               width: Math.round(width * 0.13) * rule,
               height: 2,
               backgroundColor: colors.brass,
-              marginBottom: Math.round(height * 0.026),
+              marginBottom: m.ruleGap,
             }}
           />
-          <Display size={Math.round(width * 0.037)} style={{ textTransform: 'uppercase' }}>
+          <Display size={m.headingSize} style={{ textTransform: 'uppercase' }}>
             {heading}
           </Display>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', minHeight: 0, paddingTop: Math.round(height * 0.05) }}>
+        {/* Fixed height and clipped: a body that miscalculates is a body that
+            gets cut off, never one that prints over the footer. */}
+        <div
+          style={{
+            height: m.bodyHeight,
+            flexShrink: 0,
+            display: 'flex',
+            marginTop: m.bodyGap,
+            overflow: 'hidden',
+          }}
+        >
           {children}
         </div>
 
         <div
           style={{
+            marginTop: 'auto',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'baseline',

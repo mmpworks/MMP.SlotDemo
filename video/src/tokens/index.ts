@@ -13,10 +13,12 @@ export const colors = {
   surface: '#12151c', // deep-slate — panel background
   surfaceRaised: '#181c25', // raised-slate — emphasized panel
   surfaceDormant: '#0d0f13', // dormant-slate — receded panel
+  groundDeep: '#06080b', // deep-void — the vignette's outer stop, darker than ground
 
   brass: '#d1a355', // primary accent
   brassBright: '#f0c988', // bright brass — highlight/emphasis
   brassDim: '#7a6238', // dim brass — inactive rules, kickers
+  brassShadow: '#4d3f24', // shadowed brass — facet shading on a dimmed glyph
 
   textPrimary: '#ece7dd', // parchment
   textSecondary: '#9a978f', // parchment-dim
