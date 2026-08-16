@@ -165,11 +165,17 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         var game = PresetGame.Build(valid);
         var breakdown = game.Analysis;
 
-        // The requested split passed the cap as integers. The REALIZED game is what the
-        // solver actually produced after rounding, so it gets checked too — a paytable
-        // that rounds its way over 99% is a bug the page must never render as success.
+        // The requested split passed the solver's RTP limits as integers. The REALIZED game
+        // is what the solver actually produced after rounding, so it gets checked against the
+        // same two constants — a paytable that rounds its way outside the limits is a bug the
+        // page must never render as success.
         if (breakdown.TotalRtp > SimulationConfig.MaxAggregateBasisPoints / 10_000.0)
-            return (null, (500, new { title = "Solver produced a realized RTP above the cap", status = 500, breakdown.TotalRtp }));
+            return (null, (500, new { title = "Solver produced a realized RTP above the ceiling", status = 500, breakdown.TotalRtp }));
+        // One basis point of grace on the floor only: a request at exactly the floor may
+        // round a hair under it, and the limits must never reject a target they invited.
+        // The ceiling stays strict — rounding over the top is the hazard it exists to catch.
+        if (breakdown.TotalRtp < (SimulationConfig.MinAggregateBasisPoints - 1) / 10_000.0)
+            return (null, (500, new { title = "Solver produced a realized RTP below the floor", status = 500, breakdown.TotalRtp }));
 
         var facts = new RunFacts(
             valid.Preset.Name, IsGame: false,
@@ -288,6 +294,16 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
                 wageredMillicents = latest.WageredMillicents,
                 returnedMillicents = latest.ReturnedMillicents,
             },
+            industry = run.Recorder.IndustryCheck() is { } check
+                ? new
+                {
+                    spins = check.Spins,
+                    deviation = check.Deviation,
+                    passed = check.Passed,
+                    tolerance = ConvergenceRecorder.IndustryTolerance,
+                    minimumSpins = ConvergenceRecorder.IndustryMinimumSpins,
+                }
+                : null,
             curve = run.Recorder.Curve,
         };
     }
@@ -333,14 +349,20 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         run.Status = terminal;
 
         log.Information(Category,
-            "Run {RunId} {Status}: {Spins} spins, measured {Measured}, analytic {Analytic}, band {Band}, verdict {Verdict}",
+            "Run {RunId} {Status}: {Spins} spins, measured {Measured}, analytic {Analytic}, band {Band}, verdict {Verdict}, industry {Industry}",
             new LogProperty("RunId", run.RunId),
             new LogProperty("Status", run.Status),
             new LogProperty("Spins", final.Spins),
             new LogProperty("Measured", final.MeasuredRtp),
             new LogProperty("Analytic", run.Analytic.TotalRtp),
             new LogProperty("Band", last.BandHalfWidth),
-            new LogProperty("Verdict", last.WithinBand ? "within band" : "outside band"));
+            new LogProperty("Verdict", last.WithinBand ? "within band" : "outside band"),
+            new LogProperty("Industry", run.Recorder.IndustryCheck() switch
+            {
+                null => "not qualified (below 10M spins)",
+                { Passed: true } c => $"pass (deviation {c.Deviation:0.000000})",
+                { } c => $"FAIL (deviation {c.Deviation:0.000000})",
+            }));
 
         Publish(terminal, Describe());
     }

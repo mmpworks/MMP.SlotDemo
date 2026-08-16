@@ -249,6 +249,7 @@ export interface RefereeView {
 
 export interface RunLimits {
   maxAggregateBasisPoints: number
+  minAggregateBasisPoints: number
   games: string[]
   defaults: {
     presetName: string
@@ -298,6 +299,14 @@ export interface RunDescription {
     wageredMillicents: number
     returnedMillicents: number
   }
+  /** GLI-style acceptance: null until the run has at least `minimumSpins` spins. */
+  industry: {
+    spins: number
+    deviation: number
+    passed: boolean
+    tolerance: number
+    minimumSpins: number
+  } | null
   curve: CurvePoint[]
 }
 

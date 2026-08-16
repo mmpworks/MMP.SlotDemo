@@ -122,4 +122,38 @@ public sealed class ConvergenceRecorderTests
             Assert.True(curve[i].Spins > curve[i - 1].Spins,
                 $"curve went backwards at index {i}: {curve[i - 1].Spins} -> {curve[i].Spins}");
     }
+
+    // ---- the industry acceptance (±0.5pp over at least 10M spins) ----
+
+    private static RunSnapshot AtRtp(long spins, double rtp) =>
+        new(spins, spins * 100_000, (long)(spins * 100_000 * rtp), spins / 3);
+
+    [Fact]
+    public void Industry_check_is_null_below_ten_million_spins()
+    {
+        var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
+        recorder.Observe(AtRtp(9_999_999, 0.978));
+        Assert.Null(recorder.IndustryCheck());
+    }
+
+    [Fact]
+    public void Industry_check_passes_inside_half_a_percentage_point()
+    {
+        var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
+        recorder.Observe(AtRtp(10_000_000, 0.978));   // deviation 0.002
+        var check = recorder.IndustryCheck();
+        Assert.NotNull(check);
+        Assert.True(check!.Value.Passed);
+        Assert.Equal(0.002, check.Value.Deviation, precision: 6);
+    }
+
+    [Fact]
+    public void Industry_check_fails_outside_half_a_percentage_point()
+    {
+        var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
+        recorder.Observe(AtRtp(10_000_000, 0.970));   // deviation 0.010
+        var check = recorder.IndustryCheck();
+        Assert.NotNull(check);
+        Assert.False(check!.Value.Passed);
+    }
 }

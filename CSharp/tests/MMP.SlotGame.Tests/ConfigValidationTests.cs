@@ -50,7 +50,7 @@ public sealed class ConfigValidationTests
 
         Assert.False(ok);
         Assert.Null(config);
-        Assert.Contains(errors, e => e.Contains("9900") && e.Contains("cap", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(errors, e => e.Contains("9900") && e.Contains("ceiling", StringComparison.OrdinalIgnoreCase));
 
         // No silent clamping: the caller's draft is untouched (PRD explicit).
         Assert.Equal(7601, draft.BaseRtpBasisPoints);
@@ -63,6 +63,31 @@ public sealed class ConfigValidationTests
     {
         var (ok, _, errors) = Try(Draft(baseBp: 7599, freeSpinsBp: 1300, pickBonusBp: 1000));
         Assert.True(ok, string.Join(" | ", errors));
+    }
+
+    // ---- the floor of the solver's RTP limits --------------------------------
+
+    [Fact]
+    public void Aggregate_7500_IsAccepted_FloorIsInclusive()
+    {
+        var (ok, config, errors) = Try(Draft(baseBp: 7500, freeSpinsBp: 0, pickBonusBp: 0));
+
+        Assert.True(ok, $"7500 bp must be accepted; got: {string.Join(" | ", errors)}");
+        Assert.Equal(SimulationConfig.MinAggregateBasisPoints, config!.AggregateBasisPoints);
+    }
+
+    [Fact]
+    public void Aggregate_7499_IsRejected_AndNeverRaised()
+    {
+        var draft = Draft(baseBp: 7499, freeSpinsBp: 0, pickBonusBp: 0);
+        var (ok, config, errors) = Try(draft);
+
+        Assert.False(ok);
+        Assert.Null(config);
+        Assert.Contains(errors, e => e.Contains("7500") && e.Contains("floor", StringComparison.OrdinalIgnoreCase));
+
+        // No silent raising: the caller's draft is untouched.
+        Assert.Equal(7499, draft.BaseRtpBasisPoints);
     }
 
     // ---- negatives and term bounds ------------------------------------------

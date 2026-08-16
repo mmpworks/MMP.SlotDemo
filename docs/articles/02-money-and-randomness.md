@@ -628,6 +628,98 @@ The XML documentation labels this a simulation-grade RNG, not a certified gaming
 RNG. That scope warning matters because repeatable simulation and regulated game
 operation have different requirements.
 
+## Modulo bias, counted
+
+The claim above — "a remainder mapping can favor some stops" — deserves to be
+shown, not asserted, because at first hearing "the RNG discards some draws" can
+sound like the house putting a thumb on the scale. It is the opposite, and the
+arithmetic is small enough to hold in your head.
+
+**The pigeonhole.** A random source hands out one of S equally likely raw
+values. You need one of B stops. The remainder mapping `raw % B` deals the S raw
+values into the B bins in order, like dealing cards around a table. If S divides
+B evenly, every bin gets the same number of raw values and the mapping is fair.
+If it does not, the deal runs out mid-lap: the first `S % B` bins hold one raw
+value more than the rest, so they are *more likely*, forever, by design.
+
+**Small numbers make it visible.** Take an 8-bit source (S = 256 raw values)
+and a 26-stop reel. 256 = 9 × 26 + 22, so the deal makes it around nine full
+times and then 22 cards remain: stops 0 through 21 each collect 10 raw values,
+stops 22 through 25 collect only 9. Stop 3 is 10/9 ≈ **11% more likely** than
+stop 24 — before any game logic exists.
+
+Run that for ten million draws and count the bins, and the skew walks right out
+of the noise (seeded run, NumPy, 10,000,000 draws; a fair share is 384,615 per
+bin):
+
+| Bins | Raw values each | Predicted count | Measured (10M draws) |
+|---|---|---|---|
+| 0–21 | 10 | 390,625 | ≈ 390,572 each |
+| 22–25 | 9 | 351,562 | ≈ 351,852 each |
+
+Measured max/min ratio: 1.114 against the predicted 10/9 ≈ 1.111. Four stops
+are visibly starved. On a real reel those four stops would carry symbols whose
+true probability the PAR sheet states exactly — and the game would quietly pay
+a different RTP than the math package claims.
+
+Apply the rejection method to the same source and the skew is gone: discard any
+raw value of 234 or above (234 = 9 × 26, the largest full lap), redraw, and
+map the rest. In the same ten-million-draw run that discarded 8.6% of raw
+values, and the bins flattened to a max/min ratio of 1.006 — pure sampling
+noise, centered on fair.
+
+**Which bin counts are safe?** The source size is always a power of two
+(2⁸, 2³², 2⁶⁴), and the only numbers that divide a power of two are smaller
+powers of two. So the remainder mapping is exactly fair for 2, 4, 8, 16, 32 …
+stops and biased for **every other count**: every odd number, every prime
+except 2, and every even number with an odd factor — 6, 10, 26 all included.
+Prime or composite is not the question; "is it a power of two" is.
+
+**A perfect random source does not help.** The bias lives in the *mapping*,
+not the generator. A certified hardware RNG producing flawlessly uniform 64-bit
+values, folded by `% 26`, still favors 16 of the 26 stops (2⁶⁴ mod 26 = 16).
+With a 64-bit source the excess is about one part in 10¹⁸ — unmeasurable in
+any simulation you could run — but it is provably nonzero, and game
+certification asks for provably zero. Nevada's Technical Standard 1, for
+example, requires each outcome of a random selection to be equally probable;
+"equal to eighteen decimal places" is not equal. The rejection method makes it
+exactly equal, and on a 64-bit source the discard fires about once per 10¹⁸
+draws — the fix is mathematically total and practically free.
+
+**The rejected set is the leftover, and it is fixed in advance.** Look again at
+the deal: 256 raw values, 26 bins, nine full laps, and 22 values left over that
+cannot fill a tenth lap. Those leftovers are the rejected set — in the classic
+method, literally the top of the source range (234 through 255), the same
+values every time, on every machine, decided by nothing but S and B. Rejection
+is not "redraw when the result is unwelcome"; it is a fixed partition of the
+source range written down before any randomness exists: values 0–233 map, nine
+each per stop; values 234–255 redraw. `SpinRng.NextInt` uses Lemire's
+formulation, which finds the biased values with one multiply instead of a
+divide — the rejected raw values sit in different positions, but their *count*
+is the same `2⁶⁴ mod B` leftover, and the set is just as fixed and just as
+blind.
+
+**Every reel carries its own threshold.** The leftover depends on the bin
+count, and a real game mixes bin counts: Orca Dive's strips run 26, 29, 26,
+29, 26 stops. So one threshold cannot serve the whole game — a 26-stop reel
+must reject its own leftover (2⁶⁴ mod 26 = 16 raw values) and a 29-stop reel
+its own (2⁶⁴ mod 29 = 24). `StripReelSet` computes each reel's range and
+rejection threshold once, at construction, straight from that reel's strip
+length, and every window draw indexes them per reel
+(`_rngRanges[reel]`, `_rngThresholds[reel]`). A 26-stop reel and a 29-stop
+reel drawn in the same spin each get exactly uniform stops from their own
+arithmetic, and the per-spin cost of that correctness is zero divisions —
+which is why article 9 can precompute it without changing a single
+probability.
+
+**Why discarding is honest.** The discard decision looks only at the raw bit
+pattern, before it becomes a stop, a symbol, or a payout. It cannot see wins.
+Every *stop* remains reachable and every stop is exactly equally likely — that
+is the whole effect. It is the same rule as "the die bounced off the table,
+throw again": a malformed throw is rerolled; a disliked result never is. Test
+labs accept rejection-based mapping for precisely this reason — what they
+forbid is bias in the outcome, and rejection is the standard way to remove it.
+
 ## What these types guarantee
 
 Neither type knows what a reel is. `Millicents` handles money arithmetic;

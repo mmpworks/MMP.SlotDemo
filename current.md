@@ -1,5 +1,41 @@
 # Current State
-_as of 2026-08-12 (post editor-pass)_
+_as of 2026-08-16_
+
+## 2026-08-16 session
+
+- Decision: MMP.SlotDemo keeps ALL its video and image assets in this repo.
+  MMP.Media is no longer used for SlotDemo media.
+- New doc: `docs/run-walkthrough.md` — step-by-step walk of one simulation run,
+  from harness startup through the SPA to the verdict, with a file map.
+- Article 1 gained a "One run, step by step" section and a restructured
+  chapter map (table + per-article deep-dive summaries).
+- New tldraw canvases in `docs/design/`: simulation-engine mindmap and
+  architecture drawing.
+- Article 1 additions: "Nobody is playing this game" (spins are math units),
+  the stadium clicker/radio scene for counters vs. telemetry, and
+  "Scaling, not clamping" (single frozen scale factor; realized-RTP is the
+  measured reference; industry payback-version practice).
+- Article 2 gained "Modulo bias, counted": pigeonhole explanation, a real
+  10M-draw experiment (8-bit source → 26 bins, 11% skew, rejection flattens
+  it), the power-of-two divisibility rule, TRNG-doesn't-help note, and why
+  outcome-blind discarding is accepted by test labs.
+- "Cap" renamed to **the solver's RTP limits**, and a floor added:
+  `SimulationConfig.MinAggregateBasisPoints = 7_500` (Nevada's 75% legal
+  minimum) beside the 9,900 bp ceiling. Both bound the request only — the
+  simulator pretends to be a casino floor; validation never consults them.
+  Realized-RTP re-check now guards both ends (floor gets 1 bp rounding grace;
+  ceiling stays strict). `/api/run/limits` exposes `minAggregateBasisPoints`;
+  Finale.vue previews both bounds. Solver math tests retargeted into the
+  admitted range (7600/9500 ×1.25 linearity pair). NOTE: this edits
+  MMP.SlotGame.Core, the verbatim import from MMP.SlotGame — upstream needs
+  the same change or the mirror diverges. 213+91 C# tests and 51 SPA tests
+  green.
+- New industry acceptance check in source: `ConvergenceRecorder.IndustryCheck`
+  (±0.5pp deviation from analytic over ≥10M spins, GLI-style), surfaced in
+  `Describe()` as `industry`, in the completion log line, and as a second
+  verdict banner on `Finale.vue`. Below 10M spins the check reports
+  not-qualified rather than a verdict. Three new recorder tests; 91 server +
+  51 SPA tests green.
 
 ## Performance and American spelling audit
 

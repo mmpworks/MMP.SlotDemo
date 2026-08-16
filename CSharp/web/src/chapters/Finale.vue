@@ -103,10 +103,13 @@ async function cancel(): Promise<void> {
 
 const isGameSubject = computed(() => subject.value.startsWith('game:'))
 const aggregateBp = computed(() => baseBp.value + freeSpinsBp.value + pickBonusBp.value)
-const overCap = computed(() =>
-  !isGameSubject.value &&
-  limits.value !== null &&
-  aggregateBp.value > limits.value.maxAggregateBasisPoints)
+// The solver's RTP limits: a preview of the server's floor and ceiling, not a second authority.
+const outsideLimits = computed(() => {
+  if (isGameSubject.value || limits.value === null) return null
+  if (aggregateBp.value > limits.value.maxAggregateBasisPoints) return 'ceiling'
+  if (aggregateBp.value < (limits.value.minAggregateBasisPoints ?? 0)) return 'floor'
+  return null
+})
 
 // ---- the chart ----
 // Pure geometry lives in chart/convergence.ts (tested); this file only feeds it.
@@ -137,6 +140,14 @@ const verdict = computed(() => {
   if (!r || !last) return null
   if (r.status === 'running') return null
   return { withinBand: last.withinBand, status: r.status, point: last }
+})
+
+// The fixed industry yardstick beside the statistical band: within ±0.5pp of the
+// analytic RTP over at least ten million spins.
+const industry = computed(() => {
+  const r = run.value
+  if (!r || r.status === 'running') return null
+  return r.industry ?? null
 })
 </script>
 
@@ -210,7 +221,7 @@ const verdict = computed(() => {
           <input v-model.number="stride" type="number" min="1000" step="10000" />
           <small>one chart point per this many spins</small>
         </label>
-        <button type="button" :disabled="busy || overCap" @click="start">
+        <button type="button" :disabled="busy || outsideLimits !== null" @click="start">
           {{ busy ? 'Starting…' : 'Run the proof' }}
         </button>
         <button type="button" class="ghost" @click="cancel">Stop</button>
@@ -221,9 +232,14 @@ const verdict = computed(() => {
         enumerated reference is shown as Analytic RTP below, and the run should settle into
         the band around it.
       </p>
-      <p v-if="overCap" class="lab__error">
-        Aggregate {{ aggregateBp }} bp is over the {{ limits?.maxAggregateBasisPoints }} bp cap.
-        The server refuses the request instead of clamping it. Submit it to see the error.
+      <p v-if="outsideLimits === 'ceiling'" class="lab__error">
+        Aggregate {{ aggregateBp }} bp is over the solver's {{ limits?.maxAggregateBasisPoints }} bp
+        ceiling. The server refuses the request instead of clamping it. Submit it to see the error.
+      </p>
+      <p v-if="outsideLimits === 'floor'" class="lab__error">
+        Aggregate {{ aggregateBp }} bp is below the solver's {{ limits?.minAggregateBasisPoints }} bp
+        floor — a real casino floor has a legal minimum payback. The server refuses the request
+        instead of raising it. Submit it to see the error.
       </p>
       <p v-if="error" class="lab__error">{{ error }}</p>
     </section>
@@ -297,6 +313,26 @@ const verdict = computed(() => {
           measured {{ (verdict.point.measuredRtp * 100).toFixed(4) }}% ·
           band ±{{ (verdict.point.bandHalfWidth * 100).toFixed(4) }}pp
           {{ verdict.status === 'cancelled' ? '· stopped early' : '' }}
+        </span>
+      </div>
+
+      <!-- The industry acceptance beside the statistical band: the fixed yardstick
+           test labs quote (±0.5pp over at least 10M spins). -->
+      <div
+        v-if="verdict"
+        class="verdict-banner verdict-banner--industry"
+        :class="{ 'verdict-banner--failed': industry !== null && !industry.passed }"
+      >
+        <span class="verdict-banner__word">
+          {{ industry === null ? 'INDUSTRY CHECK — NOT QUALIFIED' : industry.passed ? 'INDUSTRY CHECK — PASS' : 'INDUSTRY CHECK — FAIL' }}
+        </span>
+        <span v-if="industry === null" class="mono">
+          needs at least 10,000,000 spins before the ±0.50pp yardstick applies
+        </span>
+        <span v-else class="mono">
+          deviation {{ (industry.deviation * 100).toFixed(4) }}pp of
+          ±{{ (industry.tolerance * 100).toFixed(2) }}pp allowed ·
+          {{ industry.spins.toLocaleString() }} spins
         </span>
       </div>
     </section>
@@ -411,6 +447,17 @@ const verdict = computed(() => {
 }
 
 .verdict-banner--failed {
+  border-left-color: #e05252;
+  background: rgba(224, 82, 82, 0.08);
+}
+
+.verdict-banner--industry {
+  margin-top: 0.4rem;
+  border-left-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.verdict-banner--industry.verdict-banner--failed {
   border-left-color: #e05252;
   background: rgba(224, 82, 82, 0.08);
 }

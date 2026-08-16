@@ -26,6 +26,24 @@ return. Along the way it covers fixed-point money, replayable parallel randomnes
 probability on reel strips, and the difference between data that must be preserved
 and display updates that may be skipped.
 
+## Nobody is playing this game
+
+Before any design work, be clear about what "simulate" means here, because it is
+not what a player does at a casino.
+
+Nothing in this system spins a picture of a reel, waits for a button press, or
+shows a win animation. There is no player, no bankroll, and no session. A **spin**
+here is one pure unit of math: draw random reel stops, read which symbols land in
+the window, check the paylines against the paytable, and record two numbers —
+what was wagered and what came back. That's it. One spin in, one outcome out.
+
+The simulation is millions of those spins, run as fast as the CPU allows, with
+every outcome added into running totals. We never care about any single spin. We
+care about how the spins **combine**: across ten million of them, what fraction
+of the wagered money came back? That measured fraction is what gets compared with
+the RTP the math predicted. So when this series says "play a spin," read it as
+"evaluate one random outcome and add it to the tally" — a calculation, not a game.
+
 ### Check your understanding
 
 Suppose a game has a 98% RTP. A player wagers $100 once and loses all of it. Does that
@@ -47,19 +65,48 @@ average.
 > ground at `#/finale`, which runs ten million spins while the chart watches the
 > measured RTP settle into its band.
 
-## Five terms to know first
+## Seven terms to know first
 
 | Term | Junior-high version |
 |---|---|
+| **Spin** | One unit of simulated math: draw random stops, read the window, score the paylines, record wagered and returned. No graphics, no player. |
 | **Wager** | The amount bet on one spin. |
 | **Payout** | The amount the game returns for a winning result. |
 | **RTP** | The long-run average payout divided by the long-run average wager. |
 | **Hold** | The other side of RTP. Ignoring special accounting details, 98% RTP corresponds to 2% theoretical hold. |
 | **PAR sheet / math package** | The game's math recipe: probabilities, pays, feature contributions, and calculated results. |
+| **Telemetry** | Progress reports the simulation sends out while it runs — "so far: this many spins, this measured RTP" — so a chart can watch the run live. |
 
 Think of RTP like the expected average of repeatedly rolling dice, not like a refund
 policy. We can know the long-run average before rolling, but we cannot use that
 average to predict the next roll.
+
+Two of those terms — counters and telemetry — carry most of this design, so
+here is what they mean in the flesh.
+
+A **counter** is nothing fancier than a number in memory that only gets added
+to. This system keeps four of them: spins played, money wagered, money returned,
+and winning spins. Every spin bumps them; nothing else touches them. When the
+run ends, those four numbers **are** the result.
+
+Now picture a stadium on game night. An usher stands at each gate holding a
+metal tally clicker, and clicks it once per person walking through. That clicker
+is the counter. It cannot miss anyone, it cannot count anyone twice, and at the
+end of the night the clickers hold the true attendance.
+
+Every few minutes, each usher also keys the radio: "Gate 3, four thousand two
+hundred so far." That radio call is **telemetry**. The control room uses it to
+watch the crowd build on a screen. And here is the part the whole design turns
+on: if a radio call is garbled or the channel is busy, *nobody goes uncounted*.
+The clicker in the usher's hand still holds the real number, and the next call
+carries the full total again — "forty-six hundred so far," not "four hundred
+more since last time." A lost report costs the screen one update. It costs the
+attendance nothing.
+
+Swap the stadium for the simulation and the picture holds piece for piece: the
+workers are the ushers, the integer totals are the clickers, the progress
+samples are the radio calls, and the live chart is the control-room screen. The
+"Two kinds of data" section below is this scene written as engineering rules.
 
 ## Requirements
 
@@ -84,7 +131,7 @@ average to predict the next roll.
    practical on a desktop CPU. Speed does not make the math true; it buys more
    outcomes per hour of testing.
 4. **Clear error messaging.** A configuration that violates the rules (aggregate RTP
-   above the 99% cap) is rejected with a message that says why. Nothing is silently
+   outside the solver's RTP limits) is rejected with a message that says why. Nothing is silently
    clamped.
 
 **Explicit non-goals:** this is not a certified gaming RNG or a real-money system.
@@ -96,8 +143,11 @@ non-goals removes a subsystem from the build.
 
 Before drawing boxes, size the problem.
 
-A typical preset spin is: draw one random stop per reel, read a visible window from
-precomputed strips, evaluate several paylines, and sometimes add a feature award.
+A typical preset spin is: 
+- draw one random stop per reel
+- read a visible window from precomputed strips, 
+- evaluate several paylines, and sometimes add a feature award.
+
 That is small, CPU-bound work: a few hundred nanoseconds on a desktop core, which
 puts a sixteen-core box somewhere near ten million spins per second. Actual speed
 depends on the processor, reel shape, line count, feature rules, worker count, and
@@ -176,6 +226,48 @@ That split makes the engine **composable**: it can be placed inside a test harne
 console program, or web host without also pulling in the web server. The motor is
 separate from the dashboard, and different callers reuse the same motor.
 
+## One run, step by step
+
+Here is the whole process, in order, with the part that does each step named.
+Every one of these parts gets a full article later; this list is the skeleton
+they all hang on.
+
+1. **You press Run.** The Vue page posts one JSON request: a preset name, an
+   RTP split, a seed, a worker count, and a spin target. (SPA — this article)
+2. **The request is checked.** `SimulationConfig.TryCreate` validates it. Over
+   outside the solver's RTP limits (75% floor, 99% ceiling)? Rejected, with every error named. Nothing is clamped.
+   (Config — this article)
+3. **The game is built.** `PresetGame.Build` turns the preset into reel strips
+   (`StripReelSet`), paylines (`Payline`), and a paytable that
+   `PaytableSolver` scales to your requested RTP. (Reels — article 3;
+   paytable — article 4)
+4. **The answer is predicted before any spin.** The analytic math computes the
+   expected RTP and the per-spin standard deviation σ from the strips and the
+   paytable alone. That σ prices the chart's confidence band up front.
+   (Math — articles 4 and 5)
+5. **The workers spin.** `SimulationEngine` gives each worker a fixed quota of
+   spins and its own seeded random stream (`SpinRng`). Each spin draws a
+   window, evaluates the paylines (`LinePayEvaluator`), plays the features,
+   and returns an outcome in integer millicents (`Millicents`).
+   (Money and randomness — article 2; engine — article 6)
+6. **Totals stay exact.** Each worker sums 4,096 spins locally, then adds them
+   to the shared `RunTotals` with four atomic adds. Every spin is counted.
+   (Engine — article 6)
+7. **Progress flows on a separate, lossy lane.** After each batch the worker
+   drops an absolute snapshot into a bounded channel. Full channel? The oldest
+   sample is evicted. The chart may lose a point; the totals lose nothing.
+   (Engine — article 6)
+8. **The server draws the curve.** A pump drains that channel about ten times
+   a second and appends one chart point per 50,000 spins, each with its own
+   band half-width `z·σ/√N`. The points stream to the browser as server-sent
+   events. (Server — this article)
+9. **The run ends with a verdict.** The final totals are read directly from
+   the counters, never from the channel. Measured RTP inside the band around
+   the analytic RTP? The two independent methods agree. (Proof — article 8)
+10. **A loaded game can replace the preset.** A JSON game document (Orca Dive)
+    goes through a validating loader, an exhaustive enumerator for its exact
+    RTP, and the same engine. (Games as data — article 7; speed — article 9)
+
 ## The API
 
 The API surface is deliberately small:
@@ -198,7 +290,7 @@ as a rejection listing the valid ones.
 the same chart as one that was there from the first spin: it returns the accumulated
 curve in one read, and the stream carries it from there.
 
-The SPA reads the 99% RTP cap from `GET /api/run/limits` rather than hardcoding it.
+The SPA reads the solver's RTP limits (75.00% floor, 99.00% ceiling) from `GET /api/run/limits` rather than hardcoding it.
 The client validates as a courtesy to the user; the server validates as the
 authority. Duplicating the enforcement would produce two authorities that can
 disagree, while duplicating the presentation costs nothing.
@@ -213,12 +305,14 @@ public static bool TryCreate(ConfigDraft draft, out SimulationConfig? config, ou
 ```
 
 RTP terms arrive as **integer basis points** (one basis point is 0.01 percentage
-point, so 7,500 = 75.00%), and the cap check is integer arithmetic:
+point, so 7,500 = 75.00%), and the limits check is integer arithmetic:
 
 ```csharp
 var aggregate = (long)draft.BaseRtpBasisPoints + draft.FreeSpinsRtpBasisPoints + draft.PickBonusRtpBasisPoints;
 if (aggregate > MaxAggregateBasisPoints)
-    errs.Add($"Aggregate RTP {aggregate} bp exceeds the {MaxAggregateBasisPoints} bp (99.00%) cap. Rejected, never clamped.");
+    errs.Add($"Aggregate RTP {aggregate} bp exceeds the solver's {MaxAggregateBasisPoints} bp (99.00%) ceiling. Rejected, never clamped.");
+if (aggregate < MinAggregateBasisPoints)
+    errs.Add($"Aggregate RTP {aggregate} bp is below the solver's {MinAggregateBasisPoints} bp (75.00%) floor. Rejected, never clamped.");
 ```
 
 `MaxAggregateBasisPoints` is 9,900. There is no floating-point boundary ambiguity at
@@ -238,45 +332,106 @@ so the caller writes an `if` rather than a `try`. It is the pattern .NET's own
 `int.TryParse` uses, for the same reason. `SimulationConfig` has no public
 constructor at all, because construction can fail for a reason the type cannot
 prevent at compile time. The caller chose three numbers, and they sum to something
-the cap forbids.
+the limits forbid.
 
 A request for 99.5% is rejected rather than rounded down to 99%, with the aggregate
 and the limit both named in the message, so the caller knows what to change and by
 how much. Silent adjustment would make the requested game and the analyzed game
 disagree, which is bad for debugging and worse for auditability.
 
+Be clear about what these limits are and are not, because the word "limit"
+invites a wrong picture. The solver's RTP limits **bound one input parameter**:
+the RTP target you may hand the solver when it builds a game — no lower than
+75.00%, no higher than 99.00%. That is the whole job. They do not bound the
+simulation, and no check during or after a run ever consults them. If a valid
+98% game happened to measure high over its run, nothing would stop, trim, or
+re-spin anything — the run would finish, land outside its band, and report the
+disagreement honestly. Limits gate what may be *built*; the spins answer for
+themselves.
+
+The pair exists so the simulator pretends to be a casino floor. Test labs do
+not apply any limit when they validate: their simulation answers one question
+only — does the implemented game match its submitted math package? RTP limits
+are enforced earlier, at the **approval** step, on paper. The floor models the
+legal minimum most jurisdictions set (Nevada requires at least 75% theoretical
+payback — the number our floor borrows); the ceiling models the commercial
+maximum every operator holds, because a game that pays out more than it takes
+in is a losing product. Same mechanism, same timing as the real thing: before
+deployment, never during validation.
+
+## Scaling, not clamping
+
+It is worth being precise about what the system does with a number it accepts,
+because "hit the RTP target" could be read two ways, and only one of them is
+honest.
+
+**Clamping** would mean adjusting values at run time — nudging a payout here,
+shaving a probability there — until the measured number lands where we want it.
+No part of this system does that, and the reason is the whole point of the
+series: we are checking a model against a simulation, and a check only means
+something when neither side gets touched along the way.
+
+What actually happens is a **single scaling value, applied once, then frozen**.
+`PaytableSolver` computes one factor — the target RTP divided by the canonical
+paytable's unscaled expected value — multiplies every pay by it, rounds each pay
+to whole millicents (half-even), and freezes the result. From that moment the
+paytable is fixed data. Because each pay rounds independently, the frozen table's
+true RTP can drift a hair from the target, so the math is recomputed **from the
+rounded table**, and *that* realized number — the number the game actually
+pays — is what the chart's band centers on and what the simulation is measured
+against. The request sets the target; the frozen table is the truth; nothing in
+between ever adjusts a value to make the answer look better.
+
+This mirrors how the industry does it. A commercial slot ships as a small set of
+**approved payback versions** — say 87%, 90%, 94% — and each version is a fixed
+paytable with its own PAR sheet, submitted as-is. The operator picks a version
+from the approved set; nobody tunes numbers on the floor. Independent test labs
+(GLI and its peers) then verify the *submitted* paytable exactly: enumerate or
+simulate every combination from the provided data and confirm the theoretical
+return, with large-scale simulation agreeing within a tight tolerance. A lab
+that "helpfully" clamped inputs would be certifying a game nobody submitted.
+Our reject-at-the-gate, scale-once, measure-the-realized-table pipeline is that
+same discipline in miniature.
+
+The proving ground reports that yardstick directly. Beside the statistical
+band verdict, the finale page shows an **industry check**: the measured RTP
+must sit within ±0.5 percentage points of the analytic RTP over at least ten
+million spins — the fixed tolerance certification practice quotes. The band is
+the stronger test (it narrows as √N); the industry check is the one a lab
+would recognize on sight.
+
 Downstream code does not need to revalidate the **request**. The invariant rides on
 the type. When a `SimulationConfig` shows up as a parameter three layers deep, its
 existence is evidence that the draft passed validation, like a driver's license
 showing that its owner passed the required test. The server does perform a different
 check later: after integer payout rounding, it verifies that the **realized game
-math** still respects the cap and remains close to the requested RTP.
+math** still respects the solver's RTP limits and remains close to the requested RTP.
 
 The default suggestion is itself concrete: `SimulationConfig` ships
 `DefaultBaseRtpBasisPoints = 7500`, `DefaultFreeSpinsRtpBasisPoints = 1300`, and
 `DefaultPickBonusRtpBasisPoints = 1000`, three constants that sum to 9,800 basis
-points, comfortably under the 9,900 cap, alongside `DefaultPresetName = "Video5x64"`.
+points, comfortably inside the solver's RTP limits, alongside `DefaultPresetName = "Video5x64"`.
 `/api/run/limits` suggests these to a new SPA session, and the test harness derives
 its own defaults from the same three values, so a "default config" test exercises
 the numbers a real session actually starts with.
 
-## One cap, two checks, one constant
+## One limit, two checks, one constant
 
-A cap that lives in one place only stays that way if every consumer reads the same
+A limit that lives in one place only stays that way if every consumer reads the same
 constant, and this system has two consumers. `SimulationConfig.TryCreate` enforces
-the cap on the *requested* terms, in basis points, at 9,900. `RunCoordinator`, the
+the limits on the *requested* terms, in basis points (floor 7,500, ceiling 9,900). `RunCoordinator`, the
 server-side class that starts and tracks a run, checks the *realized* RTP again
 after the paytable solver has rounded every award to a whole millicent.
 
 That second check is the one with a trap in it. Written as a hand-typed `0.99` in a
 different file, it would agree with the first check today and drift the first time
-somebody changes the cap in one file and forgets the other. Nothing would fail: the
+somebody changes a limit in one file and forgets the other. Nothing would fail: the
 two numbers are close enough that no test tells them apart. So the realized check
 reads the same symbol:
 
 ```csharp
 if (analytic.TotalRtp > SimulationConfig.MaxAggregateBasisPoints / 10_000.0)
-    return (500, new { title = "Solver produced a realized RTP above the cap", status = 500, analytic.TotalRtp });
+    return (500, new { title = "Solver produced a realized RTP above the ceiling", status = 500, analytic.TotalRtp });
 ```
 
 There is one 9,900 in the codebase, and both checks read it. Article 8 meets the
@@ -387,7 +542,7 @@ sequenceDiagram
 
     SPA->>API: POST /api/run (draft)
     API->>CFG: TryCreate(draft)
-    alt invalid (cap exceeded, bad shape)
+    alt invalid (outside the RTP limits, bad shape)
         CFG-->>API: false + errors
         API-->>SPA: 400 error details
     else valid
@@ -423,7 +578,7 @@ Walking back through the requirements:
 - **Throughput**: worker-local work inside each batch, four batched atomic adds, and
   telemetry that cannot apply backpressure.
 - **Clear error messaging**: one draft-validation boundary, loud rejection, errors
-  named as data, a separate realized-math safeguard, and one shared cap constant.
+  named as data, a separate realized-math safeguard, and one shared constant per limit.
 
 Each non-functional requirement traces to a named mechanism, which is what makes it
 reviewable: "each worker accumulates locally and performs four atomic adds per batch
@@ -431,89 +586,96 @@ of up to 4,096 spins" is something a reader can measure and argue with.
 
 ## What the rest of the series builds
 
-Every box in that diagram gets its own article, in the order a person would build
-them. Articles 2 through 9 stand alone if you want one of them by itself; read front
-to back and each one hands the next its foundation.
+Every step in the run above gets its own deep dive, in the order a person would
+build the parts. Articles 2 through 9 stand alone if you want one of them by
+itself; read front to back and each one hands the next its foundation.
 
-**Article 2, *Money You Can Trust*,** starts at the bottom of the stack, with the
-two smallest types in the codebase and about a hundred lines between them.
-`Millicents` is an integer money struct with no conversion to any floating type
-anywhere on it, so the exactness requirement is something the compiler checks rather
-than something a reviewer remembers; `ScaledMultiply` carries fractional pay
-multipliers as hundredths, so a 2.25× award still lands on whole millicents. The
-second type is `SpinRng`, a per-worker `xoshiro256**` stream seeded through
-SplitMix64, and it is what makes a run replayable. Banker's rounding gets its one
-boundary here, along with the total-spin-wager convention every later multiplier is
-quoted against. Its lab page resolves millicent arithmetic on wagers you type,
-draws per-worker streams from a seed you choose, and charts modulo bias next to the
+Here is the map in one table. Each row names the step it deep-dives, the code it
+builds, and what you can run when you finish it.
+
+| # | Article | Deep-dives this step | Builds | Lab |
+|---|---|---|---|---|
+| 2 | Money You Can Trust | Step 5: exact money, replayable randomness | `Millicents`, `SpinRng` | `#/ch02` |
+| 3 | Reels Are Strips, Not Dice | Step 3: reel geometry and paylines | `StripReelSet`, `Payline`, `LinePayEvaluator` | `#/ch03` |
+| 4 | The PAR-Sheet Math in Code | Step 4: predicted RTP and σ | `Paytable`, `PaytableSolver`, `AnalyticMath` | `#/ch04` |
+| 5 | Counting Every Outcome | Step 4: the exact count behind the prediction | `GameAnalyzer` (weighted enumeration) | `#/ch05` |
+| 6 | A Replayable Parallel Simulation Engine | Steps 5–7: workers, totals, telemetry | `SimulationEngine`, `RunTotals` | `#/ch06` |
+| 7 | Games as Data | Step 10: a JSON game through the same engine | `GameDefinition`, `WinEvaluator`, `GameRunner`, Orca Dive | `#/ch07` |
+| 8 | Proving the Machine | Step 9: the referee and the verdict | exhaustive enumeration, the acceptance suite | `#/ch08` |
+| 9 | Optimize the Machine You Proved | After the proof: speed, measured honestly | byte windows, paired benchmarks | `#/ch09` |
+
+And here is what each one covers, in a little more depth.
+
+**Article 2, *Money You Can Trust*** — the two smallest types in the codebase,
+about a hundred lines between them. `Millicents` is an integer money struct with
+no conversion to any floating type on it, so exactness is something the compiler
+checks rather than something a reviewer remembers; `ScaledMultiply` carries
+fractional pay multipliers as hundredths, so a 2.25× award still lands on whole
+millicents. `SpinRng` is a per-worker `xoshiro256**` stream seeded through
+SplitMix64 — it is what makes a run replayable. Banker's rounding gets its one
+boundary here. *The lab* resolves millicent arithmetic on wagers you type, draws
+per-worker streams from a seed you choose, and charts modulo bias next to the
 rejection method that avoids it.
 
-Ask a programmer to model a reel and you'll usually get a weighted die. **Article 3,
-*Reels Are Strips, Not Dice*,** shows what that costs: every single-symbol
-probability comes out right and every two-symbol probability comes out wrong,
-because a reel is an ordered cyclic strip stopped once per spin, so the cells
-visible in one column are neighbors rather than independent draws. Out of that come
-`StripReelSet`, paylines as data, and the five steps from a stopped reel to a paid
-line, with four- and five-row windows handled by the same code. The lab walks a spin
-one stop at a time so you can watch the window slide along the strip, then counts a
-symbol's stops and compares that census against the odds the engine derives from the
-same strip.
+**Article 3, *Reels Are Strips, Not Dice*** — ask a programmer to model a reel
+and you'll usually get a weighted die. This article shows what that costs: every
+single-symbol probability comes out right and every two-symbol probability comes
+out wrong, because a reel is an ordered cyclic strip stopped once per spin. Out
+of that come `StripReelSet`, paylines as data, and the five steps from a stopped
+reel to a paid line. *The lab* walks a spin one stop at a time so you can watch
+the window slide along the strip, then compares a symbol's stop census against
+the odds the engine derives from the same strip.
 
-With the geometry settled, the return can be computed without playing anything, and
-that is **article 4, *The PAR-Sheet Math in Code***. It builds the exactly-k-leading
-probability, the expected value that sums out of it, a solver that scales a
-canonical paytable toward a requested RTP with one scalar, and the per-spin standard
-deviation, including the covariance that correlated rows force between paylines
-sharing cells. That σ is where the chart's confidence band comes from, priced before
-the first spin runs. The lab solves a paytable to a target you pick and turns σ into
-a band half-width at a ladder of spin counts.
+**Article 4, *The PAR-Sheet Math in Code*** — with the geometry settled, the
+return can be computed without playing anything. It builds the exactly-k-leading
+probability, the expected value, a solver that scales a canonical paytable
+toward a requested RTP with one scalar, and the per-spin standard deviation σ,
+including the covariance between paylines that share cells. That σ is where the
+chart's confidence band comes from, priced before the first spin runs. *The lab*
+solves a paytable to a target you pick and turns σ into a band half-width at a
+ladder of spin counts.
 
-**Article 5, *Counting Every Outcome Without Playing Every Spin*,** slows down at
-`GameAnalyzer`. It groups repeated reel stops by symbol, carries their counts as weights,
-and turns those weighted outcomes into exact RTP and variance. A 24-outcome example makes
-the recursion visible before the production code handles a five-reel game.
+**Article 5, *Counting Every Outcome Without Playing Every Spin*** — slows down
+at `GameAnalyzer`. It groups repeated reel stops by symbol, carries their counts
+as weights, and turns those weighted outcomes into exact RTP and variance. A
+24-outcome example makes the recursion visible before the production code
+handles a five-reel game.
 
-**Article 6, *A Replayable Parallel Simulation Engine*,** builds the machine that
+**Article 6, *A Replayable Parallel Simulation Engine*** — the machine that
 plays the spins. Determinism turns out to be mostly a scheduling property: fixed
 pre-assigned worker quotas, one seeded stream each, 4,096-spin batches published
 through four `Interlocked.Add` calls into exact integer totals, and the bounded
-drop-oldest telemetry channel that can lose a chart point and never a counted spin.
-Its lab re-runs a configuration and compares the totals down to the millicent,
-including what changing the worker count does to them, then lets you starve the
-telemetry lane on purpose and watch the counters stay exact.
+drop-oldest telemetry channel that can lose a chart point and never a counted
+spin. *The lab* re-runs a configuration and compares the totals down to the
+millicent, then lets you starve the telemetry lane on purpose and watch the
+counters stay exact.
 
-The main examples to that point use generated games. Article 5 previews the loaded-game
-analyzer to teach its counting method, but it does not yet explain how a JSON file becomes
-a validated game. **Article
-7, *Games as Data*,** closes that loop by moving the game out of code and into a
-validated JSON file: a loader that reports every error at once, a `payUnit` schema
-that compiles fractional pays to integers, an evaluator that handles wilds, group
-wins, and scatters with no game-specific flags, a pick-until-you-lose bonus with a
-symmetry argument for its expected value, and `GameAnalyzer` enumerating symbol
-tuples. The demonstration game is Orca Dive, a fictional game invented for this
-series whose math reproduces a published third-party PAR deconstruction of a real
-commercial machine. Hand the lab any definition you like and read back the whole
+**Article 7, *Games as Data*** — moves the game out of code and into a
+validated JSON file: a loader that reports every error at once, a `payUnit`
+schema that compiles fractional pays to integers, an evaluator that handles
+wilds, group wins, and scatters with no game-specific flags, a
+pick-until-you-lose bonus, and `GameAnalyzer` enumerating symbol tuples. The
+demonstration game is Orca Dive, a fictional game invented for this series whose
+math reproduces a published third-party PAR deconstruction of a real commercial
+machine. *The lab* takes any definition you hand it and reads back the whole
 error list at once.
 
-A simulator that verifies itself is a circular argument, so **article 8, *Proving
-the Machine*,** brings in a referee: exhaustive enumeration, which shares *data* with
-the analytic and simulated paths and *code* with neither. It also itemizes the
-overflow budget for both the money and squared-payout accumulators, gives the normal
-quantile one home, tiers the slow and stress tests by cost, and asserts
-bit-for-bit equality with `==` where a concurrency test can usually only check that
-nothing crashed. Its lab runs the census and shows a simulation walking toward those
-exact counts.
+**Article 8, *Proving the Machine*** — a simulator that verifies itself is a
+circular argument, so this article brings in a referee: exhaustive enumeration,
+which shares *data* with the analytic and simulated paths and *code* with
+neither. It also itemizes the overflow budget for the accumulators, gives the
+normal quantile one home, and asserts bit-for-bit equality with `==` where a
+concurrency test can usually only check that nothing crashed. *The lab* runs the
+census and shows a simulation walking toward those exact counts.
 
-Only once the machine is proven does it make sense to make it faster, and that is
-**article 9, *Optimize the Machine You Proved***. It answers what a correctness-first
-codebase gives up in speed, and how much of that comes back once the window draw stops
-building full `Symbol` values: drawing strips extended by one window so a spin reads a
-contiguous slice instead of computing a remainder per cell, a byte-ID view for the
-workers beside the symbol view the UI still needs, Lemire's rejection threshold computed
-once per reel, and a dense payout array built from the dictionary that stays the public
-source of truth. The failed experiments are itemized alongside the winners. Its lab runs
-both draw implementations from one seed, alternating which goes first, and reports a
-speedup only when the two checksums agree.
+**Article 9, *Optimize the Machine You Proved*** — only once the machine is
+proven does it make sense to make it faster. Drawing strips extended by one
+window so a spin reads a contiguous slice, a byte-ID view for the workers beside
+the symbol view the UI still needs, Lemire's rejection threshold computed once
+per reel, and a dense payout array. The failed experiments are itemized
+alongside the winners. *The lab* runs both draw implementations from one seed,
+alternating which goes first, and reports a speedup only when the two checksums
+agree.
 
 Three pages on the companion site belong to no single article. `#/par` computes Orca
 Dive's complete PAR sheet live by walking all 14,781,416 stop combinations, with every

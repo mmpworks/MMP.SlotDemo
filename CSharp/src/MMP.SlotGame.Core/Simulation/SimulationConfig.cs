@@ -21,8 +21,17 @@ public sealed record ConfigDraft(
 /// </summary>
 public sealed record SimulationConfig
 {
-    /// <summary>The aggregate RTP cap in basis points. Integer comparison — the 99.00% boundary is exact.</summary>
+    /// <summary>
+    /// The solver's RTP limits: the range of aggregate RTP targets a request may hand the
+    /// solver, in integer basis points so both boundaries are exact. They bound INPUT only —
+    /// no check during or after a run reads them. The pair pretends this simulator is a
+    /// casino floor: jurisdictions set legal floors (Nevada: 75% theoretical payback) and
+    /// operators set commercial ceilings, both enforced on paper before deployment.
+    /// </summary>
     public const int MaxAggregateBasisPoints = 9_900;
+
+    /// <summary>The floor of the solver's RTP limits. See <see cref="MaxAggregateBasisPoints"/>.</summary>
+    public const int MinAggregateBasisPoints = 7_500;
 
     /// <summary>
     /// The default RTP split for a new config: 75% base + 13% free spins + 10%
@@ -80,10 +89,12 @@ public sealed record SimulationConfig
         if (draft.PickBonusRtpBasisPoints < 0)
             errs.Add($"PickBonus RTP cannot be negative; got {draft.PickBonusRtpBasisPoints}.");
 
-        // The cap. Integer arithmetic; no floating-point boundary ambiguity.
+        // The solver's RTP limits. Integer arithmetic; no floating-point boundary ambiguity.
         var aggregate = (long)draft.BaseRtpBasisPoints + draft.FreeSpinsRtpBasisPoints + draft.PickBonusRtpBasisPoints;
         if (aggregate > MaxAggregateBasisPoints)
-            errs.Add($"Aggregate RTP {aggregate} bp exceeds the {MaxAggregateBasisPoints} bp (99.00%) cap. Rejected, never clamped.");
+            errs.Add($"Aggregate RTP {aggregate} bp exceeds the solver's {MaxAggregateBasisPoints} bp (99.00%) ceiling. Rejected, never clamped.");
+        if (aggregate < MinAggregateBasisPoints)
+            errs.Add($"Aggregate RTP {aggregate} bp is below the solver's {MinAggregateBasisPoints} bp (75.00%) floor. Rejected, never clamped.");
 
         if (draft.WorkerCount is < 1 or > 64)
             errs.Add($"WorkerCount must be 1..64; got {draft.WorkerCount}.");

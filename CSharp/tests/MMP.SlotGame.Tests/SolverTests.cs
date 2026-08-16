@@ -57,11 +57,12 @@ public sealed class SolverTests
     [MemberData(nameof(TestGame.AllPresetNames), MemberType = typeof(TestGame))]
     public void LowConfigWithNoFeatures_RealizedRtp_IsWithinBudget(string preset)
     {
-        var game = TestGame.Build(preset, baseBp: 5000, freeSpinsBp: 0, pickBonusBp: 0);
+        // 7500 bp is the lowest target the solver's RTP limits admit (the floor).
+        var game = TestGame.Build(preset, baseBp: 7500, freeSpinsBp: 0, pickBonusBp: 0);
         var breakdown = game.Analyze();
 
         Assert.Empty(breakdown.Features);
-        AssertRealized(preset, game, breakdown, target: 0.50);
+        AssertRealized(preset, game, breakdown, target: 0.75);
     }
 
     [Theory]
@@ -86,26 +87,26 @@ public sealed class SolverTests
     }
 
     /// <summary>
-    /// The solver's job is one scalar applied once. Doubling the base target must very
-    /// nearly double the realized base RTP — a solver that quietly renormalizes, clamps,
-    /// or re-solves per symbol fails this.
+    /// The solver's job is one scalar applied once. Raising the base target by ×1.25 must
+    /// very nearly raise the realized base RTP by ×1.25 — a solver that quietly
+    /// renormalizes, clamps, or re-solves per symbol fails this. (The pair 7600/9500 bp
+    /// is an exact ×1.25 that fits inside the solver's RTP limits, floor 7500 bp.)
     ///
     /// "Very nearly", not exactly: each realized RTP carries its own half-millicent
-    /// rounding residual (≤ 5e-5 absolute, RT-10), and at a 25% base that is up to 2e-4
-    /// relative, so the ratio can drift by a few parts in 10,000. The budget below is
-    /// that rounding budget, not a fudge factor — a solver that scaled non-linearly would
-    /// miss by percent, not by 1e-4.
+    /// rounding residual (≤ 5e-5 absolute, RT-10), so the ratio can drift by a few parts
+    /// in 10,000. The budget below is that rounding budget, not a fudge factor — a solver
+    /// that scaled non-linearly would miss by percent, not by 1e-4.
     /// </summary>
     [Fact]
     public void BaseRtp_ScalesLinearlyWithTheBaseTarget()
     {
-        var low = TestGame.Build("Video5x64", baseBp: 2500, freeSpinsBp: 0, pickBonusBp: 0).Analyze();
-        var high = TestGame.Build("Video5x64", baseBp: 5000, freeSpinsBp: 0, pickBonusBp: 0).Analyze();
+        var low = TestGame.Build("Video5x64", baseBp: 7600, freeSpinsBp: 0, pickBonusBp: 0).Analyze();
+        var high = TestGame.Build("Video5x64", baseBp: 9500, freeSpinsBp: 0, pickBonusBp: 0).Analyze();
 
         var ratio = high.BaseRtp / low.BaseRtp;
         Assert.True(
-            Math.Abs(ratio - 2.0) <= 1e-3,
-            $"Doubling the base target changed realized base RTP by ×{ratio:R}, not ×2 " +
+            Math.Abs(ratio - 1.25) <= 1e-3,
+            $"Scaling the base target ×1.25 changed realized base RTP by ×{ratio:R}, not ×1.25 " +
             $"(low {low.BaseRtp:R}, high {high.BaseRtp:R}).");
     }
 

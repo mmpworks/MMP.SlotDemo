@@ -24,6 +24,17 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
     /// <summary>Default consolidation stride. One point per 50,000 spins.</summary>
     public const long DefaultStride = 50_000;
 
+    /// <summary>
+    /// Certification-practice acceptance, alongside the statistical band: independent test
+    /// labs expect a game's simulated RTP to agree with its submitted math within half a
+    /// percentage point across at least ten million spins. The band is the stronger check
+    /// (it narrows with N); this one is the fixed yardstick the industry quotes.
+    /// </summary>
+    public const double IndustryTolerance = 0.005;
+
+    /// <summary>Minimum spins before the industry check applies.</summary>
+    public const long IndustryMinimumSpins = 10_000_000;
+
     private readonly Lock _gate = new();
     private readonly List<CurvePoint> _curve = [];
     private long _nextBoundary = stride;
@@ -82,6 +93,20 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
         }
     }
 
+    /// <summary>
+    /// The GLI-style acceptance read on the latest totals. Null while the run is still
+    /// below <see cref="IndustryMinimumSpins"/> — an early reading against a fixed
+    /// tolerance would be noise presented as a verdict.
+    /// </summary>
+    public IndustryVerdict? IndustryCheck()
+    {
+        RunSnapshot latest;
+        lock (_gate) latest = _latest;
+        if (latest.Spins < IndustryMinimumSpins) return null;
+        var deviation = Math.Abs(latest.MeasuredRtp - analyticRtp);
+        return new IndustryVerdict(latest.Spins, deviation, deviation <= IndustryTolerance);
+    }
+
     private CurvePoint Measure(RunSnapshot snapshot)
     {
         // Band = z * sigma / sqrt(N), the same closed form the analytic twin supplies.
@@ -108,3 +133,10 @@ public readonly record struct CurvePoint(
     double HitFrequency,
     double BandHalfWidth,
     bool WithinBand);
+
+/// <summary>
+/// The certification-practice check: how far the measured RTP sits from the analytic
+/// RTP after at least <see cref="ConvergenceRecorder.IndustryMinimumSpins"/> spins, and
+/// whether that deviation fits inside <see cref="ConvergenceRecorder.IndustryTolerance"/>.
+/// </summary>
+public readonly record struct IndustryVerdict(long Spins, double Deviation, bool Passed);

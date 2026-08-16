@@ -38,7 +38,7 @@ public sealed class ExhaustiveGroundTruthTests
     private const string Preset = "Classic3";
 
     [Theory]
-    [InlineData(5000)]
+    [InlineData(7600)]
     [InlineData(7500)]
     [InlineData(9900)]
     public void Classic3_ExhaustiveBaseRtp_MatchesAnalytic(int baseBp)

@@ -16,6 +16,7 @@ public static class RunEndpoints
         app.MapGet("/api/run/limits", () => Results.Ok(new
         {
             maxAggregateBasisPoints = SimulationConfig.MaxAggregateBasisPoints,
+            minAggregateBasisPoints = SimulationConfig.MinAggregateBasisPoints,
             defaults = new
             {
                 presetName = SimulationConfig.DefaultPresetName,
