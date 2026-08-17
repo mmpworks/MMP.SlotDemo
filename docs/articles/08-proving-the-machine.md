@@ -1,8 +1,8 @@
 # Proving the Machine: Ground Truth, Statistics, and Bit-for-Bit Determinism
 
-*Part 8, the last in a series on building a slot game engine in C#. The engine is built
-and can load games from data. This article asks whether its answers are trustworthy. We
-will compare independent calculations, check numeric limits, and test repeatability.*
+*Part 8 of a series on building a slot game engine in C#. The engine is built and can
+load games from data. This article asks whether its answers are trustworthy. We
+compare independent calculations, check numeric limits, and test repeatability.*
 
 A simulator that verifies itself is a circular argument. The engine says 98.01%;
 the analytic calculator says 98.00% ± band; they agree, but both were written by
@@ -49,12 +49,12 @@ for (var s2 = 0; s2 < 22; s2++)
 }
 ```
 
-The test's window construction and line evaluation are *written independently* in
-the test project. That duplication would be a DRY violation in production code;
-here it is what gives the comparison its value, because a referee that shared code
-with the thing it referees would inherit the same mistake. Two implementations, one
-built from the strips and one built from the probability formulas, and if they
-disagree in the fourteenth decimal place, the test says so.
+The test's window construction and line evaluation are *written independently* in the
+test project. That duplication would be a DRY violation in production code. Here it
+is the whole value of the comparison, because a referee sharing code with the thing
+it referees inherits the same mistake. So there are two implementations, one built
+from the strips and one from the probability formulas. Let them disagree in the
+fourteenth decimal place and the test says so.
 
 Against this anchor, two independent claims are checked:
 
@@ -66,16 +66,16 @@ Against this anchor, two independent claims are checked:
   must return what the test's independent evaluation returns, for all 10,648
   windows.
 
-The same pattern scales up through the weighted enumeration from article 5:
+The same pattern scales up through the weighted enumeration from article 5.
 `Analyzer_MatchesAnIndependentExhaustiveEnumeration` holds the weighted-tuple
 analyzer against a raw stop-by-stop walk. Integer combination counts are compared
-exactly; floating-point RTP and sigma are compared with tight stated tolerances.
-Nothing here samples, so when one of these tests fails, something changed or is
-wrong.
+exactly, and floating-point RTP and sigma are compared with tight stated tolerances.
+Every number here is counted rather than sampled, so a failure means something in the
+code changed or was wrong to begin with. Luck plays no part.
 
-Part 5 takes `GameAnalyzer` apart method by method, beginning with a 24-outcome example.
-That walkthrough explains the weighted recursion used for loaded games; this article keeps
-its focus on how independent calculations test one another.
+Article 5 takes `GameAnalyzer` apart method by method, starting from a 24-outcome
+example, and explains the weighted recursion loaded games use. This article stays on
+how independent calculations test one another.
 
 <!-- EXPORT: render this Mermaid block to PNG before publishing -->
 ```mermaid
@@ -91,7 +91,7 @@ flowchart TB
     PUB["Public third-party deconstruction"] ---|"data and reported results"| E
 ```
 
-> 🧪 **Try it live.** The companion site's chapter 7 page (<http://localhost:5090>,
+> 🧪 **Try it live.** The companion site's chapter 8 page (<http://localhost:5090>,
 > then `#/ch08`) puts the referee on screen. **Lab 1 — The census** runs the exact
 > enumeration and lists the combination counts it produces; **Lab 2 — Simulation
 > against the referee** spins the same game and shows the measured numbers walking
@@ -182,13 +182,13 @@ _paySquareUnits += (long)win.Multiplier * win.Multiplier * weight;
 _payTriggerUnits += (long)win.Multiplier * triggerWeight;
 ```
 
-Every one of those five fields is `long`, a signed 64-bit integer. These fields are
-money-adjacent counts — spins, weighted hits, weighted pay units — and every
-arithmetic operation touching them, including `Millicents.Value` throughout the
-engine, is signed `long`. A `ulong` field here would force a cast at every boundary
-where this accumulator meets the rest of the money-typed codebase, and a cast at a
-boundary is a common place for a silent truncation bug to hide. `long`'s headroom,
-checked against the game's real numbers in the comment above, is already enormous.
+Every one of those five fields is `long`, a signed 64-bit integer. They hold
+money-adjacent counts: spins, weighted hits, weighted pay units. Every arithmetic
+operation touching them is signed `long` too, including `Millicents.Value` throughout
+the engine. A `ulong` field here would force a cast at every boundary where this
+accumulator meets the rest of the money-typed codebase, and a boundary cast is a
+favorite hiding place for a silent truncation bug. Checked against the game's real
+numbers in the comment above, `long`'s headroom is already enormous.
 
 The conversion at the boundary is also a speed decision, and it shows in the
 function shapes. `Accumulate` runs once per enumerated symbol tuple and adds whole
@@ -353,8 +353,8 @@ achieved by silently ignoring the seed), and
 `DifferentWorkerCounts_AllConvergeOnTheSameAnalyticRtp`: partitions differ, so
 totals may differ, but every partition must converge on the same math.
 
-Integer money, `ref`-passed RNG, and fixed quotas were each decided five articles
-ago. Together they are what lets a test here use `==`.
+Integer money and `ref`-passed RNG were settled in article 2, fixed quotas in article
+6. Together they are what lets a test here use `==`.
 
 ## Boundary tests as executable examples
 
@@ -369,14 +369,13 @@ UnknownPreset_IsRejected_WithTheValidListInTheMessage()
 MalformedJson_FailsWithASlotMessageNotAParserStackTrace()
 ```
 
-Those names carry the requirements: the cap
-is inclusive at exactly 9,900 basis points; rejection never silently clamps;
-errors arrive as a complete list; messages tell the user what *would* work. The
-game-definition loader gets the same treatment: every malformed-file scenario
-asserts on the *quality* of the error, not just its existence. Test names are close
-to the behavior the code actually enforces, but tests can still be incomplete or
-encode a mistaken requirement. They complement rather than replace a requirements
-document.
+Those names carry the requirements. The cap is inclusive at exactly 9,900 basis
+points. Rejection never silently clamps. Errors arrive as a complete list, and
+messages tell the user what *would* work. The game-definition loader gets the same
+treatment, where every malformed-file scenario asserts on the *quality* of the error
+rather than its bare existence. Test names sit close to the behavior the code
+enforces, and tests can still be incomplete or encode a mistaken requirement. They
+complement a requirements document rather than replacing one.
 
 ## What each ring of tests catches
 
@@ -412,4 +411,4 @@ that shares their data and none of their code.
 Correctness tests become the gate for performance work. Run old and new implementations with
 the same seed, compare exact totals or checksums, and report speed only after they match.
 Benchmark repeated Release runs inside one process so startup and JIT warmup do not masquerade
-as algorithmic change. Episode 9 uses this test design on `DrawWindow`.
+as algorithmic change. Article 9 uses this test design on `DrawWindow`.

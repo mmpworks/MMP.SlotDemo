@@ -5,12 +5,11 @@ math. This one builds the machine that checks it: a parallel simulation engine
 whose results are reproducible bit for bit, with live telemetry that never blocks
 the workers.*
 
-The analytic calculator says the stock preset returns 98% — the 7,500 + 1,300 + 1,000
-basis points article 1 ships as defaults — with a per-spin standard deviation σ. The
-engine's job is to play millions of spins and compare the
-measured number with the predicted band: fast enough to watch, lossless in its
-money totals, and deterministic enough to replay. Those three requirements pull in
-different directions.
+The analytic calculator says the stock preset returns 98%, from the 7,500 + 1,300 +
+1,000 basis points article 1 ships as defaults, with a per-spin standard deviation σ.
+The engine's job is to play millions of spins and hold the measured number up against
+that predicted band. It has to be fast enough to watch, lossless in its money totals,
+and deterministic enough to replay. Those three requirements pull against each other.
 
 The main pieces, before the code:
 
@@ -60,17 +59,17 @@ Parallel.For(0, targetSpins, i => PlayOneSpin());   // don't
 
 would be nondeterministic **if each thread consumed its own mutable RNG stream**,
 because dynamic partitioning decides at runtime which thread executes which
-iteration. Which stream plays which spin could then vary from run to run, changing
-the totals. `Parallel.For` itself is not inherently nondeterministic: an iteration
-whose random input is derived solely from its iteration index could replay. This
-engine instead chooses fixed worker streams and quotas because that contract is
-simple to reproduce efficiently.
+iteration. Which stream plays which spin could then shift from run to run, and the
+totals shift with it. `Parallel.For` can be perfectly deterministic on its own terms:
+an iteration whose random input derives solely from its iteration index replays fine.
+This engine picks fixed worker streams and quotas because that contract is simple to
+reproduce and cheap to run.
 
-So the engine uses **N logical workers with fixed, pre-assigned quotas**, one task
-and one RNG stream per worker, decided before the first spin runs. `Task.Run` uses
-.NET's thread pool; this is not a promise of permanently dedicated operating-system
-threads. Article 2 explains fixed quotas with a newspaper-route example. Here is
-how the code assigns those quotas:
+So the engine uses **N logical workers with fixed, pre-assigned quotas**, one task and
+one RNG stream each, all decided before the first spin runs. `Task.Run` draws on
+.NET's thread pool, which is a different thing from a promise of permanently
+dedicated operating-system threads. Article 2 explains fixed quotas with its
+door-knocking pollster example. Here is how the code assigns them:
 
 ```csharp
 var spinsPerWorker = _plan.TargetSpins / _plan.WorkerCount;
@@ -87,17 +86,17 @@ for (var w = 0; w < _plan.WorkerCount; w++)
 await Task.WhenAll(workers).ConfigureAwait(false);
 ```
 
-Worker *i* owns its quota, RNG state, and scratch buffers,
-`SpinRng.ForWorker(masterSeed, i)`, the SplitMix64-mixed stream from article 2
-(which also covers why `SpinRng` is a mutable struct advanced by `ref` rather than
-a class).
-Read-only game data is shared, and workers publish batches to shared atomic totals,
-but no worker shares mutable RNG or scratch state with another. For a fixed game
-definition, code version, target spin count, master seed, and worker count, the
-result is reproducible. The run header records the seed and worker count. Change
-the worker count and the RNG partition changes with it, so
-the totals legitimately differ; the system reports that rather than pretending the
-run is somehow the same experiment.
+Worker *i* owns its quota, its RNG state, and its scratch buffers.
+`SpinRng.ForWorker(masterSeed, i)` supplies the SplitMix64-mixed stream from article 2,
+which also covers why `SpinRng` is a mutable struct advanced by `ref` rather than a
+class. Read-only game data is shared, and workers publish batches to shared atomic
+totals. Mutable RNG and scratch state stay private to one worker.
+
+Hold the game definition, code version, target spin count, master seed, and worker
+count steady and the result reproduces. The run header records the seed and the worker
+count. Change the worker count and the RNG partition changes with it, so the totals
+legitimately differ, and the system says so rather than pretending the run is the same
+experiment.
 
 Two rules provide replayability: no ambient randomness, and fixed assignment of
 each seeded stream to a quota. SplitMix64 serves a different purpose: it separates
@@ -184,15 +183,16 @@ The batched total is the identical sum a per-spin accumulation would produce, be
 `(a + b) + c` and `a + (b + c)` are the same value for integers, unlike the
 floating-point case article 2 opens with.
 
-One wrinkle: a mid-run `Snapshot()` reads four
-counters that are individually atomic but not atomic *as a set*; it can pair a
-`wagered` from one batch with a `returned` from the previous one. The skew is
-tied to concurrent updates and is not guaranteed to be bounded to one batch when
-several fast workers publish while the four reads occur. It affects only the live
-display. The final snapshot is
-taken after `Task.WhenAll`, on a quiesced engine, where it's exact, and that's the
-one the acceptance tests read. The tempting fix, a lock around snapshot versus add,
-would put contention on the hot path to improve a number nobody asserts on.
+One wrinkle. A mid-run `Snapshot()` reads four counters that are each atomic on their
+own and are not atomic *as a set*, so it can pair a `wagered` from one batch with a
+`returned` from the previous one. The skew rides on concurrent updates, and with
+several fast workers publishing during the four reads it has no guaranteed bound of
+one batch.
+
+That skew touches the live display and nothing else. The final snapshot is taken after
+`Task.WhenAll`, on a quiesced engine, where it is exact, and that snapshot is the one
+the acceptance tests read. The tempting fix, a lock around snapshot versus add, would
+put contention on the hot path to sharpen a number nobody asserts on.
 
 ## Telemetry that never blocks the workers
 
@@ -224,7 +224,7 @@ flowchart LR
     RT -->|"after Task.WhenAll:<br/>final quiesced snapshot"| VERDICT["measured RTP vs z*sigma/sqrt(N) band"]
 ```
 
-> 🧪 **Try it live.** The companion site's chapter 5 page (<http://localhost:5090>,
+> 🧪 **Try it live.** The companion site's chapter 6 page (<http://localhost:5090>,
 > then `#/ch06`) exercises both halves of this design. **Lab 1 — Same seed, same
 > answer, any day** re-runs a configuration and compares the totals down to the
 > millicent, including what changing the worker count does to them. **Lab 2 — Starve
@@ -273,31 +273,30 @@ return () =>                                    // called once per worker
 };
 ```
 
-This delegate prevents the scheduling policy from being copied into each game.
-When article 7 loads Orca Dive, the project's fictional worked game, it brings its
-own wild, scatter, and pick rules through `SpinPlay` and reuses the
-quota partitioning, seeded streams, batched counters, and telemetry. Keeping one
-worker loop prevents the two game paths from drifting into different scheduling
-behavior.
+That delegate keeps the scheduling policy in one place. When article 7 loads Orca
+Dive, the project's fictional worked game, it brings its own wild, scatter, and pick
+rules through `SpinPlay` and inherits the quota partitioning, seeded streams, batched
+counters, and telemetry unchanged. One worker loop serves both game paths, so their
+scheduling behavior stays identical by construction.
 
-The engine asks a game for a `SpinPlay` function. Scheduling workers, batching
-counters, and coalescing telemetry do not depend on the game's rules; the worker
-only needs to turn a `ref SpinRng` into a `SpinOutcome`. An interface
-would work too, but it would also imply the engine might call other methods on
-that same object someday, session state, configuration, anything else `IGame`
-grew over time. A delegate names the single call the engine makes: the engine
-supplies the loop, the game supplies what happens inside one turn of it.
+The engine asks a game for a `SpinPlay` function and nothing else. Scheduling workers,
+batching counters, and coalescing telemetry all run independently of the game's rules.
+The worker only has to turn a `ref SpinRng` into a `SpinOutcome`. An interface would
+work here too, and it would also hint that the engine might call other methods on that
+object someday: session state, configuration, whatever else an `IGame` accumulated
+over time. A delegate names the single call the engine makes. The engine supplies the
+loop; the game supplies what happens inside one turn of it.
 
 The reel strips are built once and shared across workers. `StripReelSet` copies its
-input arrays at construction, so outside mutation cannot change the active game and
-every worker sees byte-identical geometry. Immutable data shares freely and mutable
-scratch stays per-worker, which is why the worker loop needs no lock of its own.
+input arrays at construction, so outside mutation leaves the active game alone and
+every worker sees byte-identical geometry. Immutable data shares freely, mutable
+scratch stays per-worker, and that is why the worker loop needs no lock of its own.
 
-There's also an optional `SpinObserver` delegate, a per-spin diagnostic hook, null
-by default, so the hot path pays at most a predictable null check. It's how the
-server can inspect individual spins during a small diagnostic run while staying
-logging-free in the library itself. It is a diagnostic hook, not the telemetry path:
-on a 10-million-spin run it would cost a callback per spin.
+There is also an optional `SpinObserver` delegate, a per-spin diagnostic hook, null by
+default, so the hot path pays a predictable null check at most. It lets the server
+inspect individual spins during a small diagnostic run while the library itself stays
+free of logging. Keep it to diagnostic runs: on a 10-million-spin run it costs a
+callback per spin.
 
 ## Watching the estimate converge
 
@@ -324,5 +323,5 @@ reproducing the figures in a public third-party slot deconstruction.
 
 The engine already makes the large structural choices: one scratch buffer per worker and
 batched shared counters. Leave batch size, worker count, delegates, and telemetry cadence
-alone until a complete Release run supplies a baseline. Episode 9 shows why: forced inlining
+alone until a complete Release run supplies a baseline. Article 9 shows why: forced inlining
 and manual loop unrolling both looked attractive and made the measured run slower.

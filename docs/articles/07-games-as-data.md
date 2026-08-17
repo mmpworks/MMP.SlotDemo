@@ -5,12 +5,12 @@ configurable slot game and the engine that runs it. This one models Orca Dive
 from a public third-party deconstruction by making the game itself a JSON file.*
 
 Everything so far has run generated games: preset reel shapes, a canonical paytable
-scaled to a target. That proves the engine and the math agree with *each other*,
-useful, but a skeptic can call it a closed loop. Stronger evidence comes from game
-data and results derived outside this codebase. The public third-party page that
-Orca Dive's numbers are modeled on provides reconstructed reel strips, the visible
-paytable and bonus rules, and calculated returns. (The dated citation lives in
-`docs/par-orca-dive.md`, not here — this article is about the loader, not the source.)
+scaled to a target. That shows the engine and the math agreeing with *each other*,
+which is useful, and a skeptic can fairly call it a closed loop. Stronger evidence
+comes from game data and results derived outside this codebase. The public
+third-party page Orca Dive's numbers are modeled on supplies reconstructed reel
+strips, the visible paytable and bonus rules, and calculated returns. (The dated
+citation lives in `docs/par-orca-dive.md`. This article is about the loader.)
 
 Orca Dive is a fictional game invented for this series. Its math reproduces a published
 PAR deconstruction of a real commercial machine: the source's author reconstructed the
@@ -30,6 +30,7 @@ The vocabulary for this chapter:
 | **Pay category** | One possible interpretation of a line, such as Mackerel or Mixed Seven |
 | **Wild** | A symbol allowed to continue specified categories of wins |
 | **Scatter** | A symbol checked in allowed window positions rather than only on a payline |
+| **Provenance** | A record of where externally supplied game data came from |
 
 ## A validation example
 
@@ -56,7 +57,6 @@ Parsing turns JSON text into objects. Validation checks whether those objects de
 game the engine can safely run.
 
 </details>
-| **Provenance** | A record of where externally supplied game data came from |
 
 ## The game definition file
 
@@ -129,20 +129,20 @@ field names the unit every pay in that file uses: `"units"` (the default, whole 
 (15 means 1.5X), or `"hundredths"` (225 means 2.25X, the finest unit the engine
 supports).
 
-Internally, those three choices are an `enum PayUnit { Units, Tenths,
-Hundredths }`, not a bare string carried around and compared everywhere it's
-used. An `enum` gives the three valid choices names the compiler checks, so a
-typo like `Hundreths` fails to compile instead of silently behaving like
-`Units` at run time. The JSON text itself, though, is a string the file's author
-typed by hand, and the loader reads it with
+Inside the engine those three choices are an `enum PayUnit { Units, Tenths,
+Hundredths }` rather than a bare string carried around and compared at every use. An
+`enum` gives the three valid choices names the compiler checks, so a typo like
+`Hundreths` fails to compile instead of quietly behaving like `Units` at run time.
+
+The JSON text is a different matter. That is a string the file's author typed by hand,
+and the loader reads it with
 `string.Equals(trimmed, "units", StringComparison.OrdinalIgnoreCase)`.
-`OrdinalIgnoreCase` matters here for a specific reason: it compares raw byte
-values without applying any language's casing rules, so `"Hundredths"`,
-`"HUNDREDTHS"`, and `"hundredths"` all match the same way regardless of what
-locale is configured on the machine running the loader. A culture-aware
-comparison could, in principle, treat certain letters differently depending on
-the system's language settings; a JSON keyword should mean the same thing
-everywhere the file is loaded, which is what an ordinal comparison guarantees.
+`OrdinalIgnoreCase` earns its place here: it compares raw byte values and applies no
+language's casing rules, so `"Hundredths"`, `"HUNDREDTHS"`, and `"hundredths"` all
+match the same way whatever locale the loading machine is set to. A culture-aware
+comparison could in principle treat certain letters differently depending on system
+language settings. A JSON keyword should mean the same thing everywhere the file is
+loaded, and an ordinal comparison guarantees it.
 
 > 💡 **Quick picture.** A recipe written in whole cups can't ask for a cup and a
 > half unless the cook also owns a half-cup measure. Declaring `payUnit: "tenths"`
@@ -182,7 +182,7 @@ meaningless number; `checked` turns that wraparound into a thrown
 be an absurd paytable entry, and `checked` makes it surface as an exception instead
 of a plausible-looking number.
 
-> 🧪 **Try it live.** The companion site's chapter 6 page (<http://localhost:5090>,
+> 🧪 **Try it live.** The companion site's chapter 7 page (<http://localhost:5090>,
 > then `#/ch07`) hands the real loader whatever you give it. **Lab 1 — The shipped
 > games, read by the real loader** compiles `orca-dive.json` and
 > `classic-three-reel.json` and shows what came out; **Lab 2 — Feed the loader
@@ -325,8 +325,8 @@ different ways, which makes disagreement useful evidence of a defect.
 
 ## Reusing the simulation machinery
 
-Article 5's `SpinPlay` delegate lets a loaded game supply its scoring rules while
-the engine retains responsibility for scheduling, counters, and telemetry.
+Article 6's `SpinPlay` delegate lets a loaded game supply its scoring rules while
+the engine keeps responsibility for scheduling, counters, and telemetry.
 `GameRunner.CreatePlay` below returns a `SpinPlay` for the same reason article 6
 gives: the engine asks every game, generated or loaded from JSON, for the same
 one-behavior shape, so a data-loaded game plugs into the identical worker loop a
@@ -421,19 +421,18 @@ those symbols. This reduces Orca Dive from 14,781,416 stop combinations to tens 
 thousands of symbol combinations. The exact answer stays the same because line scoring
 does not use the stop number.
 
-The scatter reads the whole window instead of a single cell, so it rides through
-the enumeration as a second weight per symbol: stops showing this symbol on the
-payline *and* a scatter somewhere in the window. That preserves the joint
-distribution of line pay and bonus trigger, which are correlated, since a
-scatter occupying the window costs that reel a payline symbol. Article 7 covers
-the accumulator this enumeration uses and the overflow arithmetic behind it in
-full. A single-payline game's analytic enumeration scales with distinct symbols per
-reel, not with stops per reel.
+The scatter reads the whole window rather than a single cell, so it rides through the
+enumeration as a second weight per symbol: stops showing this symbol on the payline
+*and* a scatter somewhere in the window. That preserves the joint distribution of line
+pay and bonus trigger, which are correlated, because a scatter occupying the window
+costs that reel a payline symbol. Article 8 covers the accumulator this enumeration
+uses and the overflow arithmetic behind it. A single-payline game's analytic
+enumeration scales with distinct symbols per reel rather than stops per reel.
 
 One limit: this analyzer covers single-payline games. Multi-line expected value is a
-plain sum, but multi-line variance with wilds *and* a window-coupled scatter needs
-line-pair covariance machinery this codebase hasn't built yet. Multi-line definitions
-still simulate correctly; `GameAnalyzer` cannot check them yet.
+plain sum. Multi-line variance with wilds *and* a window-coupled scatter needs
+line-pair covariance machinery this codebase has yet to build. Multi-line definitions
+simulate correctly today, and `GameAnalyzer` has no way to check them.
 
 ## What the tests show
 
@@ -466,5 +465,5 @@ calculations, reel-strip listings, paytables, source code, and other materials:
 
 Parsing and validation happen once; simulation may run ten million times. Keep rich symbols,
 names, and flags at the definition boundary, then ask whether the worker needs all of them in
-each window cell. Episode 9 measures a byte-ID execution view while preserving the complete
+each window cell. Article 9 measures a byte-ID execution view while preserving the complete
 domain model for configuration, analysis, and the UI.

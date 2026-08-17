@@ -38,8 +38,8 @@ Only eight symbol combinations remain: cherry or bell on each of three reels. Ea
 a weight. Three cherries has weight `2 × 1 × 3 = 6`, so it represents six of the 24 physical
 outcomes. Bell, cherry, bell has weight `1 × 1 × 1 = 1`.
 
-Add all eight weights and the total is still 24. Nothing has been estimated or thrown away.
-Repeated work has been grouped together.
+Add all eight weights and the total comes back to 24. Every outcome is still there,
+counted rather than estimated. The repeated work is simply grouped.
 
 ### Check your understanding
 
@@ -78,10 +78,10 @@ public static GameAnalysis Analyze(GameDefinition definition)
 }
 ```
 
-The one-payline limit matters. Average returns from several lines can be added, but their
-variance cannot be calculated by treating the lines as unrelated. Two paylines can read
-different rows of the same reel, so their results can move together. `AnalyticMath` handles
-that relationship for the built-in games. `GameAnalyzer` does not yet combine that work with
+That one-payline limit has a reason behind it. Average returns from several lines add
+together cleanly. Their variance does not, because two paylines can read different rows
+of the same reel and their results then move together. `AnalyticMath` handles that
+relationship for the built-in games. `GameAnalyzer` has yet to combine that work with
 wild substitutions and window-based bonuses.
 
 ## Preparing the counts
@@ -164,9 +164,8 @@ The `weight` travels with the choices. If the selected symbols appear 2, 1, and 
 the final weight is six. `Accumulate` therefore adds that result six times with one
 multiplication.
 
-`if (any[symbol] == 0) continue` means that a reel does not create a branch for a symbol it
-does not contain. The old comment described this as “costs nothing.” More directly: an
-impossible symbol is skipped.
+`if (any[symbol] == 0) continue` skips any symbol the reel never carries, so a reel
+branches only on symbols it can actually show.
 
 ## What `Accumulate` records
 
@@ -239,7 +238,7 @@ Both avoid random sampling. They solve different game models.
 
 ## A walkthrough checklist
 
-When explaining this code in a video, keep one question on screen for each method:
+To re-read the code in order, hold one question in mind per method:
 
 | Method | Question it answers |
 |---|---|
@@ -253,8 +252,8 @@ When explaining this code in a video, keep one question on screen for each metho
 | `Accumulate` | What does one completed combination contribute? |
 | `Summarize` | How do counts become RTP and standard deviation? |
 
-Start with the 24-outcome example. Once the audience understands why three cherries have a
-weight of six, the production recursion is bookkeeping rather than magic.
+Start from the 24-outcome example. Once you see why three cherries carry a weight of
+six, the production recursion turns into plain bookkeeping.
 
 *Source files: `CSharp/src/MMP.SlotGame.Core/Games/GameAnalyzer.cs` and
 `CSharp/src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`.*

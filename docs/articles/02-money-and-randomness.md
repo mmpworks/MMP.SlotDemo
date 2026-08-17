@@ -835,4 +835,4 @@ single-symbol probability right and every two-symbol probability wrong.
 `NextInt` runs once per reel per spin, so its setup cost may matter at tens of millions of
 spins. Keep the validated API while building the system. After reel lengths become stable
 construction-time data, measure whether their Lemire ranges and rejection thresholds are
-worth calculating once. Episode 9 performs that experiment.
+worth calculating once. Article 9 performs that experiment.

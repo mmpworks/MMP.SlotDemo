@@ -697,4 +697,4 @@ the full invariant list and ADR-001.*
 Record likely hot paths now: random selection, window construction, evaluation, and shared
 counters. Do not optimize them in the architecture chapter. The first system needs stable
 contracts and independent correctness checks before a faster version has a trustworthy
-answer to compare against. Episode 9 returns to this list with measurements.
+answer to compare against. Article 9 returns to this list with measurements.

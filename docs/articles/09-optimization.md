@@ -1,13 +1,17 @@
 # Optimize the Machine You Proved
 
-The first eight episodes build a correct slot simulation. They use exact money, stable
-random streams, ordered reel strips, checked game definitions, analytic math, and independent
-tests. That order matters. Without the proven version, an optimization benchmark can tell us
-which wrong answer arrives first.
+*Part 9 of a nine-part series on building a slot game engine in C#. The first eight
+articles built and proved the machine; this one makes it faster and measures every
+claim.*
 
-This episode keeps the original `DrawWindow` implementation beside the production version
-and runs both from the same seed. The live lab refuses to report a speedup unless their
-checksums match.
+The first eight articles build a correct slot simulation, out of exact money, stable
+random streams, ordered reel strips, checked game definitions, analytic math, and
+independent tests. That order matters. Without the proven version, an optimization
+benchmark only tells us which wrong answer arrives first.
+
+This article keeps the original `DrawWindow` implementation beside the production
+version and runs both from the same seed. The live lab refuses to report a speedup
+unless their checksums match.
 
 ## Start with a Release baseline
 
@@ -82,33 +86,36 @@ empty strips before the optimized path becomes available.
 
 ### The strategy pattern we didn't build
 
-Precomputing the threshold invites a follow-up idea: since a power-of-two stop count never
-rejects at all, why not a per-reel *selector strategy* — a mask (`raw & (stops - 1)`) for
-32-, 64-, and 128-stop reels, Lemire's multiply for the rest? It sounds like a clean
-polymorphic seam. It was declined on analysis, before any benchmark, for four reasons worth
-recording:
+Precomputing the threshold invites a follow-up idea. A power-of-two stop count never
+rejects at all, so why not a per-reel *selector strategy*: a mask (`raw & (stops - 1)`)
+for 32-, 64-, and 128-stop reels, Lemire's multiply for the rest? It sounds like a
+clean polymorphic seam. We declined it on analysis, before running any benchmark, for
+four reasons worth writing down:
 
-1. **The win is already in the data.** For a power-of-two bound, `2⁶⁴ mod B` is zero, so the
-   precomputed threshold is zero and the reject branch is dead — always predicted, never
-   taken. Video3, Video5x64, and Video5x128 already run rejection-free through the uniform
-   path. The mask would replace one multiply (~3 cycles, hidden by out-of-order execution)
-   with one AND, in a loop whose time goes to window reads and line evaluation.
-2. **Dispatch costs more than it saves.** A per-reel interface or delegate in the hot loop is
-   an indirect call — several times the cost of the multiply it wraps — and it blocks the JIT
-   from inlining a three-instruction body. The failed-experiments list below shows this
-   codebase punishing exactly this kind of added indirection.
-3. **The game that matters can't use it.** Orca Dive's strips are 26/29/26/29/26. Every
-   power-of-two beneficiary is a stock preset that is already free under point 1.
-4. **The mapping changes.** A mask keeps the raw value's low bits; Lemire's method keeps the
-   scaled high half. Both are fair, but they pick different stops from the same seed, so
-   every recorded run stops replaying the moment a reel switches selector. That buys a
-   determinism asterisk with no measured win attached.
+1. **The win is already in the data.** For a power-of-two bound, `2⁶⁴ mod B` is zero,
+   so the precomputed threshold is zero and the reject branch is dead code: always
+   predicted, never taken. Video3, Video5x64, and Video5x128 already run
+   rejection-free through the uniform path. The mask would swap one multiply (~3
+   cycles, hidden by out-of-order execution) for one AND, inside a loop whose time
+   goes to window reads and line evaluation.
+2. **Dispatch costs more than it saves.** A per-reel interface or delegate in the hot
+   loop is an indirect call, several times the cost of the multiply it wraps, and it
+   blocks the JIT from inlining a three-instruction body. The failed-experiments list
+   below shows this codebase punishing added indirection of just this kind.
+3. **The game that matters can't use it.** Orca Dive's strips are 26/29/26/29/26.
+   Every power-of-two beneficiary is a stock preset that already runs free under
+   point 1.
+4. **The mapping changes.** A mask keeps the raw value's low bits. Lemire's method
+   keeps the scaled high half. Both are fair, and they pick different stops from the
+   same seed, so every recorded run stops replaying the moment a reel switches
+   selector. That buys a determinism asterisk with no measured win attached.
 
-The current design is the data-driven form of the same idea: the "strategy" is the
-`(range, threshold)` pair per reel, and threshold zero *is* the fast path — selected by data,
-no dispatch, one code path to prove correct. This one stayed unbuilt on analysis alone;
-anyone curious is welcome to run it through the paired harness below, with a prediction on
-record that it joins the list that follows.
+The current design is the data-driven form of the same idea. The "strategy" is the
+`(range, threshold)` pair per reel, and threshold zero *is* the fast path, selected by
+data, with no dispatch and one code path to prove correct. This one stayed unbuilt on
+analysis alone, with no benchmark behind the decision. Anyone curious is welcome to
+run it through the paired harness below. The prediction on record is that it joins the
+list that follows.
 
 ## Compile a dense payout view
 
@@ -138,18 +145,20 @@ bytes:  0C   1C   04  11   19
 key:    0x0C1C041119
 ```
 
-This is an encoding, not a conventional hash. Every reel owns a separate byte, so two
-different stop combinations cannot share a key. A byte supports stop numbers 0 through 255,
-which means as many as 256 stops on each reel. Eight reels fit in one `ulong`.
+This is an encoding rather than a conventional hash. Every reel owns a separate byte,
+so two different stop combinations can never share a key. A byte holds stop numbers 0
+through 255, which allows as many as 256 stops on each reel, and eight reels fit in
+one `ulong`.
 
 `WinningOutcomeTable` examines the complete stop cycle during game construction. It stores
 an entry when at least one payline pays or a feature starts. The value contains the final
 line-pay multiplier, the paylines that contributed to it, and the triggered features.
 Combinations that do nothing are absent.
 
-The feature information matters even when the initial payout is zero. Orca Dive's key
-`0x0000000000` shows Penguin on each required reel. No payline wins, but `PenguinBonus`
-starts. Dropping zero-pay entries would silently remove that minigame.
+The feature information earns its place even when the payout is zero. Orca Dive's key
+`0x0000000000` shows Penguin on each required reel. No payline wins there, and
+`PenguinBonus` starts anyway. Drop the zero-pay entries and that minigame quietly
+disappears.
 
 Orca Dive has 14,781,416 stop combinations. Construction stores 1,516,294 line-winning
 combinations and recognizes 181,656 feature-triggering combinations. Outcomes with the same
@@ -174,11 +183,12 @@ geometry keeps another 155 prefixes alive, for 336 useful prefixes in all. The o
 prefixes are dead after two reels. The RNG still draws the remaining stops to preserve its
 stream, but outcome evaluation does no more work for them.
 
-Orca Dive can pay after one reel because a single `WildOrca` pays 2x. Reel-0 stops 7 and 20
-put that symbol on the center payline. Those two stops are the immediate-pay list, but they
-cannot be the complete first table: 22 other reel-0 stops can still grow into longer line
-wins, and the remaining two can still begin the Penguin feature. All 26 first-reel stops are
-therefore useful. The first table combines reels 0 and 1, where real pruning begins.
+Orca Dive can pay after one reel, because a single `WildOrca` pays 2x. Reel-0 stops 7
+and 20 put that symbol on the center payline. Those two stops are the immediate-pay
+list, and they fall well short of a complete first table: 22 other reel-0 stops can
+still grow into longer line wins, and the remaining two can still begin the Penguin
+feature. All 26 first-reel stops stay useful. So the first table combines reels 0 and
+1, which is where real pruning begins.
 
 The same-work Release benchmark used ten million outcomes per sample and required identical
 payout/feature checksums:
@@ -216,9 +226,9 @@ Several plausible changes lost:
 - Copying common fields into locals also ran slower in the whole simulation.
 - Removing only the positive-bound validation was neutral.
 
-The current strips are tiny and cache-friendly. Extra offset tables and larger generated code
-cost more than the indirections they attempted to remove. Modern .NET's JIT also made better
-inlining decisions than the manual hints.
+The current strips are tiny and cache-friendly. Extra offset tables and larger
+generated code cost more than the indirections they set out to remove. Modern .NET's
+JIT also made better inlining decisions than the manual hints did.
 
 ## Try the paired benchmark
 
@@ -236,10 +246,11 @@ short benchmark substantially.
 
 ## Branch after the proven system
 
-The clean teaching history is one commit containing episodes 1-8 and their verified initial
-implementation, followed by an optimization branch such as `codex/optimization-lab`. Each
-optimization should be a small commit with its benchmark result. Losing experiments can be
-reverted while their measurements remain in the article and teaching notes.
+The clean teaching history is one commit holding articles 1-8 and their verified
+initial implementation, followed by an optimization branch such as
+`codex/optimization-lab`. Each optimization lands as a small commit carrying its
+benchmark result. Losing experiments get reverted while their measurements stay in the
+article and the teaching notes.
 
 Do not create that branch in a worktree containing unrelated active edits. Establish the
 initial-system commit first, then branch from that exact point.

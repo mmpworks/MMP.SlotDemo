@@ -5,18 +5,19 @@ cyclic strips. This one does the math on top of them: expected value without
 sampling spins, a one-scalar paytable solver, and the analytic variance that
 powers the convergence chart's confidence band.*
 
-A slot game's mathematical specification is commonly called a **PAR sheet**, short
-for Probability Accounting Report. Its exact format varies, but it normally records the
-reel or outcome model, awards, hit probabilities, theoretical RTP, and other game
-statistics. Testing laboratories ask manufacturers for percentage calculations,
-reel-strip listings, and paytables when evaluating reel games.
+A slot game's mathematical specification is usually called a **PAR sheet**, short for
+Probability Accounting Report. The format varies from studio to studio, and it
+normally records the reel or outcome model, the awards, hit probabilities,
+theoretical RTP, and other game statistics. When testing laboratories evaluate reel
+games, they ask manufacturers for percentage calculations, reel-strip listings, and
+paytables.
 
-Traditional reel games can often be evaluated directly from those inputs. More
-complex games may also require exhaustive computer evaluation or simulation, so
-“PAR sheet” does not mean that simulation is forbidden. This chapter builds the
-analytic worksheet for this engine's simpler strip-and-payline model. By the end,
-the system can scale a base paytable toward a requested 75% RTP and calculate the
-standard deviation used to judge whether a finite simulation looks reasonable.
+A lab can often evaluate a traditional reel game straight from those inputs. More
+complex games may need exhaustive computer evaluation or simulation on top, so a PAR
+sheet and a simulation sit happily side by side. This chapter builds the analytic
+worksheet for this engine's simpler strip-and-payline model. By the end, the system
+can scale a base paytable toward a requested 75% RTP and calculate the standard
+deviation that says whether a finite simulation looks reasonable.
 
 Three terms will appear repeatedly:
 
@@ -162,37 +163,36 @@ combinations; this computes the same expectation without enumerating all of them
 The analytic result is calculated before the simulation starts, so the dashboard
 shows the target and its band from the first frame.
 
-Both `ExactlyKLeading` and `BaseEvMultiplier` return `double`. Article 2 spent an
-entire chapter banning `double` from every place money adds up, so a careful reader
-of that chapter should ask why this chapter's code is full of it. These are
-probabilities, held to a different contract.
+Both `ExactlyKLeading` and `BaseEvMultiplier` return `double`. Article 2 spent a
+whole chapter keeping `double` away from every place money adds up, so a reader of
+that chapter should be asking why this chapter's code is full of it. The answer is
+that these are probabilities, and probabilities are held to a different contract.
 
-`Millicents` is money, and money in this engine has to survive an audit: sum a
-million payouts in any order, on any thread, and the total must be the one exact
-number an auditor could independently re-derive by adding the same integers. A
-`double`'s tiny representation error, harmless on its own, would make that
-re-derivation fail. What `ExactlyKLeading` returns is a probability, a
-dimensionless ratio between 0 and 1 with no accumulation-audit contract behind it
-at all. These probabilities come from small whole-number counts divided by a strip
-length. The tests compare their sums with a separate enumeration to fourteen decimal
-places. A change large enough to affect the answer will fail that comparison.
+`Millicents` is money, and money in this engine has to survive an audit. Sum a
+million payouts in any order, on any thread, and the total has to be the one number
+an auditor could re-derive by adding the same integers. A `double`'s tiny
+representation error is harmless on its own and would break that re-derivation. What
+`ExactlyKLeading` returns is a probability: a dimensionless ratio between 0 and 1,
+with no accumulation-audit contract behind it. These probabilities come from small
+whole-number counts divided by a strip length. The tests compare their sums against a
+separate enumeration to fourteen decimal places, so any change big enough to move the
+answer fails that comparison.
 
-That's also why `BaseEvMultiplier` returns a bare `double`, not a `Millicents`.
-Its answer, "how many bet-units does this paytable pay back on average," is a
-ratio with no currency attached to it yet; the function has no wager to work
-with, because none was passed in. `Millicents` couldn't hold that answer even if
-the function wanted it to, since a `Millicents` is a count of a specific currency
-unit, not a multiplier. Money enters the picture one function later, in `Solve`,
-the moment an actual wager is available to multiply this ratio against. Returning
-`Millicents` here would mean inventing a wager, or defaulting to one, either of
-which bakes an assumption into a function meant to work against any wager.
+The same reasoning explains why `BaseEvMultiplier` hands back a bare `double`. Its
+answer, "how many bet-units does this paytable pay back on average," is a ratio with
+no currency attached yet, and the function has no wager to work with because nobody
+passed one in. A `Millicents` counts a specific currency unit, so it could not hold a
+multiplier even if the function wanted it to. Money arrives one function later, in
+`Solve`, the moment a real wager is available to multiply this ratio against.
+Returning `Millicents` here would mean inventing a wager or defaulting to one, and
+either choice bakes an assumption into a function meant to work against any wager.
 
 ## Turning a target into a paytable
 
-Now invert the problem: given a *target* base RTP, resize the canonical paytable.
-Article 2 used a recipe analogy: keep the prizes in the same proportions, but make
-the whole recipe larger or smaller. The code now gives that multiplier the clearer
-name `paytableScaleFactor`:
+Run the problem backwards. Given a *target* base RTP, resize the canonical paytable.
+Article 2 used a recipe analogy: keep the prizes in the same proportions and make the
+whole recipe larger or smaller. In code that multiplier goes by the name
+`paytableScaleFactor`:
 
 ```csharp
 public static ScaledPaytable Solve(
@@ -215,13 +215,13 @@ public static ScaledPaytable Solve(
 }
 ```
 
-`Solve` reads `canonical.Pays` without modifying the table, and returns a new
-`ScaledPaytable`. `canonical`, the dimensionless shape from `Paytable.CanonicalFor`
-(article 3), is scaled once per game at whatever target RTP that game wants, and the
-same canonical table could back several games with different targets. A `Solve` that
-scaled `canonical`'s awards in place would corrupt the table for the next caller,
-silently, since nothing about the name `Solve` suggests a side effect on its
-argument.
+`Solve` reads `canonical.Pays`, leaves the table as it found it, and returns a new
+`ScaledPaytable`. That matters because `canonical`, the dimensionless shape from
+`Paytable.CanonicalFor` (article 3), gets scaled once per game at whatever target RTP
+that game wants, and one canonical table can back several games with different
+targets. A `Solve` that scaled `canonical`'s awards in place would corrupt the table
+for the next caller, quietly, since nothing about the name `Solve` warns of a side
+effect on its argument.
 
 Read the division in words:
 
@@ -255,18 +255,18 @@ each entry with round-half-to-even. The rounded paytable may land slightly above
 below the requested RTP; a single multiplier cannot guarantee the exact target
 after several awards round independently.
 
-`ScaledPaytable` is a `public sealed record`. Its one constructor copies the
-caller's award dictionary into a `ReadOnlyDictionary` and exposes it through a
-get-only property, so once built, nothing in the codebase can change one of its
-awards later. A single mutable object shared between the analytic calculator and the
-spin evaluator would be a standing risk, since a bug anywhere that touched the
-instance could shift the table underneath the other reader.
+`ScaledPaytable` is a `public sealed record`. Its one constructor copies the caller's
+award dictionary into a `ReadOnlyDictionary` and exposes it through a get-only
+property, so once the table is built, nothing in the codebase can change an award
+afterward. A mutable object shared between the analytic calculator and the spin
+evaluator would be a standing risk: a bug anywhere that touched the instance could
+shift the table underneath the other reader.
 
-`ScaledPaytable` is constructed once and shared. The analytic calculator and the
-spin evaluator both read that same rounded instance, so they cannot disagree by
-using different versions of an award. The system then recomputes
-`RealizedBaseRtp` from the rounded integer awards and checks both the 99% cap and a
-0.01-percentage-point drift tolerance against the resulting total.
+That one instance is built once and shared. The analytic calculator and the spin
+evaluator both read the same rounded table, which rules out the two of them
+disagreeing over an award. The system then recomputes `RealizedBaseRtp` from the
+rounded integer awards and checks the resulting total against both the 99% cap and a
+0.01-percentage-point drift tolerance.
 
 > 🧪 **Try it live.** The companion site's chapter 4 page (<http://localhost:5090>,
 > then `#/ch04`) runs this solver on demand. **Lab 1 — Solve a paytable** takes a
@@ -307,12 +307,12 @@ The total spin return is a sum over lines, and the variance of a sum is:
 Var(Σ Xᵢ) = Σ Var(Xᵢ) + 2 · Σᵢ<ⱼ Cov(Xᵢ, Xⱼ)
 ```
 
-The covariance term is where a model that treats each visible cell as a separate
-die roll would quietly fail. Two paylines can share cells or read neighboring
-positions on the same reel strip. That connection may make their awards move
-together, which is positive covariance, or make one line less likely to win when
-the other wins, which is negative covariance. The sign and size come from the
-actual ordered strips; they cannot safely be guessed.
+The covariance term is where a model treating each visible cell as a separate die
+roll fails quietly. Two paylines can share cells, or read neighboring positions on
+the same reel strip. That connection may push their awards to move together, which is
+positive covariance, or make one line less likely to win when the other does, which
+is negative covariance. Both the sign and the size come out of the actual ordered
+strips, and guessing them is unsafe.
 
 > 💡 **Quick picture.** Two students assigned to the same group project may receive
 > similar grades because both results depend on the same project. That is positive
@@ -443,16 +443,16 @@ play path, not a proof of the contribution by itself.
 
 ## What the analytic math is for
 
-Much of this article could be approximated by simulation: run many spins and
-measure the average and spread. The system does that in article 6. The analytic
-calculation provides an independently derived expected value and band against which
-the simulation can be compared. Agreement does not prove that every part is free of
-bugs, but disagreement is strong evidence that at least one path is wrong.
+Simulation could approximate most of this article: run many spins, measure the
+average and the spread. The system does exactly that in article 6. What the analytic
+calculation adds is an independently derived expected value and band for the
+simulation to be compared against. Agreement falls short of proving every part is
+bug-free. Disagreement is strong evidence that at least one path is wrong.
 
-For the small 22-stop, 3-reel fixture, the tests add a third path that exhaustively
-enumerates all `22³ = 10,648` stop combinations. Exhaustive enumeration is practical
-there, but not for the 34.4-billion-combination largest preset. That smaller ground
-truth checks both RTP and variance without reusing the production evaluator's
+For the small 22-stop, 3-reel fixture, the tests add a third path that enumerates all
+`22³ = 10,648` stop combinations. Exhaustive enumeration works at that size and gives
+out well before the largest preset's 34.4 billion combinations. That smaller ground
+truth checks both RTP and variance, and it reuses none of the production evaluator's
 calculation logic.
 
 Next: weighted enumeration. Article 5 starts with 24 possible outcomes, groups repeated
