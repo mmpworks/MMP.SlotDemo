@@ -183,7 +183,7 @@ answer, "how many bet-units does this paytable pay back on average," is a ratio 
 no currency attached yet, and the function has no wager to work with because nobody
 passed one in. A `Millicents` counts a specific currency unit, so it could not hold a
 multiplier even if the function wanted it to. Money arrives one function later, in
-`Solve`, the moment a real wager is available to multiply this ratio against.
+`Solve`, once a real wager is available to multiply this ratio against.
 Returning `Millicents` here would mean inventing a wager or defaulting to one, and
 either choice bakes an assumption into a function meant to work against any wager.
 

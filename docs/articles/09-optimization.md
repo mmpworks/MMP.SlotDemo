@@ -86,11 +86,10 @@ empty strips before the optimized path becomes available.
 
 ### The strategy pattern we didn't build
 
-Precomputing the threshold invites a follow-up idea. A power-of-two stop count never
-rejects at all, so why not a per-reel *selector strategy*: a mask (`raw & (stops - 1)`)
-for 32-, 64-, and 128-stop reels, Lemire's multiply for the rest? It sounds like a
-clean polymorphic seam. We declined it on analysis, before running any benchmark, for
-four reasons worth writing down:
+Precomputing the threshold suggests a follow-up: a per-reel *selector strategy*. A
+power-of-two stop count never rejects, so the strategy would use a mask
+(`raw & (stops - 1)`) for 32-, 64-, and 128-stop reels and Lemire's multiply for the
+rest. We declined it on analysis, before running any benchmark, for four reasons:
 
 1. **The win is already in the data.** For a power-of-two bound, `2⁶⁴ mod B` is zero,
    so the precomputed threshold is zero and the reject branch is dead code: always
@@ -107,8 +106,8 @@ four reasons worth writing down:
    point 1.
 4. **The mapping changes.** A mask keeps the raw value's low bits. Lemire's method
    keeps the scaled high half. Both are fair, and they pick different stops from the
-   same seed, so every recorded run stops replaying the moment a reel switches
-   selector. That buys a determinism asterisk with no measured win attached.
+   same seed, so a recorded run stops replaying when a reel switches selector.
+   That buys a determinism asterisk with no measured win attached.
 
 The current design is the data-driven form of the same idea. The "strategy" is the
 `(range, threshold)` pair per reel, and threshold zero *is* the fast path, selected by
