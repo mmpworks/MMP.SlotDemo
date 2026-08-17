@@ -367,8 +367,7 @@ places for the geometry to drift apart.
 
 ## From a stopped reel to a paid line, step by step
 
-The rest of this article is one pipeline, five steps, run once per spin. Here it is
-in words, before the worked examples put numbers on it.
+The rest of this article is one pipeline, five steps, run once per spin. In words first, then with numbers.
 
 1. **Draw one stop per reel.** `DrawWindow` picks a uniform random stop index for
    every reel, independently. Nothing about a payline has entered the picture yet;
