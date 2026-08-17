@@ -66,6 +66,13 @@ probabilities too. Every wager, payout, and running total is an integer count of
 millicents, and the separate analytic layer is where those integer awards meet
 probabilities.
 
+The simulator makes one additional choice: **every spin wagers 1 credit**, which is
+100,000 millicents. `SimulationConfig.Wager` holds that value, and every simulated
+spin uses it. A value of 1,000,000 millicents would be a 10-credit wager. Keeping the
+wager fixed makes runs easy to compare; ten million spins always means ten million
+credits wagered. The `Millicents` type can represent other wager sizes, but this
+teaching simulator does not make the wager configurable.
+
 ## The Millicents type
 
 ```csharp
@@ -634,23 +641,24 @@ The following numbers show how remainder mapping can favor some stops. Discardin
 small, fixed part of the source range restores equal probabilities. The arithmetic
 fits in an 8-bit example.
 
-**The pigeonhole.** A random source hands out one of S equally likely raw values.
-You need one of B stops. The remainder mapping `raw % B` deals the S raw values into
-the B bins in order, like dealing cards around a table. When B divides S evenly,
-every bin gets the same number of raw values and the mapping is fair. When it
-doesn't, the deal runs out mid-lap. The first `S % B` bins hold one raw value more
-than the rest, which makes them *more likely*, forever, by construction.
+**Start with a 26-stop reel.** For a small example, imagine that the random source
+can return only the numbers 0 through 255. That gives us 256 equally likely numbers.
+We turn each number into a reel stop with `raw % 26`.
 
-The smallest familiar case is a **six-sided die**. Deal 32 raw values onto 6 faces
-with `raw % 6` and the shares come out 6, 5, 5, 6, 5, 5. Two faces land **20% more
-often** than the others (6/5 = 1.2). Any dice player would call that die loaded. A
-reel is the same object with more faces, so the same load turns up there:
+Now deal those 256 numbers to the 26 stops. The first number goes to stop 0, the next
+to stop 1, and so on. After nine complete trips around the reel, each stop has nine
+numbers assigned to it. But 22 numbers are still left. Those extras go to stops 0
+through 21. As a result:
 
-**Small numbers make it visible.** Take an 8-bit source (S = 256 raw values)
-and a 26-stop reel. 256 = 9 × 26 + 22, so the deal makes it around nine full
-times and then 22 cards remain: stops 0 through 21 each collect 10 raw values,
-stops 22 through 25 collect only 9. Stop 3 is 10/9 ≈ **11% more likely** than
-stop 24, before any game logic exists.
+- Stops 0 through 21 can each be selected by 10 raw numbers.
+- Stops 22 through 25 can each be selected by only 9 raw numbers.
+
+That means stop 3 is selected about 11% more often than stop 24. The random source
+is fair; the `% 26` conversion makes the reel unfair.
+
+The general rule comes after the example. If the source has `S` possible values and
+the reel has `B` stops, `S % B` tells us how many stops receive one extra raw value.
+There is no bias only when `S % B` is zero.
 
 Run that for ten million draws and count the bins, and the skew walks right out
 of the noise (seeded run, NumPy, 10,000,000 draws; a fair share is 384,615 per

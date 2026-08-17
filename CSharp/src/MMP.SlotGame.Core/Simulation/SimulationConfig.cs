@@ -52,8 +52,9 @@ public sealed record SimulationConfig
     public const string DefaultPresetName = "Video5x64";
 
     /// <summary>
-    /// The total amount staked per spin. Every payline and every feature scales against this
-    /// value; the engine has no concept of a per-line share of it.
+    /// The simulator wagers 1 credit, or 100,000 millicents, on every spin. Every payline
+    /// and every feature calculates its award from this full-spin wager; the engine does
+    /// not divide it among the active paylines.
     /// <see cref="Games.WinEvaluator.EvaluateWindow"/> and
     /// <see cref="Paytables.PaytableSolver.Solve"/> both depend on that basis.
     /// </summary>

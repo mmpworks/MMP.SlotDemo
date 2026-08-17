@@ -65,7 +65,7 @@ average.
 | Term | Junior-high version |
 |---|---|
 | **Spin** | One unit of simulated math: draw random stops, read the window, score the paylines, record wagered and returned. No graphics, no player. |
-| **Wager** | The amount bet on one spin. |
+| **Wager** | The amount bet on one spin. This simulator uses the same wager every time: 1 credit, or 100,000 millicents. |
 | **Payout** | The amount the game returns for a winning result. |
 | **RTP** | The long-run average payout divided by the long-run average wager. |
 | **Hold** | The other side of RTP. Ignoring special accounting details, 98% RTP corresponds to 2% theoretical hold. |
