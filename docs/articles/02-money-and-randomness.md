@@ -787,6 +787,46 @@ the stop, low bits checked against a per-reel precomputed threshold, redraw on t
 astronomically rare miss. The one division in the whole scheme, computing
 `2⁶⁴ mod B`, runs once per reel at construction and never per spin.
 
+### One long division, two methods
+
+Long division answers two questions at once: how many whole times does the
+divisor fit, and what is left over. The quotient and the remainder. Both
+mapping methods in this chapter run a single long division. They divide
+different numbers, and they keep different halves of the answer.
+
+The remainder method divides the raw value by the stop count:
+
+```text
+raw  =  quotient × 26  +  remainder
+```
+
+It keeps the remainder as the stop and throws the quotient away.
+
+Lemire's method divides the product by the source size:
+
+```text
+raw × 26  =  bin × 2⁶⁴  +  low
+```
+
+It keeps the quotient (the bin) as the stop, and the remainder becomes the
+fairness check. The die tables above say this in their column headers: low is
+`product mod 32`, a remainder. Taking the high 64 bits performs the division,
+and the low 64 bits are what that division leaves over.
+
+One more remainder ties the two methods together. Lemire's rejection
+threshold is `2⁶⁴ mod 26`: the same leftover the remainder method meets as
+the 16 raw values at the top of its range that cannot finish a lap. Each
+method discards those 16, in different places: the remainder method drops
+them as one block at the top, Lemire's drops one from the start of each fat
+slice. The leftover moves from the mapping, where it causes the bias, into
+the filter, where it removes the bias.
+
+The bin and the classic remainder are the same kind of number with the roles
+traded. In the remainder method the
+remainder names the stop and the quotient says how deep into the raw range
+you were. In Lemire's method the quotient names the stop and the remainder
+says how deep into the stop's slice you landed.
+
 **Every reel carries its own threshold.** The leftover depends on the bin count, and
 a real game mixes bin counts. Orca Dive's strips run 26, 29, 26, 29, 26 stops, so one
 threshold cannot serve the whole game. A 26-stop reel rejects its own leftover
