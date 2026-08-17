@@ -114,7 +114,7 @@ stack traces.
 
 The JSON is first deserialized into a plain matching shape, `internal sealed
 class GameDocument` (and a handful of smaller classes alongside it for symbols,
-paylines, pays, and features), before the loader turns it into the real
+paylines, pays, and features), before the loader turns it into the validated
 `GameDefinition`. Every one of those classes is declared `internal`, meaning code
 outside this assembly cannot reference the type at all, not even to catch it in a
 variable. The JSON document types are not the public API. Engine users work with
@@ -134,7 +134,7 @@ Hundredths }` rather than a bare string carried around and compared at every use
 `enum` gives the three valid choices names the compiler checks, so a typo like
 `Hundreths` fails to compile instead of quietly behaving like `Units` at run time.
 
-The JSON text is a different matter. That is a string the file's author typed by hand,
+The JSON value is text supplied by the file's author,
 and the loader reads it with
 `string.Equals(trimmed, "units", StringComparison.OrdinalIgnoreCase)`.
 `OrdinalIgnoreCase` earns its place here: it compares raw byte values and applies no
@@ -168,9 +168,9 @@ an explicit conversion when imported. Article 2 covers the money-type side of th
 same conversion; the full schema for `payUnit` lives in
 `docs/game-definition-schema.md`.
 
-Two more choices in the loader's paytable-building code need a note. The declared
-pays arrive as `Dictionary<int, decimal>`, `decimal` rather than `double`, because a
-JSON author types a pay as ordinary decimal digits, "1.5" or "2.25," and `decimal`
+The loader receives declared pays as `Dictionary<int, decimal>`. It uses `decimal`
+instead of `double` because a JSON author types a pay as ordinary decimal digits,
+"1.5" or "2.25," and `decimal`
 holds those digits with no representation error. That is a different job from the
 accumulation path article 2 rules `double` out of, and the loader converts this
 `decimal` to an integer well before the number reaches any hot path.
@@ -224,8 +224,8 @@ public sealed record PayCategory
 }
 ```
 
-`PayCategory` is still a `record`, and like article 4's `ScaledPaytable` it spells
-out a constructor rather than taking a one-line positional shape. The arrays stay
+`PayCategory` is a `record`, and like article 4's `ScaledPaytable` it spells
+out a constructor instead of taking a one-line positional shape. The arrays stay
 `private` here too. An array property is an ordinary reference, and handing a caller
 the `bool[]` would let that caller flip one entry in place, changing what the
 category pays without going through any of the loader's checks. The constructor
@@ -235,8 +235,7 @@ never reach the backing array. Read through those two methods, "Mackerel" has
 `Continues` true for Mackerel *and* WildOrca (the wild extends fish runs), and
 `IsRequired` true for Mackerel alone.
 
-Two flat `bool[]` arrays, rather than one array of a small object holding both
-flags per symbol, is also a deliberate shape for where this data gets read: the
+Two flat `bool[]` arrays match where this data gets read: the
 evaluator's inner loop, run once per line per spin, tens of millions of times a
 run. `Continues(symbolId)` and `IsRequired(symbolId)` are each one array index, no
 object to unwrap first, and a `bool[]` packs one byte per entry with nothing extra
@@ -292,8 +291,7 @@ published breakdown.
 Run length has no minimum in this evaluator: a category pays at a length exactly
 when its pay array has a non-zero entry there. That's how a wild pays from
 one-of-a-kind while everything else needs three; the *data* differs, the code does
-not. This supports extension through data rather than through an inheritance
-hierarchy of evaluator subclasses.
+not. New pay schedules change the data without requiring evaluator subclasses.
 
 ## The bonus, simulated pick by pick
 

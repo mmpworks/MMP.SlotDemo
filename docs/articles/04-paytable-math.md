@@ -90,7 +90,7 @@ P(exactly 3 leading Sevens)
     = 0.0009
 ```
 
-That “and the next reel does not match” term prevents the same four- or five-symbol
+That "and the next reel does not match" term prevents the same four- or five-symbol
 win from also being counted as a three-symbol win. Leaving it out overstates the
 expected payout when the paytable lists mutually exclusive exact-run awards. The
 size of the error depends on the reel probabilities and awards; it is not always
@@ -276,7 +276,7 @@ rounded integer awards and checks the resulting total against both the 99% cap a
 
 ## Variance needs more than the mean
 
-Expected value answers “where is the long-run center?” It does not say whether most
+Expected value answers "where is the long-run center?" It does not say whether most
 spins pay near that center or whether the game usually pays zero and occasionally
 pays a huge jackpot. Variance measures that spread, and standard deviation `σ`
 (the Greek letter sigma) is the square root of variance.
@@ -296,7 +296,7 @@ the time over repeated independent experiments if the normal approximation fits.
 The band is centered on the **realized analytic RTP**, recomputed from the rounded
 integer awards.
 
-The normal approximation improves as `N` grows, but “large enough” depends on the
+The normal approximation improves as `N` grows, but "large enough" depends on the
 payout distribution. A game dominated by an extremely rare jackpot may need many
 more spins before this band behaves well. For such games, the distribution and
 jackpot cycle need separate scrutiny rather than blind trust in the formula.
@@ -363,7 +363,7 @@ return (condA, condB) switch
 Because reels are independent of *each other* in this model, the joint probability
 across the whole line pair is the product of the per-reel factors. The underlying
 fractions come from counting stops, so no Monte Carlo sampling is involved. The C#
-implementation stores those fractions as `double`, however, so “analytic” does not
+implementation stores those fractions as `double`, however, so "analytic" does not
 mean every intermediate value has an exact binary representation.
 
 <!-- EXPORT: render this Mermaid block to PNG before publishing -->

@@ -127,7 +127,7 @@ limit, not a rule of slot mathematics.
 
 ## How `Descend` builds combinations
 
-`Descend` is the part that prompted this article. Here is the method:
+`Descend` performs the recursive walk:
 
 ```csharp
 private void Descend(int reel, long weight, long triggerWeight)
@@ -220,7 +220,7 @@ a cross term, which is why `_payTriggerUnits` exists. In ordinary language, the 
 must include spins where both parts pay together.
 
 The final `GameAnalysis` reports exact combination counts, RTP values, trigger frequency, and
-standard deviation. “Exact” here means that every modeled outcome is counted. The last
+standard deviation. "Exact" here means that every modeled outcome is counted. The last
 division still uses floating-point numbers for ratios.
 
 ## How this differs from the `Rtp` directory

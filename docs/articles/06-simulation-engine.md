@@ -69,7 +69,7 @@ So the engine uses **N logical workers with fixed, pre-assigned quotas**, one ta
 one RNG stream each, all decided before the first spin runs. `Task.Run` draws on
 .NET's thread pool, which is a different thing from a promise of permanently
 dedicated operating-system threads. Article 2 explains fixed quotas with its
-door-knocking pollster example. Here is how the code assigns them:
+door-knocking pollster example. The code assigns them before work begins:
 
 ```csharp
 var spinsPerWorker = _plan.TargetSpins / _plan.WorkerCount;
@@ -198,7 +198,7 @@ put contention on the hot path to sharpen a number nobody asserts on.
 
 The engine's constructor takes a `ChannelWriter<TelemetrySample>?`, caller-owned,
 optional, and written with `TryWrite`. Article 1 covers why a `Channel` and not a
-plain queue; here it's enough to know the write side never blocks:
+plain queue. The write side does not block:
 
 ```csharp
 telemetry?.TryWrite(new TelemetrySample(_plan.RunId, Totals.Snapshot()));
@@ -290,7 +290,7 @@ loop; the game supplies what happens inside one turn of it.
 The reel strips are built once and shared across workers. `StripReelSet` copies its
 input arrays at construction, so outside mutation leaves the active game alone and
 every worker sees byte-identical geometry. Immutable data shares freely, mutable
-scratch stays per-worker, and that is why the worker loop needs no lock of its own.
+scratch stays per-worker, so the worker loop needs no lock of its own.
 
 There is also an optional `SpinObserver` delegate, a per-spin diagnostic hook, null by
 default, so the hot path pays a predictable null check at most. It lets the server

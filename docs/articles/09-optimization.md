@@ -145,10 +145,9 @@ bytes:  0C   1C   04  11   19
 key:    0x0C1C041119
 ```
 
-This is an encoding rather than a conventional hash. Every reel owns a separate byte,
-so two different stop combinations can never share a key. A byte holds stop numbers 0
-through 255, which allows as many as 256 stops on each reel, and eight reels fit in
-one `ulong`.
+This encoding gives every reel a separate byte, so two different stop combinations
+cannot share a key. A byte holds stop numbers 0 through 255, which allows as many as
+256 stops on each reel. Eight reels fit in one `ulong`.
 
 `WinningOutcomeTable` examines the complete stop cycle during game construction. It stores
 an entry when at least one payline pays or a feature starts. The value contains the final
@@ -214,7 +213,7 @@ documents, so it creates a lazy table holder without enumerating the stop cycle.
 `LoadFile` are the construction paths used for playable games; they materialize the table
 before returning, so the first spin does not inherit the setup cost.
 
-## The failed experiments belong in the lesson
+## Experiments that ran slower
 
 Several plausible changes lost:
 

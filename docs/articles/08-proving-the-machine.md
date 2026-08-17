@@ -50,8 +50,8 @@ for (var s2 = 0; s2 < 22; s2++)
 ```
 
 The test's window construction and line evaluation are *written independently* in the
-test project. That duplication would be a DRY violation in production code. Here it
-is the whole value of the comparison, because a referee sharing code with the thing
+test project. That duplication would be a DRY violation in production code. In a
+cross-check, it keeps the referee from sharing a mistake with the thing
 it referees inherits the same mistake. So there are two implementations, one built
 from the strips and one from the probability formulas. Let them disagree in the
 fourteenth decimal place and the test says so.
@@ -70,8 +70,8 @@ The same pattern scales up through the weighted enumeration from article 5.
 `Analyzer_MatchesAnIndependentExhaustiveEnumeration` holds the weighted-tuple
 analyzer against a raw stop-by-stop walk. Integer combination counts are compared
 exactly, and floating-point RTP and sigma are compared with tight stated tolerances.
-Every number here is counted rather than sampled, so a failure means something in the
-code changed or was wrong to begin with. Luck plays no part.
+Every number here is counted instead of sampled. A failure points to the
+implementation. Luck plays no part.
 
 Article 5 takes `GameAnalyzer` apart method by method, starting from a 24-outcome
 example, and explains the weighted recursion loaded games use. This article stays on
@@ -224,8 +224,8 @@ There are two analytic implementations in this repository. `GameAnalyzer`, for
 loaded single-line games, uses bounded integer multiplier accumulators as described
 above. `AnalyticMath`, for stock preset games, performs its squared-payout work in
 `double`. It avoids `long` overflow through floating-point range, with the small
-representation approximations already discussed in articles 2 and 4. The “square
-the multiplier” argument therefore applies specifically to `GameAnalyzer`, not to
+representation approximations already discussed in articles 2 and 4. The "square
+the multiplier" argument therefore applies specifically to `GameAnalyzer`, not to
 every variance calculation in the codebase.
 
 ## One confidence quantile
@@ -292,8 +292,8 @@ defines how they are selected.
 
 ## Reproducible statistical tests
 
-“Run ten million spins and check RTP is near 98%” still needs a justified meaning
-for “near.” A fixed percentage tolerance behaves differently for low- and
+"Run ten million spins and check RTP is near 98%" still needs a justified meaning
+for "near." A fixed percentage tolerance behaves differently for low- and
 high-volatility games. Article 4's analytic σ makes the tolerance a derived
 quantity. The band is `z · σ/√N`, the same normal approximation the dashboard
 draws, now used by a test:
@@ -327,8 +327,8 @@ reconstruction, not an official manufacturer PAR sheet or certification report.
 
 ## Determinism you can assert with ==
 
-A concurrency test often can't assert much: run threads, hope a race surfaces, check
-that nothing crashed. This codebase's invariants (article 2's M2, integer
+A typical concurrency smoke test runs threads, hopes a race surfaces, and checks
+for a crash. This codebase's invariants (article 2's M2, integer
 addition is order-independent, and article 6's fixed quotas) let these tests assert
 *exact* equality instead:
 
@@ -379,7 +379,7 @@ complement a requirements document rather than replacing one.
 
 ## What each ring of tests catches
 
-The suite is four rings, each catching what the one before it misses:
+The suite uses four layers with different failure targets:
 
 | Ring | Answers | Fails when |
 |---|---|---|
@@ -397,9 +397,9 @@ an official certification authority.
 > million spins land on one chart as the measured RTP walks into the analytic band
 > and the band itself narrows with √N.
 
-Nothing in this system is trusted because it agrees with itself. The money type, the
-RNG, the strips, the analytic math and the simulator each get checked by something
-that shares their data and none of their code.
+Agreement within one implementation is insufficient. The money type, RNG, strips,
+analytic math, and simulator each get checked by code that shares their data but not
+their implementation.
 
 *Source files: `tests/MMP.SlotGame.Tests/`, especially
 `ExhaustiveGroundTruthTests.cs`, `ConcurrencyTests.cs`, `GameConvergenceTests.cs`,

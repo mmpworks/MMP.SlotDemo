@@ -102,7 +102,7 @@ A scatter rule may inspect every visible position on it. Those calculations need
 ordered strip, because symbol counts alone say nothing about which symbols are
 neighbors.
 
-Preserving that is the job of the type below.
+`StripReelSet` preserves that order.
 
 ## StripReelSet
 
@@ -314,7 +314,7 @@ window the geometry and payline math have been built and tested to handle.
 Raising `MaxRows` to 6 someday is a decision to extend the engine, not a setting a
 deployed build could flip on its own. It would mean new code, new tests, and a new
 version. So letting the compiler bake the current bound in everywhere it's read costs
-nothing.
+no runtime flexibility.
 
 **Two probability queries, two jobs.** `ProbabilityOf` answers the marginal
 question and feeds the expected-value math (article 4). `JointProbabilityOf`
@@ -332,7 +332,7 @@ over the strip, joint is the same pass checking two positions per stop. And they
 two different questions, one symbol's frequency versus two symbols' frequency
 together. Separate names put both facts in the signature.
 
-**The draw allocates nothing.** `DrawWindow` returns `void` and takes a
+**The draw does not allocate.** `DrawWindow` returns `void` and takes a
 `Span<Symbol> window` parameter rather than handing back a new `Symbol[]`. A
 `Span<T>` is a view onto memory the caller already owns. Writing through it fills the
 caller's own array in place: no new object, nothing copied in or out. A method
@@ -387,7 +387,7 @@ in words, before the worked examples put numbers on it.
    paytable has an entry for that symbol at that run length; if it's too short, the
    line pays nothing. Every payline on this machine is scored separately with this
    same five-step process, and the amounts that do pay are added together for the
-   spin's total. “Separately” does not mean the lines are statistically independent:
+   spin's total. "Separately" does not mean the lines are statistically independent:
    two lines can share visible cells and therefore tend to win or lose together.
 
 Step 5 is where a paytable's *numbers* arrive. In this project's stock game
@@ -451,7 +451,7 @@ the spin code sees the same `Payline` and `StripReelSet` types either way.
 ## A single line, paid
 
 The Orca Dive game definition used by this project declares one line, the
-Center row, and pays 3-of-a-kind Seal at 20 times the total spin wager. Here is a
+Center payline, and pays 3-of-a-kind Seal at 20 times the total spin wager. A
 window where that line wins, drawn as a grid. The Center payline reads row 1 (the middle
 row) on every reel; that row is marked with `←` to show which one the line actually
 reads.
@@ -630,8 +630,7 @@ asymmetry.
 ## Proof from a hand-built fixture
 
 The geometry above is pinned as expected values in `MultiRowWindowTests.cs`, checked
-against a small hand-built game at both 4 and 5 rows. Here is the 5-row case worked
-by hand.
+against a small hand-built game at both 4 and 5 rows. Below is the 5-row calculation.
 
 The fixture is a 3-reel game with a 20-stop strip repeated on every reel. Each
 strip carries 4 copies of symbol A and 2 copies of a scatter symbol, Star, placed

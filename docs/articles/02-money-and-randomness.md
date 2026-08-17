@@ -169,7 +169,8 @@ Measure the multiplier in **hundredths of the total spin wager** and 1.25X becom
 125. 1.75X becomes 175. 2.25X becomes 225. Now the multiplier is an integer, and
 integers are what `Millicents` already handles.
 
-That is fixed-point arithmetic: store an implied decimal place instead of a fraction.
+This representation is fixed-point arithmetic: it stores an implied decimal place
+instead of a fraction.
 Applying a fraction p/100 to a wager W lands on a whole number of millicents only
 when 100 divides W evenly. `ScaledMultiply` checks that once, in a guard clause, and
 everything downstream of the check stays plain integer work. The 100 itself lives in
@@ -378,9 +379,9 @@ GLI evaluate the *resulting* theoretical percentage and leave the construction m
 alone. This engine picks the one-factor method because it wants a provable target,
 and article 4 covers what the method can and cannot tune.
 
-Here is a less simplified worked example. Suppose the canonical table, played straight, returns
-`unscaledBaseGameEv = 2.4` bets per bet (240%, a shape, nothing playable), and the game wants a
-75% base RTP:
+For a fuller example, suppose the canonical table returns
+`unscaledBaseGameEv = 2.4` bets per bet. That is 240%, useful as a shape but not as a
+playable return. The game wants a 75% base RTP:
 
 ```
 paytableScaleFactor = 0.75 / 2.4 = 0.3125
@@ -434,7 +435,7 @@ happen twice. A pseudorandom generator gives you both. A starting value called a
 **seed** determines its output, and the sequence that comes out is built to behave
 like random draws for simulation purposes.
 
-So the engine stores the recipe rather than the millions of values it produced. A
+The engine stores the recipe instead of the millions of values it produced. A
 replay needs the game definition and code version, the master seed, the worker count,
 and the target spin count. Hold those inputs fixed and each worker rebuilds the same
 stream and consumes it in the same order.
@@ -629,10 +630,9 @@ operation have different requirements.
 
 ## Modulo bias, counted
 
-Let's put numbers under the claim above, that a remainder mapping can favor some
-stops. It's worth doing, because "the RNG discards some draws" sounds at first like
-the house pressing a thumb on the scale, and discarding is what makes the draw fair.
-The arithmetic is small enough to hold in your head.
+The following numbers show how remainder mapping can favor some stops. Discarding a
+small, fixed part of the source range restores equal probabilities. The arithmetic
+fits in an 8-bit example.
 
 **The pigeonhole.** A random source hands out one of S equally likely raw values.
 You need one of B stops. The remainder mapping `raw % B` deals the S raw values into
@@ -685,12 +685,11 @@ rather than the generator. Take a certified hardware RNG producing flawlessly un
 measure in any simulation you could run. It is also provably nonzero, and game
 certification asks for provably zero. Nevada's Technical Standard 1 requires each
 outcome of a random selection to be equally probable, and "equal to eighteen decimal
-places" falls short of equal. The rejection method makes it exactly equal, and on a
-64-bit source the discard fires about once per 10¹⁸ draws. The fix is mathematically
-total and practically free.
+places" falls short of equal. The rejection method makes the probabilities equal. On
+a 64-bit source, the discard fires about once per 10¹⁸ draws.
 
-**The rejected set is the leftover, and it is fixed in advance.** Look at the deal
-again: 256 raw values, 26 bins, nine full laps, and 22 values left over that cannot
+**The rejected set is the leftover, fixed in advance.** Return to the deal: 256 raw
+values, 26 bins, nine full laps, and 22 values left over that cannot
 fill a tenth lap. Those leftovers are the rejected set. In the classic method they
 are literally the top of the source range, 234 through 255, the same values every
 time, on every machine, decided by nothing but S and B. So rejection is a fixed
@@ -769,13 +768,13 @@ number**. The raw value is one of 2⁶⁴ patterns. Multiply by 26 and the produ
 bits. The high 64 bits are the stop, and the low 64 bits face the threshold
 `2⁶⁴ mod 26 = 16`.
 
-That is why the redraw loop costs nothing in practice. The reject zone is 16
+The reject zone is 16
 positions out of 2⁶⁴, about **9 × 10⁻¹⁹**, one redraw per 10¹⁸ draws. The 8-bit
 classroom example rejected 8.6% of draws. The 64-bit production source rejects so
 rarely that a simulation drawing a billion stops per second would wait roughly thirty
 years for its first redraw. Exactness costs one multiply and one compare.
 
-`SpinRng.NextInt` is that and nothing more: one 64×64→128 multiply, high bits become
+`SpinRng.NextInt` performs one 64×64→128 multiply; the high bits become
 the stop, low bits checked against a per-reel precomputed threshold, redraw on the
 astronomically rare miss. The one division in the whole scheme, computing
 `2⁶⁴ mod B`, runs once per reel at construction and never per spin.
