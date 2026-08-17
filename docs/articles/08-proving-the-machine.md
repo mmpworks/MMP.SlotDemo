@@ -51,10 +51,11 @@ for (var s2 = 0; s2 < 22; s2++)
 
 The test's window construction and line evaluation are *written independently* in the
 test project. That duplication would be a DRY violation in production code. In a
-cross-check, it keeps the referee from sharing a mistake with the thing
-it referees inherits the same mistake. So there are two implementations, one built
-from the strips and one from the probability formulas. Let them disagree in the
-fourteenth decimal place and the test says so.
+cross-check, the duplication is the point: a referee that shares code with the thing
+it referees inherits the same mistake. The test project therefore carries its own
+implementation, built from the strips, beside the analytic one built from the
+probability formulas. Let them disagree in the fourteenth decimal place and the test
+says so.
 
 Against this anchor, two independent claims are checked:
 
