@@ -3,6 +3,13 @@ _as of 2026-08-16_
 
 ## 2026-08-16 session
 
+- ch02 gained Lab 3 (die-first rejection demo: full enumeration + 64-bit
+  BigInt Lemire explorer); BiasLab is Lab 4. Articles 1-2 got Cussler's
+  ELI5/humanize pass (facts/tables/code frozen); series count fixed to nine;
+  article 2's stale cross-refs now point at articles 6 and 8. Article 9
+  records the declined mask-vs-Lemire strategy pattern with its four issues.
+
+
 - Decision: MMP.SlotDemo keeps ALL its video and image assets in this repo.
   MMP.Media is no longer used for SlotDemo media.
 - New doc: `docs/run-walkthrough.md` — step-by-step walk of one simulation run,
