@@ -770,8 +770,8 @@ extras, which both happen to sit at low 0 here.)
 
 A reel is a die with more faces. A 26-stop strip is a 26-sided die, and only the
 multiplier changes: raw 730 × 26 = 18,980, high digits 18 = stop 18, low 980,
-threshold 1000 mod 26 = 12. Now swap the 1,000 for the **bit combinations of a 64-bit
-number**. The raw value is one of 2⁶⁴ patterns. Multiply by 26 and the product is 128
+threshold 1000 mod 26 = 12. Now swap the 1,000 for the bit combinations of a 64-bit
+number. The raw value is one of 2⁶⁴ patterns. Multiply by 26 and the product is 128
 bits. The high 64 bits are the stop, and the low 64 bits face the threshold
 `2⁶⁴ mod 26 = 16`.
 
