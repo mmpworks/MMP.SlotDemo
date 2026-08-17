@@ -642,6 +642,12 @@ B evenly, every bin gets the same number of raw values and the mapping is fair.
 If it does not, the deal runs out mid-lap: the first `S % B` bins hold one raw
 value more than the rest, so they are *more likely*, forever, by design.
 
+The smallest familiar case is a **six-sided die**. Deal 32 raw values onto 6
+faces with `raw % 6` and the shares come out 6, 5, 5, 6, 5, 5 — two faces land
+**20% more often** than the others (6/5 = 1.2). Any dice player would call that
+die loaded. A reel is the same object with more faces, so the same load shows
+up there:
+
 **Small numbers make it visible.** Take an 8-bit source (S = 256 raw values)
 and a 26-stop reel. 256 = 9 × 26 + 22, so the deal makes it around nine full
 times and then 22 cards remain: stops 0 through 21 each collect 10 raw values,
@@ -703,51 +709,71 @@ engine's `SpinRng.NextInt` uses **Lemire's rejection method** (Daniel Lemire's
 "nearly divisionless" technique, 2019), which gets the stop *and* the fairness
 check out of one multiply. The trick is easiest in decimal first.
 
-Treat the raw value as a **fraction**. A 3-digit raw number, 000–999, is a
-uniform fraction of the way through its range: raw 730 means 0.730. To place a
-fraction into 26 bins, compute `floor(fraction × 26)`. Now do it with
-integers:
+Roll the die first, because everyone already trusts a die. The job: turn one
+raw random number into a fair face, 1 of 6. The insight behind the multiply is
+to read the raw value as a **fraction of the way through its range**. In
+decimal, a 3-digit raw number 000–999 works like a percentage: raw 730 means
+"73.0% of the way along the line." A fair die just asks *which sixth of the
+line did you land in* — the first sixth is face 1, the second sixth face 2,
+and so on to the end. Multiplying by 6 answers that with whole numbers:
 
 ```
-730 × 26 = 18,980         a 6-digit product
-   high 3 digits: 18      = floor(0.730 × 26) → the bin
-   low  3 digits: 980     = how deep inside bin 18 the value landed
+730 × 6 = 4,380           a 4-digit product
+   high digit: 4          = floor(0.730 × 6) → the 5th sixth → face 5
+   low 3 digits: 380      = how deep inside that sixth the value landed
 ```
 
-The high half of the product **is** the bin — no modulo needed, it falls out
-of the multiply. The low half is the position inside the bin's slice, and that
-is where the fairness check lives. The leftover for 1,000 values into 26 bins
-is 1000 mod 26 = **12**, so the rule is: reject when the low digits are less
-than 012. Every slice loses its positions 000–011; the oversized bins each had
-their one extra value sitting in exactly those positions, and the trim leaves
-all 26 bins holding the same count. Raw 730's low half is 980 — nowhere near
-the trim zone — so bin 18 stands.
+The high part of the product **is** the face — no modulo needed, it falls out
+of the multiply. The low part is the landing position inside the face's slice
+of the line, and that is where the fairness check lives: 1,000 values cannot
+split into six equal sixths (1000 = 6 × 166 + 4), so four of the sixths hold
+one extra value, and the rule "reject when the low digits are less than 004"
+shaves exactly those four extras — the values that land at the very start of a
+fat sixth. Raw 730's low half is 380, nowhere near the trim zone; face 5
+stands.
 
-A complete miniature — 8 raw values into 3 bins, threshold 8 mod 3 = 2, so
-reject when low < 2:
+Here is the complete die in miniature — a 5-bit source (32 raw values) onto
+the 6 faces, every case visible. Threshold = 32 mod 6 = 2, so reject when
+low < 2; the low column climbs by 6 per row and wraps at every face boundary
+(bins 0–5 are faces 1–6):
 
-| raw | raw×3 | bin = product ÷ 8 | low = product mod 8 | low < 2 ? | verdict |
-|---|---|---|---|---|---|
-| 0 | 0 | 0 | **0** | yes | ✗ reject |
-| 1 | 3 | 0 | 3 | no | keep |
-| 2 | 6 | 0 | 6 | no | keep |
-| 3 | 9 | 1 | **1** | yes | ✗ reject |
-| 4 | 12 | 1 | 4 | no | keep |
-| 5 | 15 | 1 | 7 | no | keep |
-| 6 | 18 | 2 | 2 | no — 2 is not < 2 | keep |
-| 7 | 21 | 2 | 5 | no | keep |
+| raw | ×6 | bin | low | verdict | | raw | ×6 | bin | low | verdict |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 0 | 0 | **0** | ✗ reject | | 16 | 96 | 3 | **0** | ✗ reject |
+| 1 | 6 | 0 | 6 | keep | | 17 | 102 | 3 | 6 | keep |
+| 2 | 12 | 0 | 12 | keep | | 18 | 108 | 3 | 12 | keep |
+| 3 | 18 | 0 | 18 | keep | | 19 | 114 | 3 | 18 | keep |
+| 4 | 24 | 0 | 24 | keep | | 20 | 120 | 3 | 24 | keep |
+| 5 | 30 | 0 | 30 | keep | | 21 | 126 | 3 | 30 | keep |
+| 6 | 36 | 1 | 4 | keep | | 22 | 132 | 4 | 4 | keep |
+| 7 | 42 | 1 | 10 | keep | | 23 | 138 | 4 | 10 | keep |
+| 8 | 48 | 1 | 16 | keep | | 24 | 144 | 4 | 16 | keep |
+| 9 | 54 | 1 | 22 | keep | | 25 | 150 | 4 | 22 | keep |
+| 10 | 60 | 1 | 28 | keep | | 26 | 156 | 4 | 28 | keep |
+| 11 | 66 | 2 | 2 | keep ← boundary | | 27 | 162 | 5 | 2 | keep ← boundary |
+| 12 | 72 | 2 | 8 | keep | | 28 | 168 | 5 | 8 | keep |
+| 13 | 78 | 2 | 14 | keep | | 29 | 174 | 5 | 14 | keep |
+| 14 | 84 | 2 | 20 | keep | | 30 | 180 | 5 | 20 | keep |
+| 15 | 90 | 2 | 26 | keep | | 31 | 186 | 5 | 26 | keep |
 
-Before the trim, bins 0 and 1 hold three values each and bin 2 holds two. The
-trim removes positions 0 and 1 from every slice: bins 0 and 1 each lose their
-extra (raw 0 and raw 3), and bin 2 — whose lowest occupant already sits at
-position 2 — loses nothing. Result: two per bin, exactly uniform. The
-threshold is the *count of positions to shave*, so landing exactly on it (raw
-6, low = 2) is the first fair seat, kept.
+Before the trim the faces hold 6, 5, 5, 6, 5, 5 — the loaded die from the
+start of this section, produced by the multiply exactly as `% 6` produced it.
+The two rejects are the heavy faces' *openers*: raw 0 opens bin 0 at low 0,
+and raw 16 opens bin 3 at low 0 (96 is exactly 3 × 32, a perfect wrap). Bins 2
+and 5 open at low 2 — exactly on the threshold, the first fair seat, kept:
+the threshold is the *count of positions to shave*, so "low < 2" removes
+positions 0 and 1 and nothing else. After the trim every face holds
+**5, 5, 5, 5, 5, 5** — a fair die, by construction rather than by hope. (A
+wrinkle worth noticing: because 6 and 32 share a factor of 2, every low lands
+even and the odd positions never occur. The rule doesn't care — the trim still
+removes exactly the two extras, which both happen to sit at low 0 here.)
 
-Now swap the 1,000 for the **bit combinations of a 64-bit number**. The raw
-value is one of 2⁶⁴ patterns; multiply by 26 and the product is 128 bits; the
-high 64 bits are the stop; the low 64 bits face the threshold
-`2⁶⁴ mod 26 = 16`. And here is why the redraw loop is free in practice: the
+A reel is just a die with more faces: a 26-stop strip is a 26-sided die, and
+nothing changes but the multiplier — raw 730 × 26 = 18,980 → high digits 18 =
+stop 18, low 980, threshold 1000 mod 26 = 12. Now swap the 1,000 for the
+**bit combinations of a 64-bit number**. The raw value is one of 2⁶⁴ patterns;
+multiply by 26 and the product is 128 bits; the high 64 bits are the stop; the
+low 64 bits face the threshold `2⁶⁴ mod 26 = 16`. And here is why the redraw loop is free in practice: the
 reject zone is 16 positions out of 2⁶⁴ — about **9 × 10⁻¹⁹**, one redraw per
 10¹⁸ draws. The 8-bit classroom example rejected 8.6% of draws; the 64-bit
 production source rejects so rarely that a simulation drawing a billion stops
