@@ -252,8 +252,8 @@ To re-read the code in order, hold one question in mind per method:
 | `Accumulate` | What does one completed combination contribute? |
 | `Summarize` | How do counts become RTP and standard deviation? |
 
-Start from the 24-outcome example. Once you see why three cherries carry a weight of
-six, the production recursion turns into plain bookkeeping.
+Start from the 24-outcome example: it shows why three cherries carry a weight of
+six, and the production recursion repeats that counting at scale.
 
 *Source files: `CSharp/src/MMP.SlotGame.Core/Games/GameAnalyzer.cs` and
 `CSharp/src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`.*

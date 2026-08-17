@@ -8,8 +8,7 @@ A simulator that verifies itself is a circular argument. The engine says 98.01%;
 the analytic calculator says 98.00% ± band; they agree, but both were written by
 the same person against the same understanding of the game, and a shared
 misunderstanding agrees with itself perfectly. Breaking the circle takes a referee
-that shares *data* with both sides and *code* with neither. That referee is
-exhaustive enumeration.
+that shares *data* with both sides and *code* with neither: exhaustive enumeration.
 
 Four kinds of evidence appear here:
 

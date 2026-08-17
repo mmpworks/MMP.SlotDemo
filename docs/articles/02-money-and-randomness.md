@@ -258,8 +258,8 @@ line-bet units where a 10-line machine divides the stake across lines first.
 Transcribe such a PAR sheet's line pays straight into a multi-payline game file here
 and the simulated RTP comes out many times too high. Real game data has to convert to
 the total-wager basis on the way in. Orca Dive in article 7 is a single-line game,
-where the two conventions coincide and the difference stays invisible. A multi-line
-transcription is where it bites.
+where the two conventions coincide and the difference stays invisible. The
+difference appears in a multi-line transcription.
 
 ## Millicents always works in whole numbers
 
@@ -682,8 +682,7 @@ bins flattened to a max/min ratio of 1.006, which is sampling noise centered on 
 2⁶⁴), and the only numbers that divide a power of two are smaller powers of two. So
 the remainder mapping is exactly fair for 2, 4, 8, 16, 32 … stops and biased for
 every other count: every odd number, every prime except 2, and every even number
-carrying an odd factor, 6 and 10 and 26 included. Prime or composite is beside the
-point. "Is it a power of two" is the question.
+carrying an odd factor, 6 and 10 and 26 included.
 
 **A perfect random source has the same problem.** The bias lives in the *mapping*
 rather than the generator. Take a certified hardware RNG producing flawlessly uniform

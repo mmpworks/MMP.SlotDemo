@@ -145,14 +145,13 @@ A typical preset spin does four things:
 That is small CPU work, a few hundred nanoseconds on a desktop core, which puts a
 sixteen-core box somewhere near ten million spins per second. Real speed depends on
 the processor, reel shape, line count, feature rules, worker count, and build mode,
-so this chapter quotes no spins-per-second figure. The estimate only has to settle
-one question, and it settles it: the runs we intend fit in a single desktop process,
-so the design can skip a distributed job system.
+so this chapter quotes no spins-per-second figure. The estimate settles one
+question: the runs we intend fit in a single desktop process, so the design can
+skip a distributed job system.
 
 Telemetry lives at a completely different scale. A browser chart can absorb about
 ten updates per second. Put the two numbers side by side, ten million events
-produced against ten consumed, and the gap is seven orders of magnitude. Most of
-the structure below exists to bridge it.
+produced against ten consumed, and the gap is seven orders of magnitude.
 
 ## Two kinds of data, two sets of rules
 
@@ -344,8 +343,7 @@ only: does the implemented game match its submitted math package? RTP limits get
 enforced earlier, at the **approval** step, on paper. Our floor borrows the legal
 minimum most jurisdictions set, since Nevada requires at least 75% theoretical
 payback. Our ceiling stands in for the commercial maximum every operator keeps,
-because a game paying out more than it takes in is a losing product. Same mechanism
-and same timing as the real thing: before deployment, never during validation.
+because a game paying out more than it takes in is a losing product.
 
 ## Scale once, then freeze it
 
@@ -380,8 +378,7 @@ The proving ground reports that yardstick directly. Beside the statistical band
 verdict, the finale page shows an **industry check**: the measured RTP must sit
 within ±0.5 percentage points of the analytic RTP over at least ten million spins,
 the fixed tolerance certification practice quotes. The band is the stronger test,
-since it narrows as √N. The industry check is the one a lab would recognize on
-sight.
+since it narrows as √N.
 
 Downstream code can take the **request** as already validated, because the invariant
 rides on the type. When a `SimulationConfig` turns up as a parameter three layers
@@ -562,9 +559,9 @@ Walking back through the requirements:
 - **Clear error messaging**: one draft-validation boundary, loud rejection, errors
   named as data, a separate realized-math safeguard, and one shared constant per limit.
 
-Each non-functional requirement traces to a named mechanism. "Each worker accumulates
-locally and performs four atomic adds per batch of up to 4,096 spins" is a claim a
-reader can measure and argue with.
+Each non-functional requirement traces to a named mechanism a reader can measure,
+such as "each worker accumulates locally and performs four atomic adds per batch
+of up to 4,096 spins."
 
 ## What the rest of the series builds
 

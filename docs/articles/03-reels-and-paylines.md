@@ -392,7 +392,7 @@ The rest of this article is one pipeline, five steps, run once per spin. In word
 Step 5 is where a paytable's *numbers* arrive. In this project's stock game
 generator, those numbers start as a canonical shape, a set of ratios saying which
 symbols pay more than others, and one `paytableScaleFactor` resizes the whole shape
-toward the target RTP. That is this project's solver. Commercial slot paytables are
+toward the target RTP, which is all this project's solver does. Commercial slot paytables are
 designed plenty of other ways. Article 2 covers the scale factor in full. The pays in
 this article's examples are already the finished numbers a spin would use.
 
