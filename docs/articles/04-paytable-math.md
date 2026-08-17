@@ -323,7 +323,7 @@ strips, and guessing them is unsafe.
 Per-line variance uses `E[X²] − E[X]²` from the same analytically calculated
 probabilities as EV. In words: find the average squared award, then subtract the
 square of the average award. The cross-term needs the joint distribution of two
-window cells on one reel**, which comes from enumerating the strip, the same method
+window cells on one reel, which comes from enumerating the strip, the same method
 `JointProbabilityOf` used in article 3:
 
 ```csharp
