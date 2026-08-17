@@ -693,11 +693,71 @@ method, literally the top of the source range (234 through 255), the same
 values every time, on every machine, decided by nothing but S and B. Rejection
 is not "redraw when the result is unwelcome"; it is a fixed partition of the
 source range written down before any randomness exists: values 0–233 map, nine
-each per stop; values 234–255 redraw. `SpinRng.NextInt` uses Lemire's
-formulation, which finds the biased values with one multiply instead of a
-divide — the rejected raw values sit in different positions, but their *count*
-is the same `2⁶⁴ mod B` leftover, and the set is just as fixed and just as
-blind.
+each per stop; values 234–255 redraw.
+
+### The multiply trick: Lemire's rejection method
+
+The classic method above works, but it pays an integer division (`raw % 26`)
+on every draw, and division is one of the slowest things an ALU does. The
+engine's `SpinRng.NextInt` uses **Lemire's rejection method** (Daniel Lemire's
+"nearly divisionless" technique, 2019), which gets the stop *and* the fairness
+check out of one multiply. The trick is easiest in decimal first.
+
+Treat the raw value as a **fraction**. A 3-digit raw number, 000–999, is a
+uniform fraction of the way through its range: raw 730 means 0.730. To place a
+fraction into 26 bins, compute `floor(fraction × 26)`. Now do it with
+integers:
+
+```
+730 × 26 = 18,980         a 6-digit product
+   high 3 digits: 18      = floor(0.730 × 26) → the bin
+   low  3 digits: 980     = how deep inside bin 18 the value landed
+```
+
+The high half of the product **is** the bin — no modulo needed, it falls out
+of the multiply. The low half is the position inside the bin's slice, and that
+is where the fairness check lives. The leftover for 1,000 values into 26 bins
+is 1000 mod 26 = **12**, so the rule is: reject when the low digits are less
+than 012. Every slice loses its positions 000–011; the oversized bins each had
+their one extra value sitting in exactly those positions, and the trim leaves
+all 26 bins holding the same count. Raw 730's low half is 980 — nowhere near
+the trim zone — so bin 18 stands.
+
+A complete miniature — 8 raw values into 3 bins, threshold 8 mod 3 = 2, so
+reject when low < 2:
+
+| raw | raw×3 | bin = product ÷ 8 | low = product mod 8 | low < 2 ? | verdict |
+|---|---|---|---|---|---|
+| 0 | 0 | 0 | **0** | yes | ✗ reject |
+| 1 | 3 | 0 | 3 | no | keep |
+| 2 | 6 | 0 | 6 | no | keep |
+| 3 | 9 | 1 | **1** | yes | ✗ reject |
+| 4 | 12 | 1 | 4 | no | keep |
+| 5 | 15 | 1 | 7 | no | keep |
+| 6 | 18 | 2 | 2 | no — 2 is not < 2 | keep |
+| 7 | 21 | 2 | 5 | no | keep |
+
+Before the trim, bins 0 and 1 hold three values each and bin 2 holds two. The
+trim removes positions 0 and 1 from every slice: bins 0 and 1 each lose their
+extra (raw 0 and raw 3), and bin 2 — whose lowest occupant already sits at
+position 2 — loses nothing. Result: two per bin, exactly uniform. The
+threshold is the *count of positions to shave*, so landing exactly on it (raw
+6, low = 2) is the first fair seat, kept.
+
+Now swap the 1,000 for the **bit combinations of a 64-bit number**. The raw
+value is one of 2⁶⁴ patterns; multiply by 26 and the product is 128 bits; the
+high 64 bits are the stop; the low 64 bits face the threshold
+`2⁶⁴ mod 26 = 16`. And here is why the redraw loop is free in practice: the
+reject zone is 16 positions out of 2⁶⁴ — about **9 × 10⁻¹⁹**, one redraw per
+10¹⁸ draws. The 8-bit classroom example rejected 8.6% of draws; the 64-bit
+production source rejects so rarely that a simulation drawing a billion stops
+per second would wait roughly thirty years to see its first redraw. Exactness
+costs one multiply and one compare.
+
+`SpinRng.NextInt` is exactly this: one 64×64→128 multiply, high bits become
+the stop, low bits checked against a per-reel precomputed threshold, redraw on
+the astronomically rare miss. The one division in the whole scheme —
+computing `2⁶⁴ mod B` — runs once per reel at construction, never per spin.
 
 **Every reel carries its own threshold.** The leftover depends on the bin
 count, and a real game mixes bin counts: Orca Dive's strips run 26, 29, 26,
@@ -741,6 +801,8 @@ single-symbol probability right and every two-symbol probability wrong.
 
 - [Blackman and Vigna's xoshiro/xoroshiro reference](https://prng.di.unimi.it/)
   documents xoshiro256**, its statistical scope, and SplitMix64 seeding.
+- [Lemire, "Fast Random Integer Generation in an Interval" (2019)](https://arxiv.org/abs/1805.10941)
+  is the multiply-based rejection method `NextInt` implements.
 - [Nevada Technical Standard 1](https://www.gaming.nv.gov/siteassets/content/home/features/TechnicalStandard1.pdf)
   provides one jurisdiction's RNG and random-selection requirements.
 - [GLI software submission requirements](https://gaminglabs.com/getting-started/submit-new-software/)

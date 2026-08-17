@@ -51,7 +51,21 @@ public struct SpinRng
         return result;
     }
 
-    /// <summary>Uniform integer in [0, <paramref name="bound"/>) using Lemire's rejection method.</summary>
+    /// <summary>
+    /// Uniform integer in [0, <paramref name="bound"/>) using Lemire's rejection method
+    /// (Lemire 2019, "Fast Random Integer Generation in an Interval").
+    ///
+    /// Why rejection at all: 2⁶⁴ raw values folded into a bound that does not divide 2⁶⁴
+    /// leaves a remainder — 2⁶⁴ mod bound values that cannot complete a full lap — so a
+    /// plain remainder mapping makes that many outcomes more likely than the rest. The
+    /// fix discards exactly that leftover. The rejected set is a pure function of the
+    /// bound: fixed in advance, identical on every machine, and decided before the raw
+    /// bits mean anything — it can never see stops, symbols, or payouts.
+    ///
+    /// The threshold computed here IS that leftover count: (2⁶⁴ − range) % range ==
+    /// 2⁶⁴ mod range (the 0UL wraparound stands in for 2⁶⁴, which no ulong can hold).
+    /// This is the scheme's only division; per-draw work is a multiply and a compare.
+    /// </summary>
     public int NextInt(int bound)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(bound);
@@ -63,7 +77,17 @@ public struct SpinRng
 
     /// <summary>
     /// Hot-path form for a range and Lemire rejection threshold calculated when the reel
-    /// set was built. Both values remain constant for the life of that reel set.
+    /// set was built (see StripReelSet: one threshold per reel, so mixed strip lengths
+    /// such as 26 and 29 each trim their own leftover). Both values remain constant for
+    /// the life of that reel set.
+    ///
+    /// Fixed-point view of the multiply: raw/2⁶⁴ is a uniform fraction in [0,1), so
+    /// floor(fraction × range) — the bin — is the HIGH 64 bits of the 128-bit product,
+    /// with the shift standing in for the division. The LOW 64 bits are the landing
+    /// position inside the bin's slice; positions 0..threshold−1 are the per-slice
+    /// leftover, so those draws redraw. With threshold &lt; range ≤ a strip length, the
+    /// reject zone is ~range/2⁶⁴ of all draws (a 26-stop reel: 16 of 2⁶⁴ ≈ 9e-19), so
+    /// the loop body runs once essentially always.
     /// </summary>
     internal int NextInt(ulong range, ulong threshold)
     {
