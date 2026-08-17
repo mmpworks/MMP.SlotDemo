@@ -75,12 +75,12 @@ average.
 RTP behaves like the average of many dice rolls. You can know the long-run average
 before you roll anything, and you cannot use it to call the next roll.
 
-Telemetry pairs with a term the table leaves out: the counter. Together they carry
-most of this design.
+Telemetry pairs with a term the table leaves out: the counter. Both appear throughout
+this design.
 
 A **counter** is a number in memory that only ever gets added to. This system keeps
 four: spins played, money wagered, money returned, and winning spins. Every spin
-bumps them. When the run ends, those four numbers **are** the result.
+bumps them. When the run ends, those four numbers are the result.
 
 Picture a stadium on game night. An usher stands at each gate with a metal tally
 clicker and clicks it once per person walking through. That clicker is the counter.
@@ -90,7 +90,7 @@ the true attendance.
 Every few minutes each usher also keys the radio: "Gate 3, four thousand two hundred
 so far." That radio call is **telemetry**, and the control room uses it to watch the
 crowd build on a screen. Now suppose a call gets garbled, or the channel is busy.
-*Everyone still gets counted.* The clicker in the usher's hand holds the real number,
+Everyone still gets counted. The clicker in the usher's hand holds the real number,
 and the next call carries the running total all over again: "forty-six hundred so
 far," rather than "four hundred more since last time." A lost report costs the screen
 one update. The attendance is untouched.
@@ -168,7 +168,7 @@ The system has two kinds of data, and they get opposite treatment:
 The analytic probability calculations are a third concern: they use `double`, so
 they are high-precision calculations rather than exact integer counters.
 
-Mixing up the first two is the easiest way to get this system wrong. Push exact
+Mixing up the first two breaks the system in two ways. Push exact
 totals through the lossy path and the audit numbers turn to garbage. Make the
 telemetry lossless instead, and a slow browser pushes back on the workers and warps
 the very throughput we set out to measure.
@@ -218,7 +218,6 @@ Three tiers:
 
 That split makes the engine **composable**. Drop it into a test harness, a console
 program, or a web host, and none of those callers drags a web server along with it.
-The motor and the dashboard come apart.
 
 ## One run, step by step
 
@@ -333,12 +332,11 @@ silence would leave the game you asked for and the game we analyzed disagreeing 
 each other, which is bad for debugging and worse for an audit.
 
 These two limits apply only while building a game.
-The solver's RTP limits **bound one input parameter**: the RTP target you may hand
+The solver's RTP limits bound one input parameter: the RTP target you may hand
 the solver when it builds a game, no lower than 75.00% and no higher than 99.00%.
 No check during or after a run reads them. Suppose a valid 98% game measured high
 over its run. The run would finish without trimming or re-spinning, land outside
-its band, and report the disagreement. Limits gate what may be *built*, and the
-spins answer for themselves.
+its band, and report the disagreement.
 
 The pair is there so the simulator behaves the way a casino floor does. A test lab
 applies no such limit when it validates, because its simulation answers one question
@@ -367,8 +365,7 @@ the paytable is fixed data.
 Each pay rounds on its own, so the frozen table's true RTP can drift a hair off the
 target. So the math gets recomputed **from the rounded table**, and that realized
 number is the one the game actually pays. It is what the chart's band centers on and
-what the simulation is measured against. The request sets the target. The frozen
-table is the value the game pays.
+what the simulation is measured against.
 
 The industry works the same way. A commercial slot ships as a small set of
 **approved payback versions**, say 87%, 90%, and 94%. Each version is a fixed
@@ -377,8 +374,7 @@ approved set, and nobody tunes numbers out on the floor. Independent test labs (
 and its peers) then verify the *submitted* paytable: they enumerate or simulate
 every combination from the provided data and confirm the theoretical return, with
 large-scale simulation agreeing inside a tight tolerance. A lab that "helpfully"
-clamped its inputs would be certifying a game nobody submitted. Reject at the gate,
-scale once, measure the realized table: that is the same discipline in miniature.
+clamped its inputs would be certifying a game nobody submitted.
 
 The proving ground reports that yardstick directly. Beside the statistical band
 verdict, the finale page shows an **industry check**: the measured RTP must sit
@@ -422,8 +418,7 @@ if (analytic.TotalRtp > SimulationConfig.MaxAggregateBasisPoints / 10_000.0)
 
 There is one 9,900 in the codebase, and both checks read it. Article 8 meets the same
 hazard in statistical dress, one quantile constant carried at two roundings by two
-call sites, and applies the same fix. A comment claiming a value has one home does
-not give it one. The constant has to be the same symbol.
+call sites, and applies the same fix. The constant has to be the same symbol.
 
 ## Exact money in parallel
 
@@ -479,8 +474,7 @@ Losing the last telemetry sample leaves the end of the run intact, because the e
 total and the telemetry sample come from two different reads. `RunAsync` takes the
 final quiesced snapshot from `RunTotals` after every worker has joined, outside the
 channel entirely, and that snapshot is what the acceptance tests and the completion
-message use. The channel can lose a chart point. A counted spin was never in the
-channel to lose.
+message use.
 
 Every progress event here is temporary, every producer
 and consumer lives in one process, and the authoritative result is an integer counter
@@ -508,7 +502,7 @@ approximation, a two-sided 99% band has half-width `z·σ/√N`. Treat that as a
 statistical expectation. Some seeds will land outside the band. Article 4 covers the
 assumptions and the rare-win caveat.
 
-**The analytic calculator and the simulator reach the result by different paths.**
+The analytic calculator and the simulator reach the result by different paths.
 One combines probabilities. The other plays sampled spins. They share the paytable
 and reel definitions, the *data*, and run on separate calculation code. When the two
 agree, that is strong evidence both paths read the game the same way. It falls short

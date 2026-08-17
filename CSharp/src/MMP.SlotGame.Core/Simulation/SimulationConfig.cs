@@ -23,7 +23,7 @@ public sealed record SimulationConfig
 {
     /// <summary>
     /// The solver's RTP limits: the range of aggregate RTP targets a request may hand the
-    /// solver, in integer basis points so both boundaries are exact. They bound INPUT only —
+    /// solver, in integer basis points so both boundaries are exact. They bound input only —
     /// no check during or after a run reads them. The pair pretends this simulator is a
     /// casino floor: jurisdictions set legal floors (Nevada: 75% theoretical payback) and
     /// operators set commercial ceilings, both enforced on paper before deployment.

@@ -82,7 +82,7 @@ P(exactly k leading s) = p(0,s) · p(1,s) · … · p(k−1,s) · (1 − p(k,s))
 The last factor prevents double counting. Suppose the chance of Seven on each reel is
 `1/10`. The chance that the first three reels are Seven is `1/10 × 1/10 × 1/10`,
 but that group still contains outcomes with four or five Sevens. To count
-**exactly three**, reel 4 must not be Seven:
+exactly three, reel 4 must not be Seven:
 
 ```text
 P(exactly 3 leading Sevens)
@@ -163,10 +163,9 @@ combinations; this computes the same expectation without enumerating all of them
 The analytic result is calculated before the simulation starts, so the dashboard
 shows the target and its band from the first frame.
 
-Both `ExactlyKLeading` and `BaseEvMultiplier` return `double`. Article 2 spent a
-whole chapter keeping `double` away from every place money adds up, so a reader of
-that chapter should be asking why this chapter's code is full of it. The answer is
-that these are probabilities, and probabilities are held to a different contract.
+Both `ExactlyKLeading` and `BaseEvMultiplier` return `double`. Article 2 kept
+`double` away from every place money adds up. These values are probabilities, and
+probabilities are held to a different contract.
 
 `Millicents` is money, and money in this engine has to survive an audit. Sum a
 million payouts in any order, on any thread, and the total has to be the one number
@@ -323,7 +322,7 @@ strips, and guessing them is unsafe.
 
 Per-line variance uses `E[X²] − E[X]²` from the same analytically calculated
 probabilities as EV. In words: find the average squared award, then subtract the
-square of the average award. The cross-term needs the **joint distribution of two
+square of the average award. The cross-term needs the joint distribution of two
 window cells on one reel**, which comes from enumerating the strip, the same method
 `JointProbabilityOf` used in article 3:
 
@@ -444,7 +443,7 @@ play path, not a proof of the contribution by itself.
 ## What the analytic math is for
 
 Simulation could approximate most of this article: run many spins, measure the
-average and the spread. The system does exactly that in article 6. What the analytic
+average and the spread. The system does that in article 6. What the analytic
 calculation adds is an independently derived expected value and band for the
 simulation to be compared against. Agreement falls short of proving every part is
 bug-free. Disagreement is strong evidence that at least one path is wrong.

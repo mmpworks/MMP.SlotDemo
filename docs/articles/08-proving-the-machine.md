@@ -39,7 +39,7 @@ likely. Small enough to play every single one:
 
 ```csharp
 // Exhaustive ground truth: every (stop0, stop1, stop2), no RNG, no sampling.
-// Total pay over all windows / total wager IS the RTP, not an estimate of it.
+// Total pay over all windows / total wager is the RTP itself, with no sampling error.
 for (var s0 = 0; s0 < 22; s0++)
 for (var s1 = 0; s1 < 22; s1++)
 for (var s2 = 0; s2 < 22; s2++)
@@ -72,7 +72,7 @@ The same pattern scales up through the weighted enumeration from article 5.
 analyzer against a raw stop-by-stop walk. Integer combination counts are compared
 exactly, and floating-point RTP and sigma are compared with tight stated tolerances.
 Every number here is counted instead of sampled. A failure points to the
-implementation. Luck plays no part.
+implementation.
 
 Article 5 takes `GameAnalyzer` apart method by method, starting from a 24-outcome
 example, and explains the weighted recursion loaded games use. This article stays on
@@ -264,8 +264,7 @@ and there is nothing for a deployed build to keep in sync.
 
 `RunCoordinator` and every statistical test now read `NormalQuantile.TwoSided99`
 or `NormalQuantile.TwoSided999`. Article 1 documents the same failure shape for the
-RTP cap: a comment promising one source of truth is not one source of truth. The
-promise has to be a shared symbol.
+RTP cap.
 
 ## Tier by cost, gate by category
 
@@ -331,7 +330,7 @@ reconstruction, not an official manufacturer PAR sheet or certification report.
 A typical concurrency smoke test runs threads, hopes a race surfaces, and checks
 for a crash. This codebase's invariants (article 2's M2, integer
 addition is order-independent, and article 6's fixed quotas) let these tests assert
-*exact* equality instead:
+binary equality instead:
 
 ```csharp
 [Theory]

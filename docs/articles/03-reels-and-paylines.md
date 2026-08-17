@@ -11,7 +11,7 @@ visible cell, done. For a one-row reel game that works. The strip-based, multi-r
 games this engine models need more, because the cells visible on one reel come from
 neighboring positions on a strip rather than from separate random draws.
 
-Worth saying where that leaves us. Modern slot games use virtual reel maps,
+Modern slot games use virtual reel maps,
 independently generated symbol positions, expanding reels, cascading grids, and
 plenty besides. An ordered reel strip is a standard and important slot model, and it
 is one model among several. This chapter covers the one this engine uses:
@@ -337,7 +337,7 @@ together. Separate names put both facts in the signature.
 `Span<T>` is a view onto memory the caller already owns. Writing through it fills the
 caller's own array in place: no new object, nothing copied in or out. A method
 returning `Symbol[]` has to allocate that array on every single call, whatever the
-caller then does with it. Filling a buffer is what keeps the draw allocation-free.
+caller then does with it.
 
 `Strip(int reel)` returns a `ReadOnlySpan<Symbol>` for the same reason pointed the
 other way. It is a read-only view onto a strip array that already exists, so a caller
@@ -724,7 +724,7 @@ public sealed class LinePayEvaluator(IReadOnlyList<Payline> lines, ScaledPaytabl
 }
 ```
 
-`Paytable.MinimumWinningRun` is 3, and it lives in exactly one place.
+`Paytable.MinimumWinningRun` is 3, and it lives in one place.
 `Paytable.CanonicalFor`, the code that *generates* pay entries, never writes an
 entry for a run shorter than `MinimumWinningRun`. This evaluator's `run >=` check
 gates on the same constant. Two pipelines have to agree on the same number, or one

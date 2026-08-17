@@ -49,7 +49,7 @@ and rounding twice in a different order lands in a different place. That sounds
 academic right up until the totals come from parallel workers summing millions of
 spins each. Two runs with the same seeds, the same spins, the same everything, can
 finish on two different totals purely because the worker threads finished in a
-different order. That is a race condition living inside plain arithmetic.
+different order.
 
 ## The floating point fix is a unit change
 
@@ -247,8 +247,7 @@ multiplier × ScaleFactor before `ScaledMultiply` ever runs, so that guard claus
 the single place a fractional multiplier meets the money type, whatever unit the
 source file used.
 
-One rule governs this engine: **every multiplier is a multiple of the total spin
-wager.** Get it wrong and every number in the series reads wrong. The engine has no
+Every multiplier in this engine is a multiple of the total spin wager. The engine has no
 concept of a per-line share of the bet. When several paylines win on one spin, each
 line's multiplier scales against the full wager and the results add.
 `LineBetVsTotalBetTests` pins that: two lines paying 5X and 3X on a 1-credit wager
@@ -311,7 +310,7 @@ results:
 | Hit three stars | 1 in 10, or 10% | 5 bets | 10% × 5 = 0.50 bets |
 | No win | 9 in 10, or 90% | 0 bets | 90% × 0 = 0 bets |
 
-Its `unscaledBaseGameEv` is `0.50`. That does **not** mean each spin pays half a bet. A real
+Its `unscaledBaseGameEv` is `0.50`. That does not mean each spin pays half a bet. A real
 spin still pays either 5 bets or 0 bets. It means that over many spins, the
 unadjusted table averages half a bet returned for every bet made.
 
@@ -607,7 +606,7 @@ flowchart LR
 > charting a plain remainder mapping beside the rejection method so the bias becomes
 > something you can see rather than something you take on faith.
 
-Four details carry most of the design:
+Four details:
 
 **The algorithm lives in the repository.** Tests do not depend on an undocumented
 runtime implementation remaining unchanged. The project owns the sequence it uses
@@ -682,7 +681,7 @@ bins flattened to a max/min ratio of 1.006, which is sampling noise centered on 
 **Which bin counts are safe?** The source size is always a power of two (2⁸, 2³²,
 2⁶⁴), and the only numbers that divide a power of two are smaller powers of two. So
 the remainder mapping is exactly fair for 2, 4, 8, 16, 32 … stops and biased for
-**every other count**: every odd number, every prime except 2, and every even number
+every other count: every odd number, every prime except 2, and every even number
 carrying an odd factor, 6 and 10 and 26 included. Prime or composite is beside the
 point. "Is it a power of two" is the question.
 
@@ -727,7 +726,7 @@ answers it in whole numbers:
    low 3 digits: 380      = how deep inside that sixth the value landed
 ```
 
-The high part of the product **is** the face. It falls straight out of the multiply,
+The high part of the product is the face. It falls straight out of the multiply,
 with no modulo anywhere. The low part is where the value landed inside that face's
 slice of the line, and the fairness check lives there. A thousand values will not
 split into six equal sixths (1000 = 6 × 166 + 4), so four of the sixths carry one
@@ -777,10 +776,10 @@ bits. The high 64 bits are the stop, and the low 64 bits face the threshold
 `2⁶⁴ mod 26 = 16`.
 
 The reject zone is 16
-positions out of 2⁶⁴, about **9 × 10⁻¹⁹**, one redraw per 10¹⁸ draws. The 8-bit
+positions out of 2⁶⁴, about 9 × 10⁻¹⁹, one redraw per 10¹⁸ draws. The 8-bit
 classroom example rejected 8.6% of draws. The 64-bit production source rejects so
 rarely that a simulation drawing a billion stops per second would wait roughly thirty
-years for its first redraw. Exactness costs one multiply and one compare.
+years for its first redraw.
 
 `SpinRng.NextInt` performs one 64×64→128 multiply; the high bits become
 the stop, low bits checked against a per-reel precomputed threshold, redraw on the
@@ -818,8 +817,7 @@ threshold is `2⁶⁴ mod 26`: the same leftover the remainder method meets as
 the 16 raw values at the top of its range that cannot finish a lap. Each
 method discards those 16, in different places: the remainder method drops
 them as one block at the top, Lemire's drops one from the start of each fat
-slice. The leftover moves from the mapping, where it causes the bias, into
-the filter, where it removes the bias.
+slice.
 
 The bin and the classic remainder are the same kind of number with the roles
 traded. In the remainder method the

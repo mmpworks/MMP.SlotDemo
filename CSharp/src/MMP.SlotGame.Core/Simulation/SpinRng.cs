@@ -62,7 +62,7 @@ public struct SpinRng
     /// bound: fixed in advance, identical on every machine, and decided before the raw
     /// bits mean anything — it can never see stops, symbols, or payouts.
     ///
-    /// The threshold computed here IS that leftover count: (2⁶⁴ − range) % range ==
+    /// The threshold computed here equals that leftover count: (2⁶⁴ − range) % range ==
     /// 2⁶⁴ mod range (the 0UL wraparound stands in for 2⁶⁴, which no ulong can hold).
     /// This is the scheme's only division; per-draw work is a multiply and a compare.
     /// </summary>
@@ -82,8 +82,8 @@ public struct SpinRng
     /// the life of that reel set.
     ///
     /// Fixed-point view of the multiply: raw/2⁶⁴ is a uniform fraction in [0,1), so
-    /// floor(fraction × range) — the bin — is the HIGH 64 bits of the 128-bit product,
-    /// with the shift standing in for the division. The LOW 64 bits are the landing
+    /// floor(fraction × range) — the bin — is the high 64 bits of the 128-bit product,
+    /// with the shift standing in for the division. The low 64 bits are the landing
     /// position inside the bin's slice; positions 0..threshold−1 are the per-slice
     /// leftover, so those draws redraw. With threshold &lt; range ≤ a strip length, the
     /// reject zone is ~range/2⁶⁴ of all draws (a 26-stop reel: 16 of 2⁶⁴ ≈ 9e-19), so

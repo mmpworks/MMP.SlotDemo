@@ -49,15 +49,15 @@ which changes which random stream supplies that spin. Fixed quotas remove that t
 
 ## Determinism is also a scheduling problem
 
-"Same seed, same result" sounds like a property of the random number generator. Most
-of it is a property of the scheduler: *which spin runs on which worker*. The obvious
+Most of "same seed, same result" is a property of the scheduler, not of the random
+number generator: which spin runs on which worker. The obvious
 parallel loop,
 
 ```csharp
 Parallel.For(0, targetSpins, i => PlayOneSpin());   // don't
 ```
 
-would be nondeterministic **if each thread consumed its own mutable RNG stream**,
+would be nondeterministic if each thread consumed its own mutable RNG stream,
 because dynamic partitioning decides at runtime which thread executes which
 iteration. Which stream plays which spin could then shift from run to run, and the
 totals shift with it. `Parallel.For` can be perfectly deterministic on its own terms:
@@ -65,7 +65,7 @@ an iteration whose random input derives solely from its iteration index replays 
 This engine picks fixed worker streams and quotas because that contract is simple to
 reproduce and cheap to run.
 
-So the engine uses **N logical workers with fixed, pre-assigned quotas**, one task and
+So the engine uses N logical workers with fixed, pre-assigned quotas, one task and
 one RNG stream each, all decided before the first spin runs. `Task.Run` draws on
 .NET's thread pool, which is a different thing from a promise of permanently
 dedicated operating-system threads. Article 2 explains fixed quotas with its
@@ -284,8 +284,7 @@ batching counters, and coalescing telemetry all run independently of the game's 
 The worker only has to turn a `ref SpinRng` into a `SpinOutcome`. An interface would
 work here too, and it would also hint that the engine might call other methods on that
 object someday: session state, configuration, whatever else an `IGame` accumulated
-over time. A delegate names the single call the engine makes. The engine supplies the
-loop; the game supplies what happens inside one turn of it.
+over time. A delegate names the single call the engine makes.
 
 The reel strips are built once and shared across workers. `StripReelSet` copies its
 input arrays at construction, so outside mutation leaves the active game alone and

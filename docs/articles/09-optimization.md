@@ -6,7 +6,7 @@ claim.*
 
 The first eight articles build a correct slot simulation, out of exact money, stable
 random streams, ordered reel strips, checked game definitions, analytic math, and
-independent tests. That order matters. Without the proven version, an optimization
+independent tests. Without the proven version, an optimization
 benchmark only tells us which wrong answer arrives first.
 
 This article keeps the original `DrawWindow` implementation beside the production
@@ -110,7 +110,7 @@ rest. We declined it on analysis, before running any benchmark, for four reasons
    That buys a determinism asterisk with no measured win attached.
 
 The current design is the data-driven form of the same idea. The "strategy" is the
-`(range, threshold)` pair per reel, and threshold zero *is* the fast path, selected by
+`(range, threshold)` pair per reel, and threshold zero is the fast path, selected by
 data, with no dispatch and one code path to prove correct. This one stayed unbuilt on
 analysis alone, with no benchmark behind the decision. Anyone curious is welcome to
 run it through the paired harness below. The prediction on record is that it joins the
@@ -251,7 +251,7 @@ benchmark result. Losing experiments get reverted while their measurements stay 
 article and the teaching notes.
 
 Do not create that branch in a worktree containing unrelated active edits. Establish the
-initial-system commit first, then branch from that exact point.
+initial-system commit first, then branch from that commit.
 
 *Source files: `Reels/StripReelSet.cs`, `Games/WinningOutcomeTable.cs`,
 `Games/ProgressiveOutcomeTable.cs`, `Simulation/SpinRng.cs`,

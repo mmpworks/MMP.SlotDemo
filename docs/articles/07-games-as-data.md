@@ -16,10 +16,10 @@ Orca Dive is a fictional game invented for this series. Its math reproduces a pu
 PAR deconstruction of a real commercial machine: the source's author reconstructed the
 strips from 212 recorded spins and read the awards off the machine's rule screens.
 Reproducing that source's combination counts and returns is a valuable independent
-cross-check of this engine; it certifies nothing, and the source itself is **not an
-official manufacturer PAR sheet**.
+cross-check of this engine; it certifies nothing (and the source is not an official
+manufacturer PAR sheet).
 
-That raises the design question: **where does the game live, in code, or in data?**
+The game can live in code or in data. This chapter puts it in data.
 
 The vocabulary for this chapter:
 
@@ -106,7 +106,7 @@ typo that would otherwise surface three layers later as a fourth-decimal RTP
 mismatch.
 
 The loader mirrors `SimulationConfig.TryCreate` from article 1: parse, validate
-everything, report **all** errors at once, and only then construct. A
+everything, report all errors at once, and only then construct. A
 `GameDefinition` that exists is one that passed every check: unknown symbol names,
 paylines off the window, paytable rows for symbols that don't exist, geometry
 disagreeing with strips, all rejected with slot-domain messages rather than parser
