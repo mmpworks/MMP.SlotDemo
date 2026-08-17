@@ -41,7 +41,7 @@ function tilt(count: number): number {
 
 <template>
   <section class="lab">
-    <h3>Lab 3 — Where modulo bias hides</h3>
+    <h3>Lab 4 — Where modulo bias hides</h3>
     <p class="lab__lede">
       Reducing a 64-bit draw with <code>%</code> skews the low buckets, but at 64 bits the
       skew is far too small to see. Narrow the draw space to a handful of bits and the same

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import MoneyLab from './ch02/MoneyLab.vue'
 import RngLab from './ch02/RngLab.vue'
+import DieLab from './ch02/DieLab.vue'
 import BiasLab from './ch02/BiasLab.vue'
 import ComprehensionCheck from '../components/ComprehensionCheck.vue'
 import OptimizationPreview from '../components/OptimizationPreview.vue'
@@ -52,6 +53,7 @@ defineProps<{ title: string; blurb: string }>()
 
     <MoneyLab />
     <RngLab />
+    <DieLab />
     <BiasLab />
 
     <section class="chapter__next">

@@ -80,6 +80,36 @@ passes them to the RNG's internal hot-path method.
 The public `NextInt(int bound)` retains validation for general callers. Construction rejects
 empty strips before the optimized path becomes available.
 
+### The strategy pattern we didn't build
+
+Precomputing the threshold invites a follow-up idea: since a power-of-two stop count never
+rejects at all, why not a per-reel *selector strategy* — a mask (`raw & (stops - 1)`) for
+32-, 64-, and 128-stop reels, Lemire's multiply for the rest? It sounds like a clean
+polymorphic seam. It was declined on analysis, before any benchmark, for four reasons worth
+recording:
+
+1. **The win is already in the data.** For a power-of-two bound, `2⁶⁴ mod B` is zero, so the
+   precomputed threshold is zero and the reject branch is dead — always predicted, never
+   taken. Video3, Video5x64, and Video5x128 already run rejection-free through the uniform
+   path. The mask would replace one multiply (~3 cycles, hidden by out-of-order execution)
+   with one AND, in a loop whose time goes to window reads and line evaluation.
+2. **Dispatch costs more than it saves.** A per-reel interface or delegate in the hot loop is
+   an indirect call — several times the cost of the multiply it wraps — and it blocks the JIT
+   from inlining a three-instruction body. The failed-experiments list below shows this
+   codebase punishing exactly this kind of added indirection.
+3. **The game that matters can't use it.** Orca Dive's strips are 26/29/26/29/26. Every
+   power-of-two beneficiary is a stock preset that is already free under point 1.
+4. **The mapping changes.** A mask keeps the raw value's low bits; Lemire's method keeps the
+   scaled high half. Both are fair, but they pick different stops from the same seed, so
+   every recorded run stops replaying the moment a reel switches selector. That buys a
+   determinism asterisk with no measured win attached.
+
+The current design is the data-driven form of the same idea: the "strategy" is the
+`(range, threshold)` pair per reel, and threshold zero *is* the fast path — selected by data,
+no dispatch, one code path to prove correct. This one stayed unbuilt on analysis alone;
+anyone curious is welcome to run it through the paired harness below, with a prediction on
+record that it joins the list that follows.
+
 ## Compile a dense payout view
 
 The preset paytable remains a dictionary because `(symbol, run length) -> money` is readable
