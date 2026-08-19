@@ -61,6 +61,12 @@ public static class ChapterThreeEndpoints
                 strips = Enumerable.Range(0, reels.ReelCount)
                     .Select(reel => reels.Strip(reel).ToArray().Select(s => (int)s.Id)),
                 paylines = source.Paylines.Select(line => new { name = line.Name, rows = line.Rows }),
+                paytable = source.Paytable.Select(category => new
+                {
+                    category.Name,
+                    category.Kind,
+                    pays = category.Pays.Select(pay => new { pay.Count, pay.PayHundredths }),
+                }),
             });
         }
         return Results.Ok(described);

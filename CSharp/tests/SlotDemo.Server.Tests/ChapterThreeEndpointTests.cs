@@ -28,4 +28,19 @@ public sealed class ChapterThreeEndpointTests : IClassFixture<WebApplicationFact
             body.GetProperty("shortSnapshot").GetProperty("window").GetRawText(),
             body.GetProperty("repeatedShortSnapshot").GetProperty("window").GetRawText());
     }
+
+    [Fact]
+    public async Task Sources_include_the_loaded_games_par_payouts()
+    {
+        using var client = _factory.CreateClient();
+        var sources = await client.GetFromJsonAsync<JsonElement>("/api/ch3/sources", Json);
+        var orca = sources.EnumerateArray()
+            .Single(source => source.GetProperty("id").GetString() == "game:orca-dive.json");
+        var seal = orca.GetProperty("paytable").EnumerateArray()
+            .Single(category => category.GetProperty("name").GetString() == "Seal");
+        var threeReelPay = seal.GetProperty("pays").EnumerateArray()
+            .Single(pay => pay.GetProperty("count").GetInt32() == 3);
+
+        Assert.Equal(2_000, threeReelPay.GetProperty("payHundredths").GetInt32());
+    }
 }

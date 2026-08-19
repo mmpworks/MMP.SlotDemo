@@ -111,6 +111,13 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
   if (cell.isScatter) return ' ◆'
   return ''
 }
+
+function payFor(category: SourceView['paytable'][number], count: number): string {
+  const pay = category.pays.find((entry) => entry.count === count)
+  if (!pay) return '-'
+  const multiplier = pay.payHundredths / 100
+  return `${Number.isInteger(multiplier) ? multiplier.toFixed(0) : multiplier.toFixed(2)}×`
+}
 </script>
 
 <template>
@@ -123,14 +130,15 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
     <section class="chapter-brief">
       <h3>What the episode builds</h3>
       <p>
-        Model a reel as a weighted die and every single-symbol probability comes out right,
-        while every probability that spans two cells on the same reel comes out wrong. A die
-        roll is independent every time; a reel is not. Each reel owns a separate strip, and one
-        random stop on that strip fills the reel's visible column: its top, middle, and bottom
-        symbol positions are neighbors on that strip, riveted together the way charms sit on a
-        bracelet. A five-reel game draws five stop numbers and reads fifteen cells from them. A
-        payline then chooses one visible symbol position from each reel and reads those five
-        cells left to right.
+        Each reel has its own ordered strip. One random stop fills that reel's visible
+        column with neighboring symbols from the strip. A five-reel, 3-position game draws
+        five stops and displays fifteen symbols. A payline then reads one position from each
+        reel, from left to right.
+      </p>
+      <p>
+        Separate weighted choices could reproduce the chance of one symbol in one position,
+        but they would lose the neighbor relationships within a reel. Those relationships
+        matter when paylines overlap or a scatter rule checks the full window.
       </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Reels/StripReelSet.cs</code>,
@@ -140,14 +148,12 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
     </section>
 
     <section class="lab">
-      <h3>Lab 1 — The window over the strip</h3>
+      <h3>Lab 1: The window over the strip</h3>
       <p class="lab__lede">
-        Pick a source, draw a window, and compare the cells within each reel column. The
-        three visible symbol positions in one column come from neighboring locations on that reel's strip. The
-        next column belongs to a different reel with its own strip and stop number. The
-        same seed and index always produce the same window, because the generator is passed
-        explicitly the way episode 2 set it up.
-        On Orca Dive, ★ marks the Wild Orca and ◆ the Penguin scatter.
+        Pick a game or preset and draw a window. The three positions in one column are
+        neighbors on one reel strip. The next column comes from another strip and another
+        stop number. Reusing the seed and spin index reproduces the same window. On Orca
+        Dive, ★ marks Wild Orca and ◆ marks the Penguin scatter.
       </p>
 
       <div class="controls">
@@ -184,6 +190,48 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
         Configuration source: <strong>{{ source.configurationSource }}</strong>. Both paths
         produce the same reel-set and payline types before a spin begins.
       </p>
+
+      <div v-if="source" class="par-summary">
+        <div>
+          <h4>PAR reel counts</h4>
+          <table class="lab-table">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th v-for="reel in source.reelCount" :key="reel">Reel {{ reel }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="symbol in source.symbols" :key="symbol.id">
+                <td>{{ symbol.name }}{{ symbol.isWild ? ' ★' : symbol.isScatter ? ' ◆' : '' }}</td>
+                <td v-for="(count, reel) in symbol.perReel" :key="reel">{{ count }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <h4>PAR line payouts</h4>
+          <table v-if="source.paytable.length" class="lab-table">
+            <thead>
+              <tr>
+                <th>Pay category</th>
+                <th v-for="count in source.reelCount" :key="count">{{ count }} reel{{ count === 1 ? '' : 's' }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="category in source.paytable" :key="category.name">
+                <td>{{ category.name }}</td>
+                <td v-for="count in source.reelCount" :key="count">{{ payFor(category, count) }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else class="lab-note">
+            This built-in geometry preset has no PAR paytable. Select a game source to see
+            its configured payout multipliers.
+          </p>
+        </div>
+      </div>
 
       <div v-if="spin && source" class="results">
         <div class="window-grid" :style="{ gridTemplateColumns: `repeat(${source.reelCount}, 1fr)` }">
@@ -226,13 +274,12 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
     </section>
 
     <section class="lab">
-      <h3>Lab 2 — Counting what the strip produces</h3>
+      <h3>Lab 2: Counting what the strip produces</h3>
       <p class="lab__lede">
-        Count how often a symbol lands in the center row over many spins and compare with
-        the strip's exact ratio. The engine holds no probability table. The strip layout
-        sets the odds. On Orca Dive the expectation differs
-        per reel: Wild Orca sits at 2/26 on reel 1 and 1/29 on reel 2, and Penguin's
-        column reads zero on reels 2 and 4 because the symbol is absent from those strips.
+        Count how often a symbol lands in the center position and compare the result with
+        its exact strip ratio. Orca Dive has two Wild Orcas among 26 stops on reel 1, but
+        one among 29 stops on reel 2. Penguin is absent from reels 2 and 4, so its expected
+        count on those reels is zero.
       </p>
 
       <div class="controls">
@@ -268,18 +315,18 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
         </table>
         <p class="lab-note">
           {{ symbolName(census.symbolId) }} over {{ census.spins.toLocaleString() }} spins.
-          Push the spin count up and the gap column shrinks, the same convergence the
-          proving ground shows for the whole game.
+          Increasing the spin count usually reduces the difference between the observed
+          result and the strip ratio.
         </p>
       </div>
     </section>
 
     <section class="lab">
-      <h3>Lab 3 — Replace a reel between runs</h3>
+      <h3>Lab 3: Replace a reel between runs</h3>
       <p class="lab__lede">
-        Build one immutable snapshot from a 26-stop strip and another from a 36-stop strip.
-        The same seed repeats the 26-stop result. Selecting the 36-stop snapshot changes the
-        next run without changing the earlier snapshot.
+        Build one reel set from a 26-stop strip and another from a 36-stop strip. The same
+        seed repeats the first result. The second reel set changes the next run without
+        changing the first set.
       </p>
       <button type="button" :disabled="busy" @click="compareReelSnapshots">Compare snapshots</button>
 
@@ -309,9 +356,9 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
     <section class="chapter-brief">
       <h3>Carried into episode 4</h3>
       <p>
-        Episode 4 uses <code>ProbabilityOf</code> and <code>JointProbabilityOf</code> on the
-        strip directly. The paytable solver, the sigma calculation, and Orca's exhaustive
-        enumeration all read the strips, so a game can be priced without running it.
+        Episode 4 uses <code>ProbabilityOf</code> for one symbol and
+        <code>JointProbabilityOf</code> for two positions on the same reel. Those exact
+        strip counts feed the paytable solver and variance calculation.
       </p>
     </section>
     <ComprehensionCheck
@@ -374,5 +421,17 @@ function mark(cell: { isWild: boolean; isScatter: boolean }): string {
 .line-chip--active {
   color: var(--color-accent);
   border: var(--rule-brass);
+}
+
+.par-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 25rem), 1fr));
+  gap: 1rem;
+  align-items: start;
+  margin: 1rem 0;
+}
+
+.par-summary h4 {
+  margin: 0 0 0.5rem;
 }
 </style>

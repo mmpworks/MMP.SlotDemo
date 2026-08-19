@@ -48,6 +48,11 @@ export interface SourceView {
   symbols: SourceSymbol[]
   strips: number[][]
   paylines: { name: string; rows: number[] }[]
+  paytable: {
+    name: string
+    kind: string
+    pays: { count: number; payHundredths: number }[]
+  }[]
 }
 
 export interface SpinView {
