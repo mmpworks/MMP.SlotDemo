@@ -233,6 +233,9 @@ every variance calculation in the codebase.
 The confidence band in this engine, on the dashboard and in the statistical test
 suite, is built from a two-sided normal quantile: `z` in `z·σ/√N`. That quantile is
 a mathematical constant, the same value every time, for a given confidence level.
+Chapter 4 derives the value. A two-sided 99% band leaves 1% outside, split into a
+0.5% tail on each side. Its upper edge is therefore the standard normal 99.5th
+percentile: `2.5758293035489004`.
 The code defines it once as `NormalQuantile.TwoSided99`. The live verdict and the
 statistical tests both read `2.5758293035489004` from that definition. A result near
 the edge of the band is judged against the same value in both places.

@@ -294,10 +294,34 @@ approximation band with half-width:
 band half-width = z × σ / √N
 ```
 
-Here `z` selects the coverage level. A two-sided 99% band uses about `2.576`. Over
-many independent test runs, a correct game can still finish outside that band about
-1% of the time when the normal approximation fits. The band is centered on the
-realized analytic RTP calculated from the rounded payouts.
+Here `z` selects the coverage level. The value comes from the **standard normal
+distribution**, the bell-shaped reference curve used by this approximation.
+
+A two-sided 99% band keeps the middle 99% of that curve:
+
+```text
+middle of curve: 99%
+left outside tail: 0.5%
+right outside tail: 0.5%
+```
+
+The upper edge therefore sits at the 99.5th percentile: 99% in the middle plus the
+0.5% below the lower edge. A standard normal table or inverse-normal calculation gives:
+
+```text
+z = inverseStandardNormal(0.995)
+  = 2.5758293035489004
+  ≈ 2.576
+```
+
+In plain language, the edges are about 2.576 standard errors below and above the center.
+The source stores the full value as `NormalQuantile.TwoSided99` so the dashboard and tests
+use the same constant. It is a property of the standard normal distribution, not a value
+measured from this slot game.
+
+Over many independent test runs, a correct game can still finish outside that band about
+1% of the time when the normal approximation fits. The band is centered on the realized
+analytic RTP calculated from the rounded payouts.
 
 The normal approximation improves as `N` grows, but "large enough" depends on the
 payout distribution. A game dominated by an extremely rare jackpot may need many
@@ -312,9 +336,10 @@ makes the band 10 times narrower, not 100 times narrower.
 This is the production confidence-band calculation:
 
 ```csharp
-// 2.576 is the z value used for a two-sided 99% normal-approximation band.
+// A two-sided 99% band leaves 0.5% in each tail. The standard normal
+// 99.5th percentile is 2.575829..., stored in NormalQuantile.TwoSided99.
 var halfWidth = spinCount > 0
-    ? 2.576 * sigmaPerUnitWagered / Math.Sqrt(spinCount)
+    ? NormalQuantile.TwoSided99 * sigmaPerUnitWagered / Math.Sqrt(spinCount)
     : 0.0;
 
 // The measured RTP passes this checkpoint when it falls inside the band.

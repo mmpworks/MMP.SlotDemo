@@ -8,8 +8,9 @@ namespace MMP.SlotGame.Core.Rtp;
 public static class NormalQuantile
 {
     /// <summary>
-    /// Multiplier for a two-sided 99% confidence band. A larger multiplier makes the band
-    /// wider; a smaller multiplier makes it narrower.
+    /// Multiplier for a two-sided 99% confidence band. The middle 99% leaves 0.5% in each
+    /// tail, so this is the standard normal distribution's 99.5th percentile. A larger
+    /// multiplier makes the band wider; a smaller multiplier makes it narrower.
     /// </summary>
     public const double TwoSided99 = 2.5758293035489004;
 

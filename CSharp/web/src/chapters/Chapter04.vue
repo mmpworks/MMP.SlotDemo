@@ -194,6 +194,12 @@ async function runBand(): Promise<void> {
         Covariance records when two awards rise or fall together because they read the same
         reel window.
       </p>
+      <p class="lab-note">
+        The 99% value <code>z = 2.576</code> comes from the standard normal bell curve.
+        The middle keeps 99%, leaving 0.5% outside on each side. The upper edge is therefore
+        the curve's 99.5th percentile: <code>2.575829...</code>. It is a mathematical
+        constant, not a number measured from the game.
+      </p>
 
       <div class="controls">
         <label>

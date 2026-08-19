@@ -305,7 +305,9 @@ have finished.
 
 The band comes from the standard confidence-interval formula for a mean. Chapter 4 links
 to the NIST explanation of that formula. This project uses the normal approximation with
-a two-sided 99% confidence level, so its `z` value is about 2.576.
+a two-sided 99% confidence level. Chapter 4 derives its `z` value: 99% stays in the middle,
+leaving 0.5% in each tail. The standard normal 99.5th percentile is
+`2.5758293035489004`, or about `2.576`.
 
 The band is centered on the analytic RTP calculated from the game rules. It is not centered
 on the simulation's measured RTP:
