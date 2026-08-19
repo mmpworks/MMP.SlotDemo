@@ -80,13 +80,15 @@ async function runBand(): Promise<void> {
     <section class="chapter-brief">
       <h3>What the episode builds</h3>
       <p>
-        A game can be priced before a single spin runs. The canonical paytable carries only
-        ratios, a shape rather than real prizes. The solver computes the game's expected
-        value once from the strips, divides the target RTP by it, and scales every pay by
-        that one number, the same way you'd multiply every ingredient in a recipe to feed
-        more people. It is a closed form, with no search loop. Each scaled pay then rounds to
-        integer millicents independently, so the realized RTP drifts a hair from the
-        target, and only the analytic recomputation is authoritative.
+        This episode calculates a game's return before random spins begin. For each
+        paytable row, multiply the payout by the chance of that result. Add those row
+        contributions to get the theoretical RTP.
+      </p>
+      <p>
+        The solver then compares that result with the requested target. If the unscaled
+        table returns 50% and the target is 75%, every payout is multiplied by 1.5. The
+        final payouts must be whole millicents, so the engine recalculates the realized RTP
+        after rounding.
       </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Paytables/PaytableSolver.cs</code>,
@@ -95,14 +97,12 @@ async function runBand(): Promise<void> {
     </section>
 
     <section class="lab">
-      <h3>Lab 1 — Solve a paytable</h3>
+      <h3>Lab 1: Solve a paytable</h3>
       <p class="lab__lede">
-        Pick a target and watch the whole path: the pay ratios, the single scale factor,
-        the rounded pays, and the drift the rounding leaves. On Orca Dive the ratios are
-        the published paytable and the probabilities come from the enumeration, wilds and
-        tie-breaks included. Set the target to 6500 or 7000 and re-solve; that is how one
-        cabinet ships in several approved payback versions. The box takes line RTP, so
-        Orca's 5960 line plus its 26.51% bonus gives the 86.11% total.
+        Choose a target line RTP. The lab calculates each paytable row's probability and
+        RTP contribution, adds the rows, and finds one scale factor for every payout. For
+        Orca Dive, the published line RTP is 59.60%. Its separate 26.51% bonus raises the
+        complete game to 86.11%.
       </p>
 
       <div class="controls">
@@ -133,6 +133,10 @@ async function runBand(): Promise<void> {
       <div v-if="solve" class="results">
         <div class="verdict verdict--info">
           <div>
+            <span class="verdict__label">Requested target</span>
+            <span class="mono">{{ (solve.targetBaseRtp * 100).toFixed(2) }}%</span>
+          </div>
+          <div>
             <span class="verdict__label">Unscaled EV</span>
             <span class="mono">{{ solve.unscaledEvMultiplier.toFixed(6) }}× wager</span>
           </div>
@@ -154,7 +158,7 @@ async function runBand(): Promise<void> {
           <thead>
             <tr>
               <th>Symbol</th><th>Count</th><th>Canonical</th>
-              <th>P(exactly k)</th><th>Millicents</th><th>Credits</th>
+              <th>Exact probability</th><th>Solved payout</th><th>RTP contribution</th>
             </tr>
           </thead>
           <tbody>
@@ -163,23 +167,24 @@ async function runBand(): Promise<void> {
               <td>{{ row.count }}</td>
               <td>{{ row.canonical.toFixed(3) }}</td>
               <td>{{ row.probability.toExponential(3) }}</td>
-              <td>{{ row.scaledMillicents.toLocaleString() }}</td>
-              <td>{{ row.scaledCredits.toFixed(2) }}</td>
+              <td>{{ row.scaledCredits.toFixed(2) }} credits</td>
+              <td>{{ (row.rtpContribution * 100).toFixed(4) }}%</td>
             </tr>
           </tbody>
         </table>
         <p class="lab-note">
-          Rare rows carry big pays and common rows carry small ones. Sum each row's pay
-          times its probability and you have the RTP, the number the solver scaled.
+          Read the last column as each row's share of line RTP. Add that column to get the
+          realized line RTP shown above. The scale factor is target divided by unscaled EV.
         </p>
       </div>
     </section>
 
     <section class="lab">
-      <h3>Lab 2 — The band, priced before any spin</h3>
+      <h3>Lab 2: Calculate a confidence band</h3>
       <p class="lab__lede">
-        Sigma comes from the strips and the paytable in closed form, covariance included.
-        The band the finale draws is z·σ/√N. This table is the same figure in numbers.
+        Two games can have the same RTP but very different swings. Sigma measures those
+        swings. The engine calculates it from the reel strips and paytable, including
+        paylines that share visible positions. More spins make the expected range narrower.
       </p>
 
       <div class="controls">
@@ -223,19 +228,18 @@ async function runBand(): Promise<void> {
           </tbody>
         </table>
         <p class="lab-note">
-          Each factor of 100 in spins buys one decimal place of certainty. The square root
-          in the denominator is why proving an RTP takes millions of spins.
+          Compare 10,000 spins with 1,000,000 spins. Multiplying the spin count by 100
+          divides the band width by 10 because the formula uses the square root of spins.
         </p>
       </div>
     </section>
 
     <section class="lab">
-      <h3>Lab 3 — Orca Dive: the paytable that arrived fixed</h3>
+      <h3>Lab 3: Price Orca Dive's published paytable</h3>
       <p class="lab__lede">
-        Orca Dive ships its paytable published, so no solver runs. The arithmetic is the
-        same: each row's pay times its probability is that row's slice of the RTP, and the
-        exhaustive enumerator supplies the probabilities. The table below sorts by
-        contribution rather than by pay size.
+        Orca Dive already has approved payouts, so this lab does not change them. It counts
+        every stop combination, multiplies each row's payout by its probability, and sorts
+        the rows by RTP contribution.
       </p>
 
       <div class="controls">
@@ -253,7 +257,7 @@ async function runBand(): Promise<void> {
             <span class="mono">{{ ((published.bonusRtp ?? 0) * 100).toFixed(4) }}%</span>
           </div>
           <div>
-            <span class="verdict__label">Total RTP — exact</span>
+            <span class="verdict__label">Exact total RTP</span>
             <span class="mono">{{ ((published.totalRtp ?? 0) * 100).toFixed(4) }}%</span>
           </div>
           <div>
@@ -270,16 +274,16 @@ async function runBand(): Promise<void> {
             <tr v-for="row in published.rows" :key="`${row.category}-${row.count}`">
               <td>{{ row.category }}</td>
               <td>{{ row.count }}</td>
-              <td>{{ row.payMultiplier }}×</td>
+              <td>{{ row.payMultiplier }}× wager</td>
               <td>{{ row.probability.toExponential(3) }}</td>
               <td>{{ (row.rtpContribution * 100).toFixed(3) }}%</td>
             </tr>
           </tbody>
         </table>
         <p class="lab-note">
-          Read this table against Lab 1. The solver goes from a target RTP to the pays; a
-          published game goes the other way. The probabilities here come from the
-          enumeration episode 7 uses as its referee.
+          Lab 1 starts with a target and calculates payouts. This lab starts with published
+          payouts and calculates RTP. Both use the same row calculation: payout times
+          probability.
         </p>
       </div>
     </section>

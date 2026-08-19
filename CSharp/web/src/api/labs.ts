@@ -106,6 +106,7 @@ export interface SolveView {
     probability: number
     scaledMillicents: number
     scaledCredits: number
+    rtpContribution: number
   }[]
 }
 

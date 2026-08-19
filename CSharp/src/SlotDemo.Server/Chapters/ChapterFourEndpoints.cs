@@ -61,16 +61,26 @@ public static class ChapterFourEndpoints
         var symbolNames = preset.Symbols.ToDictionary(symbol => symbol.Id, symbol => symbol.Name);
         var rows = canonical.Pays
             .OrderBy(p => p.Key.SymbolId).ThenBy(p => p.Key.Count)
-            .Select(p => new
+            .Select(p =>
             {
-                symbolId = p.Key.SymbolId,
-                symbol = symbolNames[p.Key.SymbolId],
-                count = p.Key.Count,
-                canonical = p.Value,
-                // The probability that prices this row: exactly-k leading on the first line.
-                probability = AnalyticMath.ExactlyKLeading(reels, preset.Paylines[0], p.Key.SymbolId, p.Key.Count),
-                scaledMillicents = scaled.PayFor(p.Key.SymbolId, p.Key.Count).Value,
-                scaledCredits = scaled.PayFor(p.Key.SymbolId, p.Key.Count).ToCredits(),
+                var scaledPay = scaled.PayFor(p.Key.SymbolId, p.Key.Count);
+                // A row can pay on several paylines. Show one line's probability for
+                // inspection, but add every line when reporting this row's RTP share.
+                var lineProbabilities = preset.Paylines
+                    .Select(line => AnalyticMath.ExactlyKLeading(
+                        reels, line, p.Key.SymbolId, p.Key.Count))
+                    .ToArray();
+                return new
+                {
+                    symbolId = p.Key.SymbolId,
+                    symbol = symbolNames[p.Key.SymbolId],
+                    count = p.Key.Count,
+                    canonical = p.Value,
+                    probability = lineProbabilities[0],
+                    scaledMillicents = scaledPay.Value,
+                    scaledCredits = scaledPay.ToCredits(),
+                    rtpContribution = lineProbabilities.Sum() * scaledPay.Value / SimulationConfig.Wager.Value,
+                };
             });
 
         log.Information(Category,
@@ -134,6 +144,7 @@ public static class ChapterFourEndpoints
                     probability,
                     scaledMillicents = scaledHundredths * 1_000,   // hundredth of a 100,000 mc bet
                     scaledCredits = scaledHundredths / 100.0,
+                    rtpContribution = scaledHundredths / 100.0 * probability,
                 };
             })
             .ToArray();

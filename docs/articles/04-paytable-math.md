@@ -1,33 +1,27 @@
 # The PAR-Sheet Math in Code: Expected RTP and Variance
 
-*Part 4 of a series on building a slot game engine in C#. Part 3 modeled reels as
-cyclic strips. This one does the math on top of them: expected value without
-sampling spins, a one-scalar paytable solver, and the analytic variance that
-powers the convergence chart's confidence band.*
+*Part 4 turns reel probabilities into expected payouts. It shows how one paytable
+row contributes to RTP, how the contributions add, how a target RTP scales a
+paytable, and how variance produces the simulation's confidence band.*
 
-A slot game's mathematical specification is usually called a **PAR sheet**, short for
-Probability Accounting Report. The format varies from studio to studio, and it
-normally records the reel or outcome model, the awards, hit probabilities,
-theoretical RTP, and other game statistics. When testing laboratories evaluate reel
-games, they ask manufacturers for percentage calculations, reel-strip listings, and
-paytables.
+A slot game's mathematical specification is often called a **PAR sheet**, short for
+Probability Accounting Report. Its format varies, but it usually records the reel
+model, payouts, hit probabilities, and theoretical RTP.
 
-A lab can often evaluate a traditional reel game straight from those inputs. More
-complex games may need exhaustive computer evaluation or simulation on top, so a PAR
-sheet and a simulation sit happily side by side. This chapter builds the analytic
-worksheet for this engine's simpler strip-and-payline model. By the end, the system
-can scale a base paytable toward a requested 75% RTP and calculate the standard
-deviation that says whether a finite simulation looks reasonable.
+For this engine's strip-and-payline games, those inputs are enough to calculate an
+average return without playing random spins. The same calculation also supplies a
+range for judging a later simulation. Games with more complicated state may require
+exhaustive evaluation or simulation as part of their math package.
 
 Three terms will appear repeatedly:
 
-| Term | Junior-high meaning |
+| Term | Plain-language meaning |
 |---|---|
 | **Probability** | How likely an event is; 1 in 10 is `0.10` |
 | **Expected value (EV)** | The long-run average payout per play |
 | **Variance / standard deviation** | How widely individual results spread around that average |
 
-## A ten-outcome paytable
+## Start with ten equally likely results
 
 Start with a small game that has ten equally likely outcomes. Nine outcomes pay nothing.
 One outcome pays 5 credits on a 1-credit wager.
@@ -39,9 +33,8 @@ RTP             = 0.5 ÷ 1.0
                 = 50%
 ```
 
-Expected value is a weighted average. A rare large pay and many zero pays can produce the
-same average as several small pays, but the two games will feel different because their
-spread is different.
+The average payout is 0.5 credit per spin. Dividing by the 1-credit wager gives 50%
+RTP. Expected value is this probability-weighted average.
 
 ### Check your understanding
 
@@ -54,21 +47,17 @@ award changed.
 
 </details>
 
-## What one payline pays, on average
+## Calculate one paytable row
 
-Set up the pieces. A payline shows one symbol per reel. In this engine, different
-reels stop independently. Rows within one reel do not, as article 3 explained, but
-a single payline reads only one cell from each reel. That means the one-cell symbol
-chances, called **marginal probabilities**, are enough to calculate one line's
-average payout.
+A payline reads one symbol from each independently stopped reel. Article 3 called
+the chance of one symbol in one chosen position its **marginal probability**. Those
+one-position chances are enough to calculate the average payout of a single line.
 
-This stock-game model pays for leading matches from left to right: three Sevens
-starting on the leftmost reel pay one amount, four pay more, and so on. It does not
-yet include wild substitution, scatters, ways-to-win, or right-to-left awards;
-those require their own event rules.
+The stock model pays matching symbols from the leftmost reel. Three Sevens may pay
+one amount, four Sevens more, and five Sevens the most. Wilds, scatters, and
+ways-to-win use different event rules.
 
-`k` here is a count of matching reels. The paytable's global multiplier, introduced in
-article 2, keeps its own name, `paytableScaleFactor`, throughout.
+In the formulas below, `k` is the number of matching reels.
 
 The event "exactly k leading Sevens" means: reels 0 through k−1 show Seven, and
 reel k does not (or there is no reel k). With per-reel marginals
@@ -79,10 +68,9 @@ P(exactly k leading s) = p(0,s) · p(1,s) · … · p(k−1,s) · (1 − p(k,s))
                           (the trailing factor is 1 when k = ReelCount)
 ```
 
-The last factor prevents double counting. Suppose the chance of Seven on each reel is
-`1/10`. The chance that the first three reels are Seven is `1/10 × 1/10 × 1/10`,
-but that group still contains outcomes with four or five Sevens. To count
-exactly three, reel 4 must not be Seven:
+Suppose Seven has a `1/10` chance on every reel. Three Sevens from the left require
+the first three reels to show Seven. An **exactly-three** result also requires reel
+4 to show something else:
 
 ```text
 P(exactly 3 leading Sevens)
@@ -90,18 +78,10 @@ P(exactly 3 leading Sevens)
     = 0.0009
 ```
 
-That "and the next reel does not match" term prevents the same four- or five-symbol
-win from also being counted as a three-symbol win. Leaving it out overstates the
-expected payout when the paytable lists mutually exclusive exact-run awards. The
-size of the error depends on the reel probabilities and awards; it is not always
-merely a few tenths of a percentage point.
+The `9/10` term removes four- and five-Seven results from this row. Those longer
+runs belong to their own paytable rows.
 
-The code is a direct transcription. It lives in `AnalyticMath`, declared `public
-static class AnalyticMath`. A `static class` cannot be instantiated; there's no
-`new AnalyticMath()` anywhere, because nothing in it needs an instance to hold
-state between calls. Every method receives its inputs as parameters and returns a
-result. The methods share no changing data. `AnalyticMath` groups them because they
-solve related math problems:
+`ExactlyKLeading` implements that calculation:
 
 ```csharp
 /// <summary>
@@ -119,16 +99,18 @@ public static double ExactlyKLeading(StripReelSet reels, Payline line, byte symb
 }
 ```
 
-`ExactlyKLeading` takes every piece of information it needs as a parameter
-(`reels`, `line`, `symbolId`, `k`) and reads nothing else, not a field, not a
-property on some ambient object. Call it twice with the same four arguments and
-it returns the same answer both times, because there's nowhere for a different
-answer to come from. A pure function of its inputs is cheap to test by table: a test
-can list a handful of `(reels, line, symbolId, k, expectedProbability)` rows and
-assert each one independently, with no setup step and no teardown.
+The function reads all of its inputs from parameters, so tests can supply a reel set,
+symbol, and run length and compare the returned probability with a hand calculation.
 
-Expected value stacks straight on top: multiply each possible award by its chance,
-then add the contributions over every symbol, run length, and payline:
+Now price that row. Suppose exactly three Sevens pays 20 times the wager:
+
+```text
+row RTP contribution = payout x probability
+                     = 20 x 0.0009
+                     = 0.018, or 1.8%
+```
+
+Do the same calculation for every paytable row, then add the results:
 
 ```text
 expected payout = (award A × chance A)
@@ -136,14 +118,8 @@ expected payout = (award A × chance A)
                 + ...
 ```
 
-This is an average calculated before any spin occurs. It is not the award from one
-actual spin.
-
-The loop reads `foreach (var ((symbolId, count), pay) in canonical.Pays)`.
-`canonical.Pays` uses `(byte SymbolId, int Count)` as its dictionary key because a
-pay depends on both the symbol and the run length. The tuple supplies value equality
-and keeps both names visible at the call
-site instead of a positional `Item1`/`Item2`.
+This total is the theoretical average return. It is calculated from the game rules,
+not measured from a sample of spins.
 
 ```csharp
 public static double BaseEvMultiplier(
@@ -152,46 +128,35 @@ public static double BaseEvMultiplier(
     var ev = 0.0;
     foreach (var line in lines)
         foreach (var ((symbolId, count), pay) in canonical.Pays)
+            // This row contributes its payout multiplied by its exact chance.
             ev += pay * ExactlyKLeading(reels, line, symbolId, count);
     return ev;
 }
 ```
 
-The work is proportional to paylines × paytable entries × reels. The largest stock
-preset has `128⁵ = 34,359,738,368` possible stop
-combinations; this computes the same expectation without enumerating all of them.
-The analytic result is calculated before the simulation starts, so the dashboard
-shows the target and its band from the first frame.
+The largest stock preset has `128^5 = 34,359,738,368` possible stop combinations.
+This method avoids visiting all of them. Its work grows with the number of paylines,
+paytable rows, and reels instead.
 
-Both `ExactlyKLeading` and `BaseEvMultiplier` return `double`. Article 2 kept
-`double` away from every place money adds up. These values are probabilities, and
-probabilities are held to a different contract.
-
-`Millicents` is money, and money in this engine has to survive an audit. Sum a
-million payouts in any order, on any thread, and the total has to be the one number
-an auditor could re-derive by adding the same integers. A `double`'s tiny
-representation error is harmless on its own and would break that re-derivation. What
-`ExactlyKLeading` returns is a probability: a dimensionless ratio between 0 and 1,
-with no accumulation-audit contract behind it. These probabilities come from small
-whole-number counts divided by a strip length. The tests compare their sums against a
-separate enumeration to fourteen decimal places, so any change big enough to move the
-answer fails that comparison.
-
-The same reasoning explains why `BaseEvMultiplier` hands back a bare `double`. Its
-answer, "how many bet-units does this paytable pay back on average," is a ratio with
-no currency attached yet, and the function has no wager to work with because nobody
-passed one in. A `Millicents` counts a specific currency unit, so it could not hold a
-multiplier even if the function wanted it to. Money arrives one function later, in
-`Solve`, once a real wager is available to multiply this ratio against.
-Returning `Millicents` here would mean inventing a wager or defaulting to one, and
-either choice bakes an assumption into a function meant to work against any wager.
+Probabilities and RTP ratios use `double`. Actual wagers, payouts, and accumulated
+totals use integer `Millicents`. This keeps money exact while allowing probability
+calculations to use ordinary ratios. Tests compare the formula with separate
+enumeration on small games.
 
 ## Turning a target into a paytable
 
-Run the problem backwards. Given a *target* base RTP, resize the canonical paytable.
-Article 2 used a recipe analogy: keep the prizes in the same proportions and make the
-whole recipe larger or smaller. In code that multiplier goes by the name
-`paytableScaleFactor`:
+Suppose the canonical paytable returns `0.50` wager units on average, but the game
+needs a target RTP of `0.75`. Every payout must grow by the same factor:
+
+```text
+paytable scale factor = target RTP / unscaled RTP
+                      = 0.75 / 0.50
+                      = 1.5
+```
+
+A canonical 20-times payout becomes 30 times the wager. Because all payouts grow by
+1.5, their total expected value also grows by 1.5. The relative size of the prizes
+does not change.
 
 ```csharp
 public static ScaledPaytable Solve(
@@ -202,10 +167,12 @@ public static ScaledPaytable Solve(
     if (unscaledBaseGameEv <= 0)
         throw new InvalidOperationException("Canonical paytable has zero EV; cannot scale.");
 
+    // One factor moves the entire paytable from its current EV to the target RTP.
     var paytableScaleFactor = targetBaseRtp / unscaledBaseGameEv;
 
     PayoutScaler scale = raw => new Millicents(
         (long)Math.Round(
+            // Convert the dimensionless payout into integer money for this wager.
             raw * paytableScaleFactor * wager.Value,
             MidpointRounding.ToEven));
 
@@ -214,34 +181,14 @@ public static ScaledPaytable Solve(
 }
 ```
 
-`Solve` reads `canonical.Pays`, leaves the table as it found it, and returns a new
-`ScaledPaytable`. That matters because `canonical`, the dimensionless shape from
-`Paytable.CanonicalFor` (article 3), gets scaled once per game at whatever target RTP
-that game wants, and one canonical table can back several games with different
-targets. A `Solve` that scaled `canonical`'s awards in place would corrupt the table
-for the next caller, quietly, since nothing about the name `Solve` warns of a side
-effect on its argument.
-
-Read the division in words:
-
-```text
-paytable scale factor = average return wanted / unscaled average return
-```
-
-If the unscaled table averages `0.50` wager units and the target is `0.75`, the
-factor is `0.75 / 0.50 = 1.5`. Every canonical award is multiplied by 1.5. Because
-expected value is linear, the unrounded table's EV is multiplied by 1.5 too.
+`Solve` returns a new table instead of changing the canonical table. That allows one
+canonical prize shape to support several approved RTP versions without one call
+changing the input used by another.
 
 `unscaledBaseGameEv` comes from the probability sum above. A canonical paytable
 with zero expected value, because every award is zero or none of its paying events
 can occur, throws before the division. Otherwise the code would attempt to divide
 by zero.
-
-`PayoutScaler` is declared `public delegate Millicents PayoutScaler(double
-rawPayMultiplier);`, and `scale` above is a lambda assigned to it. It is a delegate for
-the same reason article 6's `SpinPlay` is: one behavior, no object needed. The closure
-captures `paytableScaleFactor` and `wager` from its surrounding scope, and the whole
-thing is a value the rest of `Solve` can pass to `ToDictionary` like any other argument.
 
 The `wager` in this solver is the **total spin wager**, and the resulting paytable
 is normalized to that wager. This is a deliberate convention of this engine. A
@@ -254,31 +201,40 @@ each entry with round-half-to-even. The rounded paytable may land slightly above
 below the requested RTP; a single multiplier cannot guarantee the exact target
 after several awards round independently.
 
-`ScaledPaytable` is a `public sealed record`. Its one constructor copies the caller's
-award dictionary into a `ReadOnlyDictionary` and exposes it through a get-only
-property, so once the table is built, nothing in the codebase can change an award
-afterward. A mutable object shared between the analytic calculator and the spin
-evaluator would be a standing risk: a bug anywhere that touched the instance could
-shift the table underneath the other reader.
-
-That one instance is built once and shared. The analytic calculator and the spin
-evaluator both read the same rounded table, which rules out the two of them
-disagreeing over an award. The system then recomputes `RealizedBaseRtp` from the
-rounded integer awards and checks the resulting total against both the 99% cap and a
-0.01-percentage-point drift tolerance.
+The finished `ScaledPaytable` is read-only. Both the analytic calculator and the spin
+evaluator read that same rounded table. The engine then recalculates the **realized
+RTP** from the integer awards. That recomputed value, not the requested target, is
+the value used by the confidence band.
 
 > 🧪 **Try it live.** The companion site's chapter 4 page (<http://localhost:5090>,
-> then `#/ch04`) runs this solver on demand. **Lab 1 — Solve a paytable** takes a
+> then `#/ch04`) runs this solver on demand. **Lab 1: Solve a paytable** takes a
 > target RTP and shows the scale factor, the rounded integer awards, and the realized
-> RTP recomputed from them; **Lab 2 — The band, priced before any spin** turns the
+> RTP recomputed from them; **Lab 2: Calculate a confidence band** turns the
 > analytic sigma into the band half-width at a ladder of spin counts.
 
 ## Variance needs more than the mean
 
-Expected value answers "where is the long-run center?" It does not say whether most
-spins pay near that center or whether the game usually pays zero and occasionally
-pays a huge jackpot. Variance measures that spread, and standard deviation `σ`
-(the Greek letter sigma) is the square root of variance.
+Two games can both have 50% RTP and still behave very differently:
+
+| Game | Possible payout | Average payout |
+|---|---|---:|
+| A | Every spin pays 0.5 credit | 0.5 credit |
+| B | Nine spins pay 0; one spin in ten pays 5 credits | 0.5 credit |
+
+Game A never moves away from its average. Game B usually pays nothing and sometimes
+pays much more than its average. **Variance** measures that spread. **Standard
+deviation**, written as `sigma`, is the square root of variance and uses the same
+units as the payout.
+
+For one payline, calculate variance with:
+
+```text
+variance = average of the squared payouts - (average payout)^2
+         = E[X^2] - E[X]^2
+```
+
+Squaring makes results far from the average count more heavily. This is why a rare,
+large award can greatly increase variance even when it adds little RTP.
 
 For `N` independent spins with the same rules and fixed wager, the standard
 deviation of the measured average is `σ/√N`. The dashboard draws a normal-
@@ -288,43 +244,37 @@ approximation band with half-width:
 band half-width = z × σ / √N
 ```
 
-Here `z` selects the advertised coverage level, such as approximately `2.576` for
-a two-sided 99% band. This is a probability statement, not a promise that every run
-will fall inside. Even a correct game should land outside a 99% band about 1% of
-the time over repeated independent experiments if the normal approximation fits.
-The band is centered on the **realized analytic RTP**, recomputed from the rounded
-integer awards.
+Here `z` selects the coverage level. A two-sided 99% band uses about `2.576`. Over
+many independent test runs, a correct game can still finish outside that band about
+1% of the time when the normal approximation fits. The band is centered on the
+realized analytic RTP calculated from the rounded payouts.
 
 The normal approximation improves as `N` grows, but "large enough" depends on the
 payout distribution. A game dominated by an extremely rare jackpot may need many
 more spins before this band behaves well. For such games, the distribution and
 jackpot cycle need separate scrutiny rather than blind trust in the formula.
 
-The total spin return is a sum over lines, and the variance of a sum is:
+### Why paylines cannot be treated separately
+
+The total spin payout is the sum of all line payouts. It is tempting to calculate
+each line's variance and add the answers. That works only when the line results are
+independent.
+
+Consider the Center and V paylines from Article 3. They share visible positions.
+One reel stop can therefore help or hurt both lines at once. Their payouts may move
+together, so the calculation needs a **covariance** term:
 
 ```
 Var(Σ Xᵢ) = Σ Var(Xᵢ) + 2 · Σᵢ<ⱼ Cov(Xᵢ, Xⱼ)
 ```
 
-The covariance term is where a model treating each visible cell as a separate die
-roll fails quietly. Two paylines can share cells, or read neighboring positions on
-the same reel strip. That connection may push their awards to move together, which is
-positive covariance, or make one line less likely to win when the other does, which
-is negative covariance. Both the sign and the size come out of the actual ordered
-strips, and guessing them is unsafe.
+Positive covariance means the lines tend to rise and fall together. Negative
+covariance means one tends to pay when the other does not. The ordered reel strips
+determine the sign and size; the code does not guess.
 
-> 💡 **Quick picture.** Two students assigned to the same group project may receive
-> similar grades because both results depend on the same project. That is positive
-> covariance. Two ends of a seesaw move in opposite directions; that resembles
-> negative covariance. Paylines connected through the same stopped reels can behave
-> either way. Treating them as unrelated can make the calculated variance too low
-> or too high.
-
-Per-line variance uses `E[X²] − E[X]²` from the same analytically calculated
-probabilities as EV. In words: find the average squared award, then subtract the
-square of the average award. The cross-term needs the joint distribution of two
-window cells on one reel, which comes from enumerating the strip, the same method
-`JointProbabilityOf` used in article 3:
+To calculate covariance, the engine first counts how often two visible positions on
+one reel show each pair of symbols. This is the same strip-counting method used by
+`JointProbabilityOf` in Article 3:
 
 ```csharp
 // Per reel, per (rowA,rowB) pair: joint distribution of the two cells' symbols,
@@ -337,12 +287,16 @@ for (var stop = 0; stop < n; stop++)
 }
 ```
 
-With those tables, `Cov(line i, line j)` is assembled reel by reel. For a given
-pair of outcomes ("line A shows exactly runA of symbol A, line B exactly runB of
-symbol B"), each reel imposes one of three conditions per line: **Match** (this
-reel is inside the run), **Mismatch** (this reel terminates it), or **Any** (past
-the run's end). The per-reel joint probability of the two conditions reads off the
-table with inclusion-exclusion:
+For a particular pair of line wins, each reel gives each line one of three jobs:
+
+| Condition | What the reel must do |
+|---|---|
+| **Match** | Show the line's winning symbol |
+| **Mismatch** | Show a different symbol and end the run |
+| **Any** | Show anything because this reel is past the run |
+
+The following code combines the two lines' jobs on one reel. `Joint` reads the
+two-position table. `Marginal` reads the chance for one position:
 
 ```csharp
 return (condA, condB) switch
@@ -351,6 +305,7 @@ return (condA, condB) switch
     (Cond.Any,      _)             => Single(rowB, condB, symB),
     (_,             Cond.Any)      => Single(rowA, condA, symA),
     (Cond.Match,    Cond.Match)    => Joint(symA, symB),
+    // A must match, but remove the cases where B also matches.
     (Cond.Match,    Cond.Mismatch) => Marginal(rowA, symA) - Joint(symA, symB),
     (Cond.Mismatch, Cond.Match)    => Marginal(rowB, symB) - Joint(symA, symB),
     (Cond.Mismatch, Cond.Mismatch) =>
@@ -359,11 +314,9 @@ return (condA, condB) switch
 };
 ```
 
-Because reels are independent of *each other* in this model, the joint probability
-across the whole line pair is the product of the per-reel factors. The underlying
-fractions come from counting stops, so no Monte Carlo sampling is involved. The C#
-implementation stores those fractions as `double`, however, so "analytic" does not
-mean every intermediate value has an exact binary representation.
+Reels stop independently of one another, so the engine multiplies these per-reel
+factors to get the probability for the complete pair of line results. The fractions
+come from counting reel stops; no random spins are sampled.
 
 <!-- EXPORT: render this Mermaid block to PNG before publishing -->
 ```mermaid
@@ -380,55 +333,59 @@ flowchart TB
     SIGMA --> BAND["z × sigma / sqrt(N) normal-approximation band<br/>on the dashboard"]
 ```
 
-When `rowA == rowB`, the "two cells" are the same
-cell, and the table comes out diagonal automatically, no special case in the code,
-because the enumeration cannot produce two different symbols at one position.
+When both paylines use the same visible position, the table automatically records
+the same symbol for both. No special case is needed.
 
 ## This engine's simplified features as independent terms
 
-The stock simulator's side features are deliberately simple independent RTP terms.
-A feature triggers with fixed probability `p` fixed by its kind: `FreeSpins` triggers
-on 1 spin in 120, `PickBonus` on 1 in 150. If it triggers, it chooses uniformly
-from a three-award table whose average is `m`. Its expected payout per base spin is
-therefore `p × m`, and its RTP contribution is:
+Start with a feature that should contribute 10% RTP. If it triggers once per 100
+spins, its trigger chance is `0.01`. To return 0.10 wager units per base spin on
+average, it must pay an average of 10 wager units when it triggers:
 
 ```text
-c = p × m / wager
+average feature award = desired RTP contribution x wager / trigger chance
+                      = 0.10 x 1 / 0.01
+                      = 10 wagers
 ```
 
-If the desired contribution `c`, trigger chance `p`, and wager are known, solve
-backwards for the required conditional mean award:
+The division is necessary because the award occurs on only one of every 100 spins.
+Spread 10 wager units over 100 spins and the feature contributes 0.10 wager unit per
+spin.
+
+The general formulas are:
 
 ```text
+c = feature RTP contribution
+p = trigger probability
+m = average award when the feature triggers
+
+c = p x m / wager
 m = c × wager / p
 ```
 
-For example, if a feature should contribute 10% RTP and triggers once per 100
-spins, its average award when triggered must be 10 wager units:
-
-```text
-0.10 × 1 wager / 0.01 = 10 wagers
-```
+The stock simulator uses this simplified model for two features. `FreeSpins`
+triggers once in 120 spins, and `PickBonus` triggers once in 150. After a trigger,
+the feature chooses one of three awards with equal probability:
 
 ```csharp
 var mid = new Millicents((long)Math.Round(
     contributionBp / 10_000.0 * wager.Value / p, MidpointRounding.ToEven));
 var low = new Millicents((long)Math.Round(mid.Value * 0.5, MidpointRounding.ToEven));
-var high = new Millicents(2 * mid.Value - low.Value); // keeps the three-point mean at mid
+// Choose high so low + mid + high equals 3 x mid exactly.
+var high = new Millicents(2 * mid.Value - low.Value);
 ```
 
-The award table is `{low, mid, high}`, where `mid = m`, `low` is approximately
-half of `m`, and `high = 2m − low`. This construction makes an integer identity:
+The table is `{low, mid, high}`. `low` is about half of `mid`, and the code chooses
+`high` so the three integer awards have an average of exactly `mid`:
 
 ```text
 low + mid + high = 3 × mid
 ```
 
-Because the three awards are equally likely after a trigger, their arithmetic mean
-is exactly `mid` in integer millicents even if `low` had to be rounded. Because this
-stock model declares the features independent of the reel window and of one
-another, their variance terms add to the base-game variance without covariance
-terms.
+Because each award is equally likely, the conditional mean is exactly `mid`, even
+if `low` was rounded. This stock model also declares both features independent of
+the reel window and of each other. Their variance can therefore be added without
+covariance terms.
 
 The names `FreeSpins` and `PickBonus` are presentation skins in this preset model;
 they do not replay the base game, retrigger, or carry state across spins.
@@ -442,17 +399,15 @@ play path, not a proof of the contribution by itself.
 
 ## What the analytic math is for
 
-Simulation could approximate most of this article: run many spins, measure the
-average and the spread. The system does that in article 6. What the analytic
-calculation adds is an independently derived expected value and band for the
-simulation to be compared against. Agreement falls short of proving every part is
-bug-free. Disagreement is strong evidence that at least one path is wrong.
+Simulation measures what happened in one sample. Analytic math predicts what should
+happen from the rules. The engine keeps both paths so they can check each other.
+Agreement does not prove that both are perfect, but disagreement shows that at least
+one path needs investigation.
 
-For the small 22-stop, 3-reel fixture, the tests add a third path that enumerates all
-`22³ = 10,648` stop combinations. Exhaustive enumeration works at that size and gives
-out well before the largest preset's 34.4 billion combinations. That smaller ground
-truth checks both RTP and variance, and it reuses none of the production evaluator's
-calculation logic.
+Tests add a third check for a small 22-stop, 3-reel game: visit all
+`22^3 = 10,648` stop combinations and average the results. That is practical for the
+small fixture but not for the 34.4-billion-combination preset. The small exhaustive
+test checks both RTP and variance without reusing the production formula.
 
 Next: weighted enumeration. Article 5 starts with 24 possible outcomes, groups repeated
 symbols by count, and follows those counts through `GameAnalyzer` one method at a time.
@@ -460,12 +415,12 @@ symbols by count, and follows those counts through `GameAnalyzer` one method at 
 ## References
 
 - [GLI gaming-software submission requirements](https://gaminglabs.com/getting-started/submit-new-software/)
-  — the submission checklist asks for percentage calculations, reel-strip listings,
+  - the submission checklist asks for percentage calculations, reel-strip listings,
   and paytables.
 - [GLI game mathematics and RTP analysis](https://gaminglabs.com/services/igaming/game-mathematics-percentage-return-to-player-rtp-analysis/)
-  — the method may be theoretical or simulated depending on the game.
+  - the method may be theoretical or simulated depending on the game.
 - [Nevada Technical Standard 1](https://www.gaming.nv.gov/siteassets/content/home/features/TechnicalStandard1.pdf)
-  — theoretical payback is reported on a per-paytable basis.
+  - theoretical payback is reported on a per-paytable basis.
 
 *Source files: `Rtp/AnalyticMath.cs`, `Paytables/PaytableSolver.cs`,
 `Paytables/Paytable.cs`, `Features/FeatureSchedule.cs`.*
