@@ -121,8 +121,18 @@ flowchart LR
 
 For example, Orca Dive can place Blue7 on the center payline of the first three reels while
 the same window shows Penguin on reels 1, 3, and 5, the reels required by `PenguinBonus`.
-The engine pays the Blue7 line, plays the bonus, and adds the two awards. This is why the
-analyzer records spins where the line and bonus happen together.
+
+| Visible position | Reel 1 | Reel 2 | Reel 3 | Reel 4 | Reel 5 |
+|---|---|---|---|---|---|
+| Top | Green7 | Squid | Green7 | Mackerel | Red7 |
+| **Center payline** | **Blue7** | **Blue7** | **Blue7** | **Seal** | Blue7 |
+| Bottom | **Penguin** | Herring | **Penguin** | Squid | **Penguin** |
+
+Read the center row from left to right. The first three reels show Blue7, and Seal on reel 4
+ends the run. The Blue7 on reel 5 cannot restart a left-to-right win, so this is a
+three-Blue7 line award. Next, scan the full window on reels 1, 3, and 5. Each of those reels
+shows Penguin, so `PenguinBonus` also triggers. The engine adds the line award and bonus
+award to the same spin total.
 
 Other code calls `Analyze` when it wants a report for one loaded game, such as Orca Dive.
 `Analyze` first checks the request. The game definition must exist, and this version of the

@@ -47,6 +47,11 @@ and influence each other.
 
 **Scene:** constructor, then `BuildWeights`.
 
+Before opening the constructor, show the article's five-reel Blue7/Penguin window. Trace the
+three Blue7 symbols across the center payline, stop at Seal, then point to Penguin on reels
+1, 3, and 5. State that this one stopped window produces both a line award and a bonus
+trigger.
+
 Put the article's `BuildWeights` diagram on screen. Follow one reel stop from left to right:
 first check the payline symbol, then scan the visible positions for a scatter. Pause on the
 two counters after each Yes branch.

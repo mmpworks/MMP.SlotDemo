@@ -70,6 +70,20 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
         A line win does not block the bonus: the same spin can pay a line award and trigger
         PenguinBonus, and the engine adds both awards.
       </p>
+      <table class="lab-table">
+        <thead>
+          <tr><th>Visible position</th><th>Reel 1</th><th>Reel 2</th><th>Reel 3</th><th>Reel 4</th><th>Reel 5</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Top</th><td>Green7</td><td>Squid</td><td>Green7</td><td>Mackerel</td><td>Red7</td></tr>
+          <tr><th>Center payline</th><td><strong>Blue7</strong></td><td><strong>Blue7</strong></td><td><strong>Blue7</strong></td><td><strong>Seal</strong></td><td>Blue7</td></tr>
+          <tr><th>Bottom</th><td><strong>Penguin</strong></td><td>Herring</td><td><strong>Penguin</strong></td><td>Squid</td><td><strong>Penguin</strong></td></tr>
+        </tbody>
+      </table>
+      <p class="lab-note">
+        Read across the center: three Blue7 symbols pay before Seal ends the run. Then check
+        reels 1, 3, and 5: each shows Penguin, so the bonus triggers on the same spin.
+      </p>
       <p>
         The slot engine supports several paylines. The one-payline limit belongs only to
         the exact <code>GameAnalyzer</code>. With several lines, exact variance must include
