@@ -472,7 +472,12 @@ symbols by count, and follows those counts through `GameAnalyzer` one method at 
 
 ## Optimization notebook
 
-The dictionary paytable is an excellent construction and inspection format. It may be more
-work than the spin loop needs. Once tests pin every payout, benchmark a dense symbol-by-run
-lookup while retaining the dictionary as the public view. The representation change is safe
-only if both paths return the same money for every key.
+**Summary:** keep the readable dictionary at the game boundary and test a dense lookup for
+the spin loop.
+
+- **Dense execution table:** index payouts directly by symbol id and run length during a
+  spin.
+- **Readable public view:** retain the dictionary for construction, inspection, and PAR
+  reporting.
+- **Complete comparison:** require both representations to return the same money for every
+  valid symbol-and-run key before benchmarking them.

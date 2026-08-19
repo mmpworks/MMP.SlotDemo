@@ -260,7 +260,11 @@ six, and the production recursion repeats that counting at scale.
 
 ## Optimization notebook
 
-Weighted enumeration is already an algorithmic optimization: repeated physical stops share
-one branch and carry a count. Resist micro-optimizing recursion until the combination guard
-and independent exhaustive tests are in place. If analysis later becomes slow, profile branch
-count, category evaluation, and dictionary accumulation separately.
+**Summary:** weighted enumeration already removes repeated work; profile its remaining
+stages before changing the recursion.
+
+- **Grouped outcomes:** let repeated physical stops share one branch and carry their count
+  as a weight.
+- **Safety guard:** keep the combination limit and independent exhaustive tests in place.
+- **Stage profiling:** measure branch creation, category evaluation, and dictionary
+  accumulation separately if analysis becomes slow.

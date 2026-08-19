@@ -407,7 +407,11 @@ their implementation.
 
 ## Optimization notebook
 
-Correctness tests become the gate for performance work. Run old and new implementations with
-the same seed, compare exact totals or checksums, and report speed only after they match.
-Benchmark repeated Release runs inside one process so startup and JIT warmup do not masquerade
-as algorithmic change. Article 9 uses this test design on `DrawWindow`.
+**Summary:** prove that an optimized path returns the same result before accepting its speed
+measurement.
+
+- **Same-input comparison:** run the baseline and candidate with the same seed and work.
+- **Exact result check:** compare totals, windows, or checksums before recording timing.
+- **Warm Release benchmark:** repeat runs inside one process so startup and JIT warmup are
+  not mistaken for an algorithmic improvement. Article 9 applies this design to
+  `DrawWindow`.

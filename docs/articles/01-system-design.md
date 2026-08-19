@@ -677,7 +677,12 @@ the full invariant list and ADR-001.*
 
 ## Optimization notebook
 
-Record likely hot paths now: random selection, window construction, evaluation, and shared
-counters. Do not optimize them in the architecture chapter. The first system needs stable
-contracts and independent correctness checks before a faster version has a trustworthy
-answer to compare against. Article 9 returns to this list with measurements.
+**Summary:** identify the likely hot paths now, then wait for a correct baseline before
+changing them.
+
+- **Hot-path inventory:** random selection, window construction, evaluation, and shared
+  counters are expected to run most often.
+- **Stable contracts first:** finish the initial interfaces and correctness checks before
+  changing the implementation for speed.
+- **Measured comparison:** article 9 returns to each candidate with Release benchmarks and
+  an exact result to compare against.

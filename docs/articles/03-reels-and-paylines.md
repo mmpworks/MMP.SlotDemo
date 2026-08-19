@@ -141,6 +141,8 @@ public sealed class StripReelSet
             var strip = _strips[reel];
             var range = (ulong)strip.Length;
             _rngRanges[reel] = range;
+            // Lemire rejection needs this threshold to map random values to stops
+            // without modulo bias. It depends only on the reel length.
             _rngThresholds[reel] = unchecked(0UL - range) % range;
 
             var drawStrip = new Symbol[strip.Length + Rows - 1];
@@ -167,8 +169,8 @@ public sealed class StripReelSet
         return (double)count / strip.Length;
     }
 
-    /// <summary>Joint P(rowA shows a AND rowB shows b) on one reel, found by
-    /// enumerating all S stops. This is the method the weighted-die model lacks.</summary>
+    /// <summary>Counts all stops where two positions show the requested symbols,
+    /// then divides that count by the reel length.</summary>
     public double JointProbabilityOf(int reel, int rowA, byte aId, int rowB, byte bId)
     {
         var strip = _strips[reel];
@@ -183,6 +185,8 @@ public sealed class StripReelSet
     /// <summary>Draws one stop per reel, then fills its column from neighboring strip positions.</summary>
     public void DrawWindow(ref SpinRng rng, Span<Symbol> window)
     {
+        // Flat layout: all positions for reel 0, then all positions for reel 1.
+        // The caller allocates the window once and reuses it across spins.
         for (var reel = 0; reel < _strips.Length; reel++)
         {
             var stop = rng.NextInt(_rngRanges[reel], _rngThresholds[reel]);
@@ -216,6 +220,8 @@ caller's arrays cannot alter an active game. A new set of strips requires a new
 IReadOnlyList<Symbol> reel26 = Build26StopStrip();
 IReadOnlyList<Symbol> reel36 = Build36StopStrip();
 
+// The outer collection is the reel set. Each entry may contain a different
+// number of stops; the constructor copies every strip into the run snapshot.
 var runA = new StripReelSet([reel26, reel26, reel26]);
 var runB = new StripReelSet([reel36, reel26, reel36]);
 ```
@@ -228,6 +234,8 @@ A stop near the end of a reel wraps to the beginning. The direct formula is easy
 recognize:
 
 ```csharp
+// Baseline lookup: adding the visible position may pass the end of the array,
+// so the remainder wraps the lookup to the beginning of the cyclic strip.
 strip[(stop + position) % strip.Length]
 ```
 
@@ -372,7 +380,9 @@ public sealed record Payline
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(rows);
         Name = name;
-        Rows = Array.AsReadOnly([.. rows]);   // construction-time snapshot
+        // A loaded PAR path must not change after validation, so copy the
+        // caller's position list into this payline's read-only snapshot.
+        Rows = Array.AsReadOnly([.. rows]);
     }
 
     public string Name { get; }
@@ -382,6 +392,7 @@ public sealed record Payline
 
 public static class StandardPaylines
 {
+    // Used by demo presets. Loaded games supply their validated PAR paths directly.
     public static IReadOnlyList<Payline> For(
         int reels, int lineCount, int visiblePositions) { /* … */ }
 }
@@ -717,8 +728,13 @@ same `Payline` record for the evaluator.
 The base-game evaluator is the five-step pipeline from earlier, written out:
 
 ```csharp
+/// <summary>
+/// Scores each configured line from left to right and adds its award to the spin total.
+/// The window uses [reel * rows + visible position] layout.
+/// </summary>
 public sealed class LinePayEvaluator(IReadOnlyList<Payline> lines, ScaledPaytable paytable)
 {
+    // Copy the configuration once so the hot loop reads a stable array.
     private readonly Payline[] _lines = [.. lines];
 
     public Millicents Evaluate(ReadOnlySpan<Symbol> window, int reelCount, int rows)
@@ -726,16 +742,22 @@ public sealed class LinePayEvaluator(IReadOnlyList<Payline> lines, ScaledPaytabl
         var total = Millicents.Zero;
         foreach (var line in _lines)
         {
+            // Reel 0 starts every paying run in this left-to-right game model.
             var first = window[0 * rows + line.Rows[0]];
             var run = 1;
             for (var reel = 1; reel < reelCount; reel++)
             {
+                // Stop at the first mismatch. A later matching group does not restart
+                // the run because this evaluator pays only from the leftmost reel.
                 if (window[reel * rows + line.Rows[reel]].Id != first.Id)
                     break;
                 run++;
             }
             if (run >= Paytable.MinimumWinningRun)
+            {
+                // Every line multiplier uses the full spin wager in this engine.
                 total += paytable.PayFor(first.Id, run);
+            }
         }
         return total;
     }
@@ -787,7 +809,12 @@ variance.
 
 ## Optimization notebook
 
-The baseline window formula is `(stop + position) % strip.Length`. The optimized path
-uses the short wrapped extension described earlier and writes byte ids when the caller
-does not need full `Symbol` values. Tests first confirm that both paths draw the same
-symbols from the same RNG stream; article 9 then compares their speed.
+**Summary:** remove repeated wraparound arithmetic and copy less symbol data while
+preserving the exact window produced by the baseline.
+
+- **Extended drawing strip:** append the first `Rows - 1` symbols during construction so
+  the draw loop reads a contiguous window without `% strip.Length` per position.
+- **Byte-id window:** write compact symbol ids when evaluation does not need names and
+  flags from the full `Symbol` value.
+- **Equivalence test:** feed both paths the same RNG stream and confirm that they draw the
+  same symbols before article 9 compares their speed.

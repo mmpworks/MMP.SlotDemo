@@ -320,7 +320,11 @@ reproducing the figures in a public third-party slot deconstruction.
 
 ## Optimization notebook
 
-The engine already makes the large structural choices: one scratch buffer per worker and
-batched shared counters. Leave batch size, worker count, delegates, and telemetry cadence
-alone until a complete Release run supplies a baseline. Article 9 shows why: forced inlining
-and manual loop unrolling both looked attractive and made the measured run slower.
+**Summary:** retain the existing low-allocation worker design and tune it only against a
+complete Release baseline.
+
+- **Worker-owned scratch space:** reuse one buffer per worker instead of allocating during
+  each spin.
+- **Batched counters:** update shared totals in groups to reduce synchronization.
+- **Measured tuning:** change batch size, worker count, delegates, or telemetry cadence one
+  at a time. Article 9 shows that forced inlining and manual loop unrolling were slower.

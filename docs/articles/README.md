@@ -23,7 +23,12 @@ Each has a matching 20-minute recording script in `docs/scripts/`.
   and replace the code block with the image. Each block is marked with an
   `<!-- EXPORT -->` comment.
 - **Code blocks.** Medium's editor keeps fenced code blocks; paste as-is or use
-  GitHub gists for syntax highlighting.
+  GitHub gists for syntax highlighting. Comment facts a learner cannot recover from
+  the syntax, such as units, ownership, flat-array layout, domain rules, or why setup
+  work moved out of a hot loop. Do not comment a line merely by restating it.
+- **Optimization notebooks.** End each construction chapter with a short summary and
+  a bulleted list of the techniques discussed. Each bullet names the technique and
+  the correctness check or measurement that controls whether it is accepted.
 - **Order.** The series reads front to back, but articles 2–9 each stand alone.
   Article 1 links forward; articles 2+ open with a one-paragraph recap and a link
   back to article 1.

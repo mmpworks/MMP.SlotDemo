@@ -461,7 +461,12 @@ calculations, reel-strip listings, paytables, source code, and other materials:
 
 ## Optimization notebook
 
-Parsing and validation happen once; simulation may run ten million times. Keep rich symbols,
-names, and flags at the definition boundary, then ask whether the worker needs all of them in
-each window cell. Article 9 measures a byte-ID execution view while preserving the complete
-domain model for configuration, analysis, and the UI.
+**Summary:** preserve the complete game definition for people and tools, then compile a
+smaller execution view for repeated spins.
+
+- **Rich definition model:** keep symbol names, flags, validation details, and PAR data at
+  the configuration boundary.
+- **Compact execution model:** give workers byte ids and precomputed values when that is all
+  evaluation requires.
+- **Measured separation:** article 9 benchmarks the byte-id path while the full domain model
+  remains available to analysis and the UI.

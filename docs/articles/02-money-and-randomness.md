@@ -876,7 +876,12 @@ single-symbol probability right and every two-symbol probability wrong.
 
 ## Optimization notebook
 
-`NextInt` runs once per reel per spin, so its setup cost may matter at tens of millions of
-spins. Keep the validated API while building the system. After reel lengths become stable
-construction-time data, measure whether their Lemire ranges and rejection thresholds are
-worth calculating once. Article 9 performs that experiment.
+**Summary:** keep the validated random-number API, but move repeated setup work to game
+construction when measurements support the change.
+
+- **Precomputed bounds:** calculate each stable reel length's Lemire range and rejection
+  threshold once instead of rebuilding them on every spin.
+- **Unchanged random mapping:** preserve the same rejection method so the optimized path
+  remains uniform and repeatable.
+- **Benchmark gate:** article 9 measures the construction-time values against the readable
+  `NextInt(bound)` baseline.
