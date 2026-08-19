@@ -135,23 +135,48 @@ public sealed class RunCurveCoverageTests : IClassFixture<WebApplicationFactory<
         Assert.True(last < first, $"band went from {first} to {last}; it must narrow.");
     }
 
-    /// <summary>Throughput is published and is a real, positive rate once a run finishes.</summary>
+    /// <summary>
+    /// Both throughput figures are published, each consistent with its own clock.
+    /// </summary>
     [Fact]
-    public async Task A_finished_run_publishes_its_spins_per_second()
+    public async Task A_finished_run_publishes_engine_and_observed_throughput()
     {
         using var client = _factory.CreateClient();
         var final = await RunToCompletionAsync(client, seed: 4247);
-        var latest = final.GetProperty("latest");
+        var t = final.GetProperty("throughput");
 
-        Assert.True(latest.GetProperty("elapsedSeconds").GetDouble() > 0);
+        var engineSeconds = t.GetProperty("engineSeconds").GetDouble();
+        var observedSeconds = t.GetProperty("observedSeconds").GetDouble();
+        Assert.True(engineSeconds > 0, "engineSeconds was not recorded.");
+        Assert.True(observedSeconds > 0, "observedSeconds was not recorded.");
 
-        var rate = latest.GetProperty("spinsPerSecond").GetDouble();
-        Assert.True(rate > 0, "spinsPerSecond was not published for a finished run.");
+        // Each rate is the run's own totals over its own clock, never a drifting number.
+        Assert.Equal(Spins / engineSeconds, t.GetProperty("engineSpinsPerSecond").GetDouble(), 3);
+        Assert.Equal(Spins / observedSeconds, t.GetProperty("observedSpinsPerSecond").GetDouble(), 3);
+    }
 
-        // The published rate is the run's own totals over its own clock, so it must agree
-        // with them rather than being an independently drifting number.
-        var expected = Spins / latest.GetProperty("elapsedSeconds").GetDouble();
-        Assert.Equal(expected, rate, 3);
+    /// <summary>
+    /// The engine clock covers the workers only, so it cannot exceed the observed clock
+    /// that brackets it. This is the property that makes the two numbers mean different
+    /// things rather than being two names for one measurement.
+    /// </summary>
+    [Fact]
+    public async Task Engine_time_is_contained_by_observed_time()
+    {
+        using var client = _factory.CreateClient();
+        var final = await RunToCompletionAsync(client, seed: 4248);
+        var t = final.GetProperty("throughput");
+
+        var engineSeconds = t.GetProperty("engineSeconds").GetDouble();
+        var observedSeconds = t.GetProperty("observedSeconds").GetDouble();
+
+        Assert.True(
+            engineSeconds <= observedSeconds,
+            $"engine {engineSeconds}s exceeded observed {observedSeconds}s; the clocks are not nested.");
+        Assert.True(
+            t.GetProperty("engineSpinsPerSecond").GetDouble()
+                >= t.GetProperty("observedSpinsPerSecond").GetDouble(),
+            "engine rate must be at least the observed rate.");
     }
 
     private async Task<List<JsonElement>> RunAndReadCurveAsync(ulong seed)

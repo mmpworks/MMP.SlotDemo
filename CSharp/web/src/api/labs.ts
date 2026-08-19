@@ -304,10 +304,15 @@ export interface RunDescription {
     hitFrequency: number
     wageredMillicents: number
     returnedMillicents: number
-    /** Wall-clock seconds the run has taken; frozen once the run is terminal. */
-    elapsedSeconds: number
-    /** Spins per second over the run so far; 0 before the first spin lands. */
-    spinsPerSecond: number
+  }
+  /** Two different questions: how fast the engine ran, and how long the run took to watch. */
+  throughput: {
+    /** Workers only, excluding telemetry and streaming. Final once the run is terminal. */
+    engineSeconds: number
+    engineSpinsPerSecond: number
+    /** Wall-clock including the cost of streaming to a watching page. */
+    observedSeconds: number
+    observedSpinsPerSecond: number
   }
   /** GLI-style acceptance: null until the run has at least `minimumSpins` spins. */
   industry: {

@@ -24,11 +24,11 @@ const curve = ref<CurvePoint[]>([])
 const liveSpins = ref(0)
 const liveRtp = ref(0)
 const liveHitFrequency = ref(0)
-const liveSpinsPerSecond = ref(0)
+const liveEngineRate = ref(0)
 
 /// Spins per second, scaled to the unit that reads cleanly at engine speeds.
 const throughput = computed(() => {
-  const rate = liveSpinsPerSecond.value
+  const rate = liveEngineRate.value
   if (rate <= 0) return '—'
   if (rate >= 1_000_000) return `${(rate / 1_000_000).toFixed(1)}M`
   if (rate >= 1_000) return `${(rate / 1_000).toFixed(1)}k`
@@ -76,13 +76,13 @@ function subscribe(): void {
         spins: number
         measuredRtp: number
         hitFrequency: number
-        elapsedSeconds: number
-        spinsPerSecond: number
+        engineSpinsPerSecond: number
+        observedSpinsPerSecond: number
       }
       liveSpins.value = p.spins
       liveRtp.value = p.measuredRtp
       liveHitFrequency.value = p.hitFrequency
-      liveSpinsPerSecond.value = p.spinsPerSecond
+      liveEngineRate.value = p.engineSpinsPerSecond
     } else if (event.type === 'completed' || event.type === 'cancelled') {
       adopt(event.data as RunDescription)
     }
@@ -95,7 +95,7 @@ function adopt(description: RunDescription): void {
   liveSpins.value = description.latest.spins
   liveRtp.value = description.latest.measuredRtp
   liveHitFrequency.value = description.latest.hitFrequency
-  liveSpinsPerSecond.value = description.latest.spinsPerSecond
+  liveEngineRate.value = description.throughput.engineSpinsPerSecond
 }
 
 async function start(): Promise<void> {
@@ -293,7 +293,7 @@ const industry = computed(() => {
           <span class="readout__value">{{ (liveHitFrequency * 100).toFixed(2) }}%</span>
         </div>
         <div class="readout">
-          <span class="readout__label">Spins / second</span>
+          <span class="readout__label">Engine spins / second</span>
           <span class="readout__value">{{ throughput }}</span>
         </div>
         <div class="readout">

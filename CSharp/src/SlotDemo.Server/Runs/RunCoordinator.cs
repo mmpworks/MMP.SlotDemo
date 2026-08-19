@@ -82,16 +82,25 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         public string Status { get; set; } = "running";
 
         /// <summary>
-        /// Wall-clock for the throughput readout. Stopped when the run reaches a terminal
-        /// state so a finished run keeps the rate it actually achieved; left running, the
-        /// elapsed time would keep growing and the published rate would decay on screen.
+        /// Wall-clock from accepting the request to the terminal status: what an observer
+        /// experiences, including the cost of streaming the run to a watching page. Stopped
+        /// at the terminal state so a finished run keeps the figure it actually achieved.
         /// </summary>
-        public Stopwatch Clock { get; } = Stopwatch.StartNew();
+        public Stopwatch ObservedClock { get; } = Stopwatch.StartNew();
 
-        /// <summary>Spins per second over the run so far, 0 before the first spin lands.</summary>
-        public double SpinsPerSecond(long spins) =>
-            spins <= 0 ? 0 : spins / Math.Max(Clock.Elapsed.TotalSeconds, 1e-9);
+        /// <summary>
+        /// The workers alone, started immediately before the simulation and stopped as soon
+        /// as every worker is done. This is the engine's own throughput; it excludes the
+        /// telemetry pump, SSE serialization, and anything a connected browser costs, so it
+        /// is the number to quote for engine speed.
+        /// </summary>
+        public Stopwatch EngineClock { get; } = new();
+
     }
+
+    /// <summary>Spins per second over an elapsed span; 0 before the first spin lands.</summary>
+    private static double Rate(long spins, TimeSpan elapsed) =>
+        spins <= 0 ? 0 : spins / Math.Max(elapsed.TotalSeconds, 1e-9);
 
     public bool IsRunning
     {
@@ -305,8 +314,15 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
                 hitFrequency = latest.HitFrequency,
                 wageredMillicents = latest.WageredMillicents,
                 returnedMillicents = latest.ReturnedMillicents,
-                elapsedSeconds = run.Clock.Elapsed.TotalSeconds,
-                spinsPerSecond = run.SpinsPerSecond(latest.Spins),
+            },
+            throughput = new
+            {
+                // The engine's own rate, workers only. Final once the run is terminal.
+                engineSeconds = run.EngineClock.Elapsed.TotalSeconds,
+                engineSpinsPerSecond = Rate(latest.Spins, run.EngineClock.Elapsed),
+                // What an observer saw, streaming included.
+                observedSeconds = run.ObservedClock.Elapsed.TotalSeconds,
+                observedSpinsPerSecond = Rate(latest.Spins, run.ObservedClock.Elapsed),
             },
             industry = run.Recorder.IndustryCheck() is { } check
                 ? new
@@ -337,7 +353,9 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         string terminal;
         try
         {
+            run.EngineClock.Start();
             final = await runner(channel.Writer, ct).ConfigureAwait(false);
+            run.EngineClock.Stop();
             // Workers notice cancellation at a batch boundary and return normally, so a
             // cancelled run usually completes without throwing. Check the token to determine
             // whether cancellation ended the run.
@@ -347,6 +365,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         {
             // Cancelled before the workers drew a spin; the recorder's latest reading is
             // whatever the run managed, which may be nothing.
+            run.EngineClock.Stop();
             final = run.Recorder.Latest;
             terminal = "cancelled";
             channel.Writer.TryComplete();
@@ -358,18 +377,18 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         await pump.ConfigureAwait(false);
 
         var last = run.Recorder.Complete(final);
-        // Freeze the throughput clock with the totals, before the terminal status goes out.
-        run.Clock.Stop();
+        // Freeze the observed clock with the totals, before the terminal status goes out.
+        run.ObservedClock.Stop();
         // Terminal status lands only after the final snapshot is in the recorder, so a
         // poller that sees "completed" always sees the finished totals with it.
         run.Status = terminal;
 
         log.Information(Category,
-            "Run {RunId} {Status}: {Spins} spins at {SpinsPerSecond} spins/s, measured {Measured}, analytic {Analytic}, band {Band}, verdict {Verdict}, industry {Industry}",
+            "Run {RunId} {Status}: {Spins} spins at {SpinsPerSecond} engine spins/s, measured {Measured}, analytic {Analytic}, band {Band}, verdict {Verdict}, industry {Industry}",
             new LogProperty("RunId", run.RunId),
             new LogProperty("Status", run.Status),
             new LogProperty("Spins", final.Spins),
-            new LogProperty("SpinsPerSecond", run.SpinsPerSecond(final.Spins)),
+            new LogProperty("SpinsPerSecond", Rate(final.Spins, run.EngineClock.Elapsed)),
             new LogProperty("Measured", final.MeasuredRtp),
             new LogProperty("Analytic", run.Analytic.TotalRtp),
             new LogProperty("Band", last.BandHalfWidth),
@@ -431,8 +450,8 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
                 spins = latest.Spins,
                 measuredRtp = latest.MeasuredRtp,
                 hitFrequency = latest.HitFrequency,
-                elapsedSeconds = run.Clock.Elapsed.TotalSeconds,
-                spinsPerSecond = run.SpinsPerSecond(latest.Spins),
+                engineSpinsPerSecond = Rate(latest.Spins, run.EngineClock.Elapsed),
+                observedSpinsPerSecond = Rate(latest.Spins, run.ObservedClock.Elapsed),
             });
         }
     }
