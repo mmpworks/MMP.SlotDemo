@@ -75,6 +75,7 @@ interface ParSheet {
       separated: boolean
       visibleStops: number
       windowVisibility: number
+      windowCounts: number[]
     }[]
   }
 }
@@ -441,12 +442,13 @@ const symbolName = computed(() => {
           <button class="par-term par-block__title" @click="explainKey = 'verification'">Verification</button>
           <table class="lab-table">
             <thead>
-              <tr><th>Scatter reel</th><th>Positions</th><th>Visible stops</th><th>Window chance</th><th>Separated ≥ window</th></tr>
+              <tr><th>Scatter reel</th><th>Positions</th><th>Copies visible by starting stop</th><th>Visible stops</th><th>Window chance</th><th>Separated ≥ window</th></tr>
             </thead>
             <tbody>
               <tr v-for="s in sheet.verification.scatterReels" :key="s.reel">
                 <td>R{{ s.reel }}</td>
                 <td class="mono">{{ s.positions.join(', ') }}</td>
+                <td class="mono">{{ s.windowCounts.map((stops, copies) => `${copies}: ${stops}`).join(' · ') }}</td>
                 <td>{{ s.visibleStops }}</td>
                 <td>{{ (s.windowVisibility * 100).toFixed(3) }}%</td>
                 <td :class="s.separated ? 'par-pass' : 'par-fail'">{{ s.separated ? 'yes' : 'NO' }}</td>

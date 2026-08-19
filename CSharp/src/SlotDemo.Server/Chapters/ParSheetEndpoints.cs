@@ -216,6 +216,7 @@ public static class ParSheetEndpoints
                     separated,
                     visibleStops = reels.VisibleStopCount(reel, game.Bonus.ScatterSymbolId),
                     windowVisibility = reels.WindowVisibilityOf(reel, game.Bonus.ScatterSymbolId),
+                    windowCounts = reels.WindowCountDistribution(reel, game.Bonus.ScatterSymbolId),
                 };
             }).ToArray();
 

@@ -185,14 +185,19 @@ public sealed class StripReelSet
         return (double)count / n;
     }
 
-    /// <summary>True when the symbol appears in any visible position at this stop.</summary>
-    public bool WindowContains(int reel, int stop, byte symbolId)
+    /// <summary>Counts copies of the symbol in the visible column at this stop.</summary>
+    public int WindowSymbolCount(int reel, int stop, byte symbolId)
     {
+        var count = 0;
         var drawIds = _drawIds[reel];
         for (var row = 0; row < Rows; row++)
-            if (drawIds[stop + row] == symbolId) return true;
-        return false;
+            if (drawIds[stop + row] == symbolId) count++;
+        return count;
     }
+
+    /// <summary>True when at least one copy appears in the visible column.</summary>
+    public bool WindowContains(int reel, int stop, byte symbolId) =>
+        WindowSymbolCount(reel, stop, symbolId) > 0;
 
     /// <summary>Counts stops that show the symbol anywhere in this reel's window.
     /// A stop counts once even when two copies are visible.</summary>
@@ -208,6 +213,15 @@ public sealed class StripReelSet
     /// A return value of 0.5 means 50 percent.</summary>
     public double WindowVisibilityOf(int reel, byte symbolId) =>
         (double)VisibleStopCount(reel, symbolId) / _strips[reel].Length;
+
+    /// <summary>Starting-stop counts indexed by the number of visible copies.</summary>
+    public int[] WindowCountDistribution(int reel, byte symbolId)
+    {
+        var distribution = new int[Rows + 1];
+        for (var stop = 0; stop < _strips[reel].Length; stop++)
+            distribution[WindowSymbolCount(reel, stop, symbolId)]++;
+        return distribution;
+    }
 
     /// <summary>Draws one stop per reel, then fills its column from neighboring strip positions.</summary>
     public void DrawWindow(ref SpinRng rng, Span<Symbol> window)
@@ -689,29 +703,89 @@ ordered Star positions on each reel and the window height. A symbol-count table 
 itself does not show whether two Stars are close enough for their visible ranges to
 overlap.
 
-`WindowVisibilityOf(reel, symbolId)` checks every possible starting stop. If the
-symbol appears anywhere in that reel's visible column, the stop counts once:
+`WindowSymbolCount` shows how the stop number becomes a visible column. `_drawIds`
+contains the physical strip followed by the few symbols needed for wraparound. A
+3-position window reads `stop`, `stop + 1`, and `stop + 2` directly:
 
 ```csharp
 /// <summary>
-/// Returns the chance that a symbol appears anywhere in one reel's visible column.
-/// Checking each stop forms the union of all visible ranges, so overlaps count once.
+/// Counts copies of one symbol in the visible column at this starting stop.
 /// </summary>
-public double WindowVisibilityOf(int reel, byte symbolId)
+public int WindowSymbolCount(int reel, int stop, byte symbolId)
 {
-    var visibleStops = 0;
-    for (var stop = 0; stop < StopCount(reel); stop++)
+    var stopCount = _strips[reel].Length;
+    if ((uint)stop >= (uint)stopCount)
+        throw new ArgumentOutOfRangeException(
+            nameof(stop), stop, $"Stop must be 0..{stopCount - 1}.");
+
+    var count = 0;
+    var drawIds = _drawIds[reel];
+
+    // For a 3-position window, this reads drawIds[stop], [stop + 1],
+    // and [stop + 2]. The extended array already contains wrapped symbols.
+    for (var row = 0; row < Rows; row++)
     {
-        if (WindowContains(reel, stop, symbolId)) visibleStops++;
+        if (drawIds[stop + row] == symbolId) count++;
     }
 
-    return (double)visibleStops / StopCount(reel);
+    return count;
+}
+
+/// <summary>True when at least one copy appears in the visible column.</summary>
+public bool WindowContains(int reel, int stop, byte symbolId)
+{
+    return WindowSymbolCount(reel, stop, symbolId) > 0;
 }
 ```
 
-This fixture has a five-position window. Each Star can be seen from five starting
-stops. The Stars are far enough apart that their starting-stop sets do not overlap,
-so the exact function counts 10 visible stops out of 20:
+Suppose a 26-stop reel has one Star at strip position 2 and a 3-position window.
+Three starting stops reveal that Star:
+
+| Starting stop | Visible strip positions | Star appears at |
+|---:|---|---|
+| 0 | 0, 1, **2** | visible position 2 |
+| 1 | 1, **2**, 3 | visible position 1 |
+| 2 | **2**, 3, 4 | visible position 0 |
+
+The reel has 26 equally likely starting stops. Three reveal the Star, so its window
+visibility is `3/26`, or about 11.54%.
+
+If the reel has four Stars at positions 2, 8, 14, and 20, their starting-stop sets
+do not overlap:
+
+| Star position | Starting stops that reveal it |
+|---:|---|
+| 2 | 0, 1, 2 |
+| 8 | 6, 7, 8 |
+| 14 | 12, 13, 14 |
+| 20 | 18, 19, 20 |
+
+That produces 12 distinct starting stops, so the chance of seeing at least one Star
+is `12/26`, or about 46.15%.
+
+`VisibleStopCount` performs this union without building sets. It checks every stop
+and increments the result once when `WindowContains` is true:
+
+```csharp
+public int VisibleStopCount(int reel, byte symbolId)
+{
+    var count = 0;
+    for (var stop = 0; stop < StopCount(reel); stop++)
+    {
+        // A Boolean makes a stop count once, even if two Stars are visible.
+        if (WindowContains(reel, stop, symbolId)) count++;
+    }
+    return count;
+}
+
+public double WindowVisibilityOf(int reel, byte symbolId)
+{
+    return (double)VisibleStopCount(reel, symbolId) / StopCount(reel);
+}
+```
+
+The hand-built fixture uses a five-position window and two separated Stars. The
+exact function counts 10 visible starts out of 20:
 
 ```text
 VisibleStopCount = 10
@@ -725,10 +799,64 @@ For separated symbols, the shorter formula reaches the same answer:
 (Star count × window height) / strip length = (2 × 5) / 20 = 0.5
 ```
 
-The shortcut fails when the visible ranges overlap. On a 20-stop reel with Stars at
-positions 0 and 2, a five-position window has only seven distinct starting stops that
-show a Star, not ten. `WindowVisibilityOf` returns `7/20 = 0.35` because it counts
-each starting stop once and handles wraparound at the end of the strip.
+### When two Stars can appear together
+
+The same code handles an uneven strip. Consider two 26-stop reels with a 3-position
+window. Reel 1 has four Stars, twice as many as reel 2, but two of reel 1's Stars are
+neighbors:
+
+| Reel | Star positions | Count × height | Distinct visible stops | Window visibility | Stops showing two Stars |
+|---|---|---:|---:|---:|---:|
+| 1 | 2, 3, 10, 18 | 12 | 10 | 38.46% | 2 |
+| 2 | 2, 15 | 6 | 6 | 23.08% | 0 |
+
+On reel 1, the Star at position 2 is visible from starts 0, 1, and 2. The Star at
+position 3 is visible from starts 1, 2, and 3. Starts 1 and 2 show both Stars, so
+the two ranges overlap:
+
+```text
+position 2 -> {0, 1, 2}
+position 3 -> {1, 2, 3}
+union      -> {0, 1, 2, 3}
+```
+
+The at-least-one calculation does not change. `WindowContains` returns true for
+starts 0 through 3, and `VisibleStopCount` counts four distinct starts. If a game
+rule needs to know that two Stars are visible, it uses `WindowSymbolCount`, which
+returns 2 for starts 1 and 2.
+
+`WindowCountDistribution` builds the PAR table by counting how many starting stops
+show zero, one, or two copies:
+
+```csharp
+public int[] WindowCountDistribution(int reel, byte symbolId)
+{
+    // Index 0 counts windows with no copies, index 1 counts one copy, and so on.
+    var distribution = new int[Rows + 1];
+    for (var stop = 0; stop < StopCount(reel); stop++)
+        distribution[WindowSymbolCount(reel, stop, symbolId)]++;
+    return distribution;
+}
+```
+
+For reel 1 above, the distribution is 16 stops with no Star, 8 with one Star, and
+2 with two Stars. Those counts total all 26 possible starting stops.
+
+### Cost of the exact calculation
+
+This is construction and PAR-analysis work, not spin-loop work:
+
+- `WindowSymbolCount` reads at most the configured window height. The extended byte
+  strip avoids a remainder operation for each visible position.
+- `VisibleStopCount` costs `strip length × window height` comparisons. A 26-stop,
+  3-position reel needs at most 78 byte comparisons.
+- The loop returns no temporary sets or window arrays. `WindowCountDistribution`
+  allocates one small array with `Rows + 1` counters.
+
+Caching every reel-and-symbol distribution would make later queries constant time,
+but it would add another derived table to game construction. The current calculation
+runs only when analysis or the PAR page asks for it. A cache belongs here only if a
+profile shows these queries taking meaningful construction time.
 
 All three reel windows must contain a Star:
 
@@ -880,3 +1008,7 @@ preserving the exact window produced by the baseline.
   flags from the full `Symbol` value.
 - **Equivalence test:** feed both paths the same RNG stream and confirm that they draw the
   same symbols before article 9 compares their speed.
+- **Construction-time visibility census:** enumerate `strip length × window height` byte
+  comparisons when PAR analysis asks how often a symbol appears in the window. Keep this
+  exact calculation outside the per-spin loop; add a cache only if profiling shows repeated
+  census queries matter.

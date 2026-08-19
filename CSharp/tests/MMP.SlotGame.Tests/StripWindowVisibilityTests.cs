@@ -11,7 +11,7 @@ public sealed class StripWindowVisibilityTests
     [Fact]
     public void Separated_symbols_contribute_one_visible_start_per_window_position()
     {
-        var reels = BuildReelSet(0, 10);
+        var reels = BuildReelSet(stripLength: 20, rows: 5, 0, 10);
 
         Assert.Equal(10, reels.VisibleStopCount(0, Star.Id));
         Assert.Equal(0.5, reels.WindowVisibilityOf(0, Star.Id));
@@ -20,27 +20,37 @@ public sealed class StripWindowVisibilityTests
     [Fact]
     public void Overlapping_symbol_windows_count_each_starting_stop_once()
     {
-        var reels = BuildReelSet(0, 2);
+        var reels = BuildReelSet(stripLength: 20, rows: 5, 0, 2);
 
         // Two Stars times five positions suggests 10 starts, but three starts show
         // both Stars. The union contains only seven distinct starting stops.
         Assert.Equal(7, reels.VisibleStopCount(0, Star.Id));
         Assert.Equal(0.35, reels.WindowVisibilityOf(0, Star.Id));
+        Assert.Equal([13, 4, 3, 0, 0, 0], reels.WindowCountDistribution(0, Star.Id));
     }
 
     [Fact]
     public void Visibility_wraps_across_the_end_of_the_strip()
     {
-        var reels = BuildReelSet(0);
+        var reels = BuildReelSet(stripLength: 20, rows: 5, 0);
 
         Assert.True(reels.WindowContains(0, 18, Star.Id));
         Assert.Equal(5, reels.VisibleStopCount(0, Star.Id));
     }
 
-    private static StripReelSet BuildReelSet(params int[] starPositions)
+    [Fact]
+    public void Uneven_four_star_reel_reports_windows_with_two_visible_stars()
     {
-        var strip = Enumerable.Repeat(Blank, 20).ToArray();
+        var reels = BuildReelSet(stripLength: 26, rows: 3, 2, 3, 10, 18);
+
+        Assert.Equal(10, reels.VisibleStopCount(0, Star.Id));
+        Assert.Equal([16, 8, 2, 0], reels.WindowCountDistribution(0, Star.Id));
+    }
+
+    private static StripReelSet BuildReelSet(int stripLength, int rows, params int[] starPositions)
+    {
+        var strip = Enumerable.Repeat(Blank, stripLength).ToArray();
         foreach (var position in starPositions) strip[position] = Star;
-        return new StripReelSet([strip], rows: 5);
+        return new StripReelSet([strip], rows);
     }
 }

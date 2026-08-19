@@ -129,23 +129,27 @@ public sealed class StripReelSet
     }
 
     /// <summary>
-    /// Returns true when <paramref name="symbolId"/> appears anywhere in one reel's
-    /// visible column at the requested stop. The check follows cyclic strip order through
-    /// the extended drawing strip.
+    /// Counts how many times <paramref name="symbolId"/> appears in one reel's visible
+    /// column at the requested stop. The extended drawing strip handles cyclic wraparound.
     /// </summary>
-    public bool WindowContains(int reel, int stop, byte symbolId)
+    public int WindowSymbolCount(int reel, int stop, byte symbolId)
     {
         var stopCount = _strips[reel].Length;
         if ((uint)stop >= (uint)stopCount)
             throw new ArgumentOutOfRangeException(nameof(stop), stop, $"Stop must be 0..{stopCount - 1}.");
 
+        var count = 0;
         var drawIds = _drawIds[reel];
         for (var row = 0; row < Rows; row++)
         {
-            if (drawIds[stop + row] == symbolId) return true;
+            if (drawIds[stop + row] == symbolId) count++;
         }
-        return false;
+        return count;
     }
+
+    /// <summary>Returns true when the symbol appears at least once in the visible column.</summary>
+    public bool WindowContains(int reel, int stop, byte symbolId) =>
+        WindowSymbolCount(reel, stop, symbolId) > 0;
 
     /// <summary>
     /// Counts the physical reel stops that show <paramref name="symbolId"/> at least once
@@ -168,6 +172,18 @@ public sealed class StripReelSet
     /// </summary>
     public double WindowVisibilityOf(int reel, byte symbolId) =>
         (double)VisibleStopCount(reel, symbolId) / _strips[reel].Length;
+
+    /// <summary>
+    /// Counts starting stops by the number of visible copies. Index 0 is the stops showing
+    /// none, index 1 shows one copy, and so on through the configured window height.
+    /// </summary>
+    public int[] WindowCountDistribution(int reel, byte symbolId)
+    {
+        var distribution = new int[Rows + 1];
+        for (var stop = 0; stop < _strips[reel].Length; stop++)
+            distribution[WindowSymbolCount(reel, stop, symbolId)]++;
+        return distribution;
+    }
 
     /// <summary>Draws one stop per reel, then fills that reel's column from neighboring strip positions.</summary>
     public void DrawWindow(ref SpinRng rng, Span<Symbol> window)
