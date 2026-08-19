@@ -62,6 +62,22 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
       </p>
     </section>
 
+    <section class="chapter-brief">
+      <h3>One window can produce two kinds of awards</h3>
+      <p>
+        A spin chooses one stop for each reel and builds one visible window. Every payline
+        reads that window. A bonus rule can inspect the same window for scatter symbols.
+        A line win does not block the bonus: the same spin can pay a line award and trigger
+        PenguinBonus, and the engine adds both awards.
+      </p>
+      <p>
+        The slot engine supports several paylines. The one-payline limit belongs only to
+        the exact <code>GameAnalyzer</code>. With several lines, exact variance must include
+        every line-to-line relationship and every line-to-bonus relationship. That complete
+        calculation has not been added to <code>GameAnalyzer</code> yet.
+      </p>
+    </section>
+
     <section class="lab">
       <h3>Lab 1 — Build one weighted outcome</h3>
       <p class="lab__lede">

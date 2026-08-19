@@ -93,6 +93,37 @@ flowchart LR
 The small Cherry-and-Bell table earlier is only a hand-built example of the counting
 method. It is not another bonus game and is not loaded from a PAR file.
 
+### What happens after the reels stop
+
+One spin chooses one stop on each reel. Those stops create one visible window. The engine
+then checks that same window in two ways:
+
+1. Each payline reads one symbol from every reel and checks the paytable.
+2. The bonus rule searches the required reels for visible Penguin scatters.
+
+The two checks do not take turns and one does not cancel the other. A single window can
+produce a line award, trigger the bonus, do both, or do neither. If both happen, the spin's
+total payout is the line award plus the bonus award.
+
+```mermaid
+flowchart LR
+    STOPS["Choose one stop on each reel"] --> WINDOW["Build one visible reel window"]
+    WINDOW --> LINES["Read and score every payline"]
+    WINDOW --> SCATTERS["Check required reels for Penguin"]
+    LINES --> LINEPAY["Add all line awards"]
+    SCATTERS -->|Bonus triggered| BONUSPLAY["Play PenguinBonus"]
+    SCATTERS -->|Not triggered| ZEROBONUS["Bonus award = 0"]
+    BONUSPLAY --> BONUSPAY["Bonus award"]
+    LINEPAY --> TOTAL["Total spin payout"]
+    BONUSPAY --> TOTAL
+    ZEROBONUS --> TOTAL
+```
+
+For example, Orca Dive can place Blue7 on the center payline of the first three reels while
+the same window shows Penguin on reels 1, 3, and 5, the reels required by `PenguinBonus`.
+The engine pays the Blue7 line, plays the bonus, and adds the two awards. This is why the
+analyzer records spins where the line and bonus happen together.
+
 Other code calls `Analyze` when it wants a report for one loaded game, such as Orca Dive.
 `Analyze` first checks the request. The game definition must exist, and this version of the
 analyzer must receive exactly one payline. If either check fails, the method reports an
@@ -120,14 +151,43 @@ Think of `Analyze` as the front desk. The front desk checks whether the request 
 handled. `Enumeration` is the worker who takes an accepted request, keeps a tally sheet,
 and returns the finished report.
 
-That one-payline limit has a reason behind it. **Variance measures how widely payouts
-spread around their average.** Average returns from several lines add together cleanly,
-but their variance may not. Two paylines can read different positions on the same reel,
-so one stopped window can affect both payouts. The resulting relationship is called
-**covariance**: positive when the two line results tend to rise and fall together,
-negative when one tends to rise as the other falls, and near zero when they have no
-consistent relationship. `AnalyticMath` handles that relationship for the built-in games.
-`GameAnalyzer` has yet to combine it with wild substitutions and window-based bonuses.
+### Why this exact analyzer stops at one payline
+
+The slot engine can play games with several paylines. `WinningOutcomeTable` scores every
+configured line, and the simulation adds every line award. The one-payline check applies
+only to `GameAnalyzer`, the code that calculates exact RTP and variance without playing
+random spins.
+
+With one line and one bonus, a spin has two payout parts:
+
+```text
+total payout = line award + bonus award
+```
+
+The analyzer already counts how often those two parts happen together. With two lines and
+one bonus, there are three payout parts and three pair relationships to count:
+
+| Pair | Why they may be related |
+|---|---|
+| Line 1 and Line 2 | Both read the same stopped reels and may share visible positions |
+| Line 1 and bonus | The same window can make Line 1 pay and show the scatter |
+| Line 2 and bonus | The same window can make Line 2 pay and show the scatter |
+
+**Variance measures how widely the total payout spreads around its average.** Calculating
+that total requires each part's variance and the covariance of every pair:
+
+```text
+Var(total) = Var(line 1) + Var(line 2) + Var(bonus)
+           + 2 Cov(line 1, line 2)
+           + 2 Cov(line 1, bonus)
+           + 2 Cov(line 2, bonus)
+```
+
+`GameAnalyzer` currently stores one payline result per reel and one line-to-bonus overlap.
+It does not yet store all line pairs and every line-to-bonus pair. The guard rejects a
+multi-payline definition instead of returning an RTP band with missing covariance terms.
+`AnalyticMath` handles line-to-line covariance for the simpler built-in games, whose bonus
+terms are independent of their reel windows.
 
 ## Preparing the counts
 

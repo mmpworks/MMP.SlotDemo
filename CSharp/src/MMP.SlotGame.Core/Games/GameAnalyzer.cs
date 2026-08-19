@@ -15,8 +15,10 @@ namespace MMP.SlotGame.Core.Games;
 /// The analyzer also counts stops that show the bonus scatter anywhere in the visible window.
 /// This is necessary because the line win and the bonus trigger can happen on the same spin.
 ///
-/// This class supports any number of reels, but only one payline. Games with several paylines
-/// still simulate correctly; their exact variance requires additional covariance calculations.
+/// This class supports any number of reels, but stores one payline result and its overlap with
+/// the bonus. Games with several paylines still simulate correctly. Their exact variance also
+/// needs every line-to-line and line-to-bonus covariance pair, which this analyzer does not yet
+/// store.
 /// </summary>
 public static class GameAnalyzer
 {
