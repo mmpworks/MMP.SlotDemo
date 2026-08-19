@@ -182,14 +182,17 @@ async function runBand(): Promise<void> {
     <section class="lab">
       <h3>Lab 2: Calculate a confidence band</h3>
       <p class="lab__lede">
-        Two games can have the same RTP but very different swings. Sigma measures those
-        swings. The engine calculates it from the reel strips and paytable, including
-        paylines that share visible positions. More spins make the expected range narrower.
+        RTP tells you the long-run average. It does not tell you how bumpy the trip will be.
+        Sigma is the standard deviation of one spin's return: a larger sigma means payouts
+        are spread farther from the average. The engine calculates it from the reel strips
+        and paytable, including paylines that share visible positions.
       </p>
       <p class="lab-note">
-        Variance measures how far payouts spread from their average. Covariance measures
-        whether two payouts tend to move together, like two boats rising on the same wave
-        when shared reel positions help both paylines.
+        Picture two games with 50% RTP. One always pays 0.5 wager. The other pays zero nine
+        times and 5 wagers once. Their averages match, but the second game is much more
+        swingy. Variance measures that spread; sigma puts it back in ordinary wager units.
+        Covariance records when two awards rise or fall together because they read the same
+        reel window.
       </p>
 
       <div class="controls">
@@ -235,6 +238,8 @@ async function runBand(): Promise<void> {
         <p class="lab-note">
           Compare 10,000 spins with 1,000,000 spins. Multiplying the spin count by 100
           divides the band width by 10 because the formula uses the square root of spins.
+          Think of averaging repeated readings from a noisy scale: more readings quiet the
+          noise, but the improvement is gradual.
         </p>
       </div>
     </section>

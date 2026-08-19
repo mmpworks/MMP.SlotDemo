@@ -61,8 +61,16 @@ public static class GameAnalyzer
         {
             var outcome = entry.Value;
             var line = outcome.TotalMultiplier / scale;
+
+            // Keep the payout and its square. The average payout gives line RTP. The
+            // average squared payout later measures swinginess: squaring prevents low and
+            // high results from canceling and gives unusually large awards more weight.
             lineUnits += line;
             lineSquareUnits += line * line;
+
+            // This separate total remembers windows where a line award and bonus trigger
+            // happen together. That overlap is needed because both events come from the
+            // same stopped window; treating them as unrelated would give the wrong sigma.
             if (outcome.TriggeredFeatures.Count > 0) lineTriggerUnits += line;
         }
 
@@ -75,6 +83,10 @@ public static class GameAnalyzer
         var bonusMeanSquared = bonus?.MeanSquared ?? 0.0;
         var bonusRtp = triggerProbability * bonusMean;
         var mean = meanLine + bonusRtp;
+
+        // If total payout is line + bonus, squaring it produces:
+        // line^2 + 2(line x bonus) + bonus^2. These three terms are those same parts,
+        // averaged over every physical window and every possible bonus award.
         var meanSquared = meanLineSquared
             + 2.0 * meanLineTimesTrigger * bonusMean
             + triggerProbability * bonusMeanSquared;

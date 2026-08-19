@@ -8,6 +8,10 @@
 
 **Scene:** a simple table or whiteboard, not the source code.
 
+Open with: "The math is a little more complex in this episode because one spin can pay
+several lines and start a bonus. These are standard probability formulas. We will take
+them one question at a time: average, swinginess, and awards that happen together."
+
 Draw three short reels:
 
 - Reel 1: cherry, cherry, bell
@@ -130,8 +134,15 @@ total RTP = line RTP + bonus RTP
 For variance, use `variance = average(X²) - average(X)²`. State what X means: the total payout
 from one spin.
 
-Do not derive the expanded line-plus-bonus equation on camera unless the audience needs it.
-Explain its purpose: spins where the line and bonus pay together must be included.
+Before the formula, show two ten-spin lists: ten 0.5X awards, then nine zeroes and one 5X
+award. Both average 0.5X. Ask which game feels more swingy. Explain that squaring stops low
+and high results from canceling and gives large jumps more weight. The square root turns
+variance back into wager units; that result is standard deviation, written as sigma.
+
+Then show the commented `meanLine`, `meanLineSquared`, `meanLineTimesTrigger`, `meanSquared`,
+and `Math.Sqrt` excerpt from the article. Explain the purpose of the middle term: spins where
+the line and bonus pay together must be included. Do not expand beyond that unless the
+audience needs the algebra.
 
 ## 18:30–20:00 — Run the analyzer
 

@@ -109,7 +109,9 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
 
     private CurvePoint Measure(RunSnapshot snapshot)
     {
-        // Band = z * sigma / sqrt(N), the same closed form the analytic twin supplies.
+        // Band = z * sigma / sqrt(N), the same standard confidence-band formula used in
+        // the lesson. Sigma measures one-spin swinginess. Averaging more independent spins
+        // reduces that noise by sqrt(N), so 100 times as many spins narrows the band by 10.
         var halfWidth = snapshot.Spins > 0
             ? NormalQuantile.TwoSided99 * sigmaPerUnitWagered / Math.Sqrt(snapshot.Spins)
             : 0;

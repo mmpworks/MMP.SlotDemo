@@ -8,6 +8,21 @@ A slot simulator answers a question by sampling: play many random spins, add the
 and watch the average settle. `GameAnalyzer` takes a different route. It counts the possible
 outcomes and calculates the exact average.
 
+The math becomes a little more involved in this chapter because one spin may have several
+parts: more than one line can pay, and a bonus can start in the same window. The formulas
+are standard probability formulas, not special slot-machine inventions. We will use them
+one question at a time:
+
+- **Expected value:** What is the long-run average return?
+- **Variance:** How far do individual returns spread from that average?
+- **Covariance:** Which awards tend to occur together in the same window?
+- **Standard deviation, or sigma:** What is the spread in ordinary wager units?
+
+Think of preparing a restaurant bill. Adding the food and drink prices gives the total.
+Estimating how much bills vary requires more information: which items are expensive, and
+which items are usually ordered together. The analyzer does the same kind of accounting
+for line awards and bonuses.
+
 The direct method would try every stop on every reel. Orca Dive has 14,781,416 stop
 combinations. That is possible, but much of the work repeats. If Salmon appears at four
 different stops on one reel, the payline evaluator sees the same Salmon all four times.
@@ -147,6 +162,20 @@ total RTP = sum of all result contributions + bonus contribution
 For the Two-Line Tide window that pays 8X once in 64 physical windows, that window contributes
 `8 / 64 = 0.125`, or 12.5 percentage points, to line RTP. The other paying windows contribute
 the rest. No random seed is involved in this calculation.
+
+The multi-line production path expresses that calculation as a sum followed by a division:
+
+```csharp
+foreach (var entry in table.Entries)
+{
+    // This is the combined award from every winning line in one physical window.
+    var lineAward = entry.Value.TotalMultiplier / scale;
+    lineUnits += lineAward;
+}
+
+// Dividing by every possible window turns the payout sum into expected line RTP.
+var meanLine = lineUnits / total;
+```
 
 When a server run starts, `RunCoordinator.PrepareGame` calls the analyzer **before the first
 random spin**. The coordinator keeps the important values in the active run:
@@ -365,12 +394,40 @@ variance = E[total^2] - E[total]^2
          = 3 - (13/16)^2
 ```
 
+Here is the same calculation in the production analyzer:
+
+```csharp
+// E[L], the average combined line award.
+var meanLine = lineUnits / total;
+
+// E[L^2], found by squaring each window's combined line award before averaging.
+var meanLineSquared = lineSquareUnits / total;
+
+// E[L x T], where T is 1 when the window triggers the bonus and 0 otherwise.
+var meanLineTimesTrigger = lineTriggerUnits / total;
+
+// P(T) x E[B]: trigger chance times the average award after a trigger.
+var bonusRtp = triggerProbability * bonusMean;
+var mean = meanLine + bonusRtp;
+
+// Expand (L + T x B)^2. The middle term keeps line-and-bonus overlap.
+var meanSquared = meanLineSquared
+    + 2.0 * meanLineTimesTrigger * bonusMean
+    + triggerProbability * bonusMeanSquared;
+
+// Sigma is sqrt(E[X^2] - E[X]^2), in wager units.
+var sigma = Math.Sqrt(Math.Max(0.0, meanSquared - mean * mean));
+```
+
+Why square the total? Above-average and below-average results would cancel if we merely
+added their signed distances from the average. Squaring turns both directions positive and
+makes far-away payouts count more. Why take the square root at the end? Variance is measured
+in squared wager units; the square root brings sigma back to wager units a reader can use.
+
 This physical-window method includes every line-to-line and line-to-bonus relationship
 without writing a separate formula for each pair.
 
 ### Why the analyzer uses two counting methods
-
-With one line and one bonus, a spin has two payout parts:
 
 With one line and one bonus, a spin has two payout parts:
 
@@ -570,6 +627,22 @@ The total payout can contain both a line win and a bonus award. Expanding their 
 a cross term, which is why `_payTriggerUnits` exists. In ordinary language, the calculation
 must include spins where both parts pay together.
 
+The one-payline production method performs every conversion in one place:
+
+```csharp
+var meanLine = _payUnits / scale / total;
+var meanLineSquared = _paySquareUnits / (scale * scale) / total;
+var meanLineTimesTrigger = _payTriggerUnits / scale / total;
+
+var bonusRtp = triggerProbability * bonusMean;
+var mean = meanLine + bonusRtp;
+var meanSquared = meanLineSquared
+    + 2.0 * meanLineTimesTrigger * bonusMean
+    + triggerProbability * bonusMeanSquared;
+
+var sigma = Math.Sqrt(Math.Max(0.0, meanSquared - mean * mean));
+```
+
 The final `GameAnalysis` reports exact combination counts, RTP values, trigger frequency, and
 standard deviation. "Exact" here means that every modeled outcome is counted. The last
 division still uses floating-point numbers for ratios.
@@ -606,6 +679,20 @@ To re-read the code in order, hold one question in mind per method:
 
 Start from the 24-outcome example: it shows why three cherries carry a weight of
 six, and the production recursion repeats that counting at scale.
+
+## Further reading
+
+These formulas are standard tools from probability and statistics:
+
+- [NIST: Measures of Scale](https://www.itl.nist.gov/div898/handbook/eda/section3/eda356.htm)
+  explains variance, standard deviation, and why large deviations receive more weight.
+- [Penn State STAT 414: Distributions of Two Discrete Random Variables](https://online.stat.psu.edu/stat414/Lesson17)
+  shows expected values and the shortcut `Var(X) = E[X^2] - E[X]^2` used by the analyzer.
+- [Penn State STAT 414: Covariance](https://online.stat.psu.edu/stat414/Lesson18)
+  explains how covariance measures two results moving together.
+- [NIST: Confidence Limits for the Mean](https://www.itl.nist.gov/div898/handbook/eda/section3/eda352.htm)
+  explains the `standard deviation / square root of sample size` calculation used later to
+  check the simulator.
 
 *Source files: `CSharp/src/MMP.SlotGame.Core/Games/GameAnalyzer.cs` and
 `CSharp/src/MMP.SlotGame.Core/Rtp/AnalyticMath.cs`.*

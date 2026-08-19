@@ -385,18 +385,24 @@ one the 99% cap is checked against.
 
 **Scene:** WHITEBOARD.
 
-1. **Why sigma at all.** The band on the chart is z times sigma over the square root of
+1. **Make swinginess visible.** Show ten 0.5X payouts beside nine zeroes and one 5X payout.
+   Both average 0.5X, but the second list jumps much farther from its average. Variance
+   measures that spread. Sigma is its square root, which returns the answer to wager units.
+2. **Why sigma at all.** The band on the chart is z times sigma over the square root of
    N. "Without an exact sigma the band is a guess, and every statistical test in episode
    8 would need a hand-tuned tolerance instead."
-2. **Write the identity.** Var of a sum equals the sum of the variances plus twice the
+3. **Write the identity.** Var of a sum equals the sum of the variances plus twice the
    sum of the covariances over distinct pairs.
-3. **Per-line variance is easy:** the same probabilities that gave expected value.
-4. **The covariance is where episode 3 collects.** Two lines cross the same reels, and
+4. **Per-line variance uses the same probabilities that gave expected value.** Explain
+   why first: squaring stops deviations on opposite sides from canceling.
+5. **The covariance is where episode 3 collects.** Two lines cross the same reels, and
    their cells on a reel are strip neighbors. They win together. "This is where the
    weighted-die model gives a wrong answer while agreeing with reality on every mean you
    can check."
-5. Do not derive the algebra on camera. Point at the identity and move to the code.
-6. **Why not just measure sigma?** Run a million spins, take the sample standard
+6. Show `(line 1 + line 2)^2`. Point to the middle `2 x line 1 x line 2` term and say,
+   "This is where the formula remembers that both lines read the same window." Then move
+   to the code.
+7. **Why not just measure sigma?** Run a million spins, take the sample standard
    deviation, use that for the band. It works, it is four lines, and it is circular: the
    band would be derived from the same simulator it is supposed to be judging. When the
    simulator is wrong, the band moves with it and the run lands inside a wrong band.

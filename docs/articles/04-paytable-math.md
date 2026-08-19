@@ -224,15 +224,33 @@ Two games can both have 50% RTP and still behave very differently:
 Game A never moves away from its average. Game B usually pays nothing and sometimes
 pays much more than its average.
 
-**Variance measures how far one set of results spreads from its average.** Think of two
-days with the same average temperature of 70 degrees. One day moves between 68 and 72;
-the other moves between 40 and 100. The second day has more variance because its readings
-sit much farther from 70. Slot payouts work the same way: frequent zeroes and rare large
-awards create more variance than steady small awards, even when the RTP is equal.
+RTP answers, "How much does the game return on average?" It does not answer, "What will
+the ride feel like?" The second question is about **swinginess**: how far individual spin
+returns jump above and below the average.
 
-**Standard deviation**, written as `sigma`, is the square root of variance. It expresses
-the spread in the original unit, such as credits per spin, which makes it easier to use in
-the confidence-band calculation.
+Here are ten spins from each example game:
+
+| Game | Ten payouts | Total | Average |
+|---|---|---:|---:|
+| A: steady | 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 | 5 | 0.5 |
+| B: swingy | 0, 0, 0, 0, 0, 0, 0, 0, 0, 5 | 5 | 0.5 |
+
+Both rows return the same total. Game A stays at its average on every spin. Game B spends
+nine spins below its average, then jumps far above it. A player can feel that difference
+even though both games have 50% RTP.
+
+**Variance measures that spread.** Imagine putting the average payout at the center of a
+ruler. Variance asks how far the payouts land from that center. The distances are squared
+so a result below the average cannot cancel a result above it. Squaring also gives extra
+weight to a result that lands far away. A payout 10 units from the average adds 100 squared
+units; a payout 2 units away adds only 4.
+
+**Standard deviation** is the square root of variance. It is often written with the Greek
+letter sigma: `σ`. Taking the square root changes squared wager units back into ordinary
+wager units. That makes sigma a practical ruler for swinginess. A larger sigma means the
+one-spin payouts are more spread out. It does **not** promise that the next spin will land
+within one sigma of RTP; slot payouts are usually lopsided because zeroes are common and
+large wins are rare.
 
 For one payline, calculate variance with:
 
@@ -241,8 +259,32 @@ variance = average of the squared payouts - (average payout)^2
          = E[X^2] - E[X]^2
 ```
 
-Squaring makes results far from the average count more heavily. This is why a rare,
-large award can greatly increase variance even when it adds little RTP.
+For the ten-spin examples:
+
+| Game | `E[X]` | `E[X²]` | Variance | Sigma |
+|---|---:|---:|---:|---:|
+| A | 0.5 | 0.25 | `0.25 - 0.5² = 0` | `0` |
+| B | 0.5 | 2.5 | `2.5 - 0.5² = 2.25` | `1.5` |
+
+Game B's one 5-credit result becomes 25 when squared. That is why a rare large award can
+increase swinginess sharply even when it makes only a modest contribution to RTP.
+
+The production analyzer performs the same calculation. It first finds the average payout
+and the average squared payout, then takes one square root. These variable names come
+directly from `GameAnalyzer.Summarize`:
+
+```csharp
+// Divide the weighted payout totals by every possible reel-stop combination.
+var meanLine = _payUnits / scale / total;
+var meanLineSquared = _paySquareUnits / (scale * scale) / total;
+
+// Variance is E[X^2] - E[X]^2. Sigma returns the answer to wager units.
+var variance = Math.Max(0.0, meanLineSquared - meanLine * meanLine);
+var sigma = Math.Sqrt(variance);
+```
+
+`Math.Max` only protects the square root from a tiny negative number caused by floating-
+point rounding. The mathematical variance cannot be negative.
 
 For `N` independent spins with the same rules and fixed wager, the standard
 deviation of the measured average is `σ/√N`. The dashboard draws a normal-
@@ -262,6 +304,23 @@ payout distribution. A game dominated by an extremely rare jackpot may need many
 more spins before this band behaves well. For such games, the distribution and
 jackpot cycle need separate scrutiny rather than blind trust in the formula.
 
+Why divide by the square root of the spin count? Think of weighing the same object many
+times on a slightly noisy scale. One reading may be high or low. Averaging many independent
+readings quiets the noise. The improvement is real but gradual: 100 times as many spins
+makes the band 10 times narrower, not 100 times narrower.
+
+This is the production confidence-band calculation:
+
+```csharp
+// 2.576 is the z value used for a two-sided 99% normal-approximation band.
+var halfWidth = spinCount > 0
+    ? 2.576 * sigmaPerUnitWagered / Math.Sqrt(spinCount)
+    : 0.0;
+
+// The measured RTP passes this checkpoint when it falls inside the band.
+var withinBand = Math.Abs(measuredRtp - analyticRtp) <= halfWidth;
+```
+
 ### Why paylines cannot be treated separately
 
 The total spin payout is the sum of all line payouts. It is tempting to calculate
@@ -277,6 +336,16 @@ the same wave. They usually rise and fall together, like two paylines helped by 
 reel window; that is positive covariance. The two ends of a seesaw move in opposite
 directions; that is negative covariance. Results with no consistent relationship have
 covariance near zero.
+
+Why is covariance needed? If the total award is `line 1 + line 2`, squaring that total
+creates a middle term:
+
+```text
+(line 1 + line 2)^2 = line 1^2 + 2(line 1 x line 2) + line 2^2
+```
+
+The middle term records windows where both lines pay together. Leaving it out would act as
+though the two lines came from separate spins. They do not; both lines read the same window.
 
 ```
 Var(Σ Xᵢ) = Σ Var(Xᵢ) + 2 · Σᵢ<ⱼ Cov(Xᵢ, Xⱼ)
@@ -426,6 +495,17 @@ Next: weighted enumeration. Article 5 starts with 24 possible outcomes, groups r
 symbols by count, and follows those counts through `GameAnalyzer` one method at a time.
 
 ## References
+
+- [NIST: Measures of Scale](https://www.itl.nist.gov/div898/handbook/eda/section3/eda356.htm)
+  - explains why variance squares distance from the mean and why standard deviation takes
+    the square root to restore the original units.
+- [NIST: Confidence Limits for the Mean](https://www.itl.nist.gov/div898/handbook/eda/section3/eda352.htm)
+  - explains the `standard deviation / square root of sample size` term and how to read a
+    confidence interval across repeated samples.
+- [Penn State STAT 414: Covariance](https://online.stat.psu.edu/stat414/Lesson18)
+  - gives the formal covariance definition and worked probability examples.
+- [Penn State STAT 505: Variance of a Linear Combination](https://online.stat.psu.edu/stat505/Lesson02)
+  - shows why the variance of a sum includes the covariance between its parts.
 
 - [GLI gaming-software submission requirements](https://gaminglabs.com/getting-started/submit-new-software/)
   - the submission checklist asks for percentage calculations, reel-strip listings,

@@ -46,6 +46,12 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
     <section class="chapter-brief">
       <h3>Start with a smaller problem</h3>
       <p>
+        This chapter uses more math than the earlier reel lessons because one window may pay
+        several lines and start a bonus. The formulas are standard probability tools. Each
+        answers one plain question: What is the average? How swingy are the results? Which
+        awards happen together? The article shows the production C# beside each calculation.
+      </p>
+      <p>
         Orca Dive has 14,781,416 stop combinations. Playing every one would work, but a
         Salmon symbol that appears at several stops on one reel produces the same payline
         symbol each time. The production analyzer groups those repeated Salmon stops.
@@ -89,6 +95,12 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
         run. Each simulation checkpoint reports measured RTP. The convergence recorder uses
         the stored sigma to build a 99% band and checks whether measured RTP is inside it.
         Chapter 8 shows this as the referee lab, and the Finale plots the same comparison.
+      </p>
+      <p class="lab-note">
+        Sigma is the standard deviation of one spin's return. In plain language, it is the
+        game's swinginess ruler. It does not decide a payout; it tells the validation code
+        how much measured RTP may reasonably move around the exact RTP after a given number
+        of spins.
       </p>
     </section>
 
@@ -144,6 +156,12 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
         total RTP. For variance, the analyzer squares each window's combined line award.
         The window above contributes <code>8² = 64</code>, which keeps the relationship
         between the two line wins.
+      </p>
+      <p class="lab-note">
+        Squaring stops low and high results from canceling and makes unusually large payouts
+        count more. Taking the square root at the end produces sigma in ordinary wager units.
+        It is like measuring every result's distance from the average, then turning those
+        distances into one useful swinginess number.
       </p>
     </section>
 
