@@ -17,8 +17,8 @@ Draw three short reels:
 There are 24 stop combinations. Group each reel by symbol. Three cherries represents
 `2 × 1 × 3 = 6` of those combinations.
 
-Say: “I can check the same cherry result six times, or check it once and write a six beside
-it. This analyzer writes the six.”
+Say: "I can check the same cherry result six times, or check it once and write a six beside
+it. This analyzer writes the six."
 
 Use the coin-jar analogy from the article: count every coin, or group coins by denomination
 and multiply count by value.
@@ -47,8 +47,9 @@ and influence each other.
 
 **Scene:** constructor, then `BuildWeights`.
 
-Walk through one reel position. Point to the symbol on the payline, then scan the visible
-rows for a scatter.
+Put the article's `BuildWeights` diagram on screen. Follow one reel stop from left to right:
+first check the payline symbol, then scan the visible positions for a scatter. Pause on the
+two counters after each Yes branch.
 
 Put these two labels on screen:
 
@@ -57,8 +58,8 @@ anyStop     = payline shows this symbol
 triggerStop = payline shows this symbol AND the window shows the scatter
 ```
 
-Use a concrete count: “Five positions put cherry on the line. Two of those five also show a
-scatter. The analyzer stores five and two.”
+Use the five-row table beside the diagram: "Five positions put cherry on the line. Two of
+those five also show a scatter. The analyzer stores five and two."
 
 ## 7:30–8:30 — `ScatterInWindow`
 
@@ -92,8 +93,8 @@ Then point at the skip:
 if (any[symbol] == 0) continue;
 ```
 
-Say: “If this reel has no lemon, there is no lemon branch. We do not spend time evaluating an
-outcome the reel cannot produce.”
+Say: "If this reel has no lemon, there is no lemon branch. We do not spend time evaluating an
+outcome the reel cannot produce."
 
 ## 13:00–15:30 — `Accumulate`
 
@@ -129,13 +130,13 @@ Lab 2 "Prove that no outcomes disappeared" — or a focused test.
 Run Classic Three Reel, then Orca Dive. Show physical stop combinations beside weighted symbol
 combinations and compare the RTP result with exhaustive enumeration.
 
-Close by returning to the 24-outcome table: “We did not sample the jar. We counted every coin,
-in stacks.”
+Close by returning to the 24-outcome table: "We did not sample the jar. We counted every coin,
+in stacks."
 
 ## Recording notes
 
 - Keep the small reel table visible during the recursion section.
-- Avoid opening with the word “tuple.” Introduce “symbol combination” first; mention that the
+- Avoid opening with the word "tuple." Introduce "symbol combination" first; mention that the
   code and mathematics may call it a tuple afterward.
 - If the episode runs long, shorten the variance derivation. Do not shorten the `Descend`
   walkthrough; that is the reason this episode exists.

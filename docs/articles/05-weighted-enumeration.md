@@ -98,6 +98,36 @@ count tables by calling `BuildWeights`.
 Suppose five stops place a cherry on the payline. Two of those five positions also show a
 scatter above or below it. The counts for that cherry are five and two.
 
+The diagram follows one physical stop through `BuildWeights`. A stop increments
+`triggerStop` only after it has already incremented `anyStop`, so the trigger count is a
+subset of the line-symbol count.
+
+<!-- EXPORT: render this Mermaid block to PNG before publishing -->
+```mermaid
+flowchart LR
+    STOP["Read one physical reel stop"] --> CHERRY{"Cherry on the payline?"}
+    CHERRY -->|No| NEXT["Check the next stop"]
+    CHERRY -->|Yes| ANY["anyStop + 1"]
+    ANY --> SCATTER{"Scatter in any visible position?"}
+    SCATTER -->|No| NEXT
+    SCATTER -->|Yes| TRIGGER["triggerStop + 1"]
+    TRIGGER --> NEXT
+
+    ANY -. "happens for 5 stops" .-> ANY_TOTAL["anyStop = 5"]
+    TRIGGER -. "happens for 2 of those stops" .-> TRIGGER_TOTAL["triggerStop = 2"]
+```
+
+For those five hypothetical cherry stops, the stored counts look like this:
+
+| Cherry stop | Scatter visible above, on, or below the payline? | Counted in `anyStop` | Counted in `triggerStop` |
+|---:|:---:|:---:|:---:|
+| 1 | No | Yes | No |
+| 2 | Yes | Yes | Yes |
+| 3 | No | Yes | No |
+| 4 | Yes | Yes | Yes |
+| 5 | No | Yes | No |
+| **Total** |  | **5** | **2** |
+
 Why keep both? A line win and a bonus trigger can happen on the same spin. The analyzer must
 count their overlap to calculate variance correctly. Adding line variance and bonus variance
 as if they were unrelated would lose that overlap.
@@ -107,6 +137,7 @@ as if they were unrelated would lose that overlap.
 ```csharp
 for (var row = 0; row < reels.Rows; row++)
 {
+    // Stop as soon as one visible position contains the scatter.
     if (reels.At(reel, stop, row).Id == scatterId) return true;
 }
 return false;
