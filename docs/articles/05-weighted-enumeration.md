@@ -62,6 +62,69 @@ methods produce the same total. `GameAnalyzer` makes stacks of identical reel ou
 > Build one weighted combination, then add all eight weights and confirm that they still
 > represent the original 24 physical outcomes.
 
+## Three different jobs
+
+Three classes work with the same reel outcomes, but they answer different questions:
+
+| Component | Question it answers | When it runs |
+|---|---|---|
+| `WinningOutcomeTable` | What does each complete stopped window pay or trigger? | Once while the game is prepared |
+| `ProgressiveOutcomeTable` | Given this spin's reel stops, can we reach its prepared result quickly? | Once per simulated spin |
+| `GameAnalyzer` | Across all possible windows, what are the exact RTP and variance? | Once before the simulation |
+
+The analyzer is not required to decide what one spin pays. Its result is the mathematical
+reference used to check the simulation. The performance optimization for the spin loop is the
+progressive outcome table.
+
+### Preparing the payout answers
+
+`WinningOutcomeTable.Build` visits every physical stop combination while the game is being
+prepared. For each combination, it builds the complete visible window, scores every payline,
+and checks every configured feature. It stores an entry only when the window pays, triggers a
+feature, or does both.
+
+One stored `WinningOutcome` contains:
+
+- the sum of all line multipliers;
+- the paylines that won;
+- the features that triggered.
+
+`ProgressiveOutcomeTable.Build` then rearranges those completed answers by reel-stop prefix.
+This is the reel-1, then reel-2, then reel-3 narrowing you described. A prefix means "the
+stops selected so far." If no completed winning or feature-triggering window begins with that
+prefix, the lookup can return a loss early.
+
+The simulation still draws **every reel stop first** so its random-number sequence stays
+fixed. It then walks the prepared lookup using those stops. The first reel narrows the possible
+answers, the next reel narrows them again, and the last reel identifies the final outcome.
+The implementation combines reels 1 and 2 into one array lookup when there are at least three
+reels, but the idea is the same.
+
+```mermaid
+flowchart TB
+    subgraph PREP["Game preparation"]
+        PAR["Loaded reels, paylines, paytable, and bonus rules"] --> BUILD["Check every complete stop combination"]
+        BUILD --> WIN["WinningOutcomeTable<br/>complete payout answers"]
+        WIN --> PROG["ProgressiveOutcomeTable<br/>answers arranged by reel prefix"]
+        WIN -->|"multi-line totals"| MATH["GameAnalyzer<br/>exact RTP and variance"]
+        PAR -->|"single-line weighted counts"| MATH
+    end
+
+    subgraph SPIN["One simulated spin"]
+        DRAW["Draw every reel stop"] --> WALK["Walk reel prefixes through the progressive table"]
+        WALK --> RESULT["Prepared WinningOutcome<br/>all winning lines and triggered features"]
+        RESULT --> PAY["Play triggered bonus and add all awards"]
+    end
+
+    PROG --> WALK
+    MATH --> CHECK["Reference values used to check the simulation"]
+```
+
+For a multi-payline game, the **table builder** is the code that looks at the whole window
+and finds all paying lines and bonus triggers for that exact view. The analyzer reads those
+prepared outcomes and totals them to calculate RTP, variance, hit frequency, and trigger
+frequency.
+
 ## Who checks the game and who counts it
 
 In this chapter, a **game** means one complete `GameDefinition`. The project currently loads

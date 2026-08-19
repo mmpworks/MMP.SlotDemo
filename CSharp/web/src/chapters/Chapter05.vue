@@ -63,6 +63,30 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
     </section>
 
     <section class="chapter-brief">
+      <h3>The payout table and the analyzer have different jobs</h3>
+      <p>
+        During game preparation, <code>WinningOutcomeTable</code> checks each complete reel
+        window. It records the total line multiplier, every winning payline, and every
+        triggered feature. <code>ProgressiveOutcomeTable</code> arranges those answers by
+        reel-stop prefix so the spin loop can find one quickly.
+      </p>
+      <p>
+        A spin draws every reel stop first. The lookup then narrows through the prepared
+        table using reel 1, reel 2, reel 3, and so on. <code>GameAnalyzer</code> has a different
+        job: it totals all possible outcomes to calculate exact RTP and variance before the
+        random simulation begins.
+      </p>
+      <table class="lab-table">
+        <thead><tr><th>Component</th><th>Produces</th><th>Used for</th></tr></thead>
+        <tbody>
+          <tr><td>WinningOutcomeTable</td><td>Complete window results</td><td>Prepared payout data</td></tr>
+          <tr><td>ProgressiveOutcomeTable</td><td>Reel-by-reel narrowing arrays</td><td>Fast spin lookup</td></tr>
+          <tr><td>GameAnalyzer</td><td>RTP, variance, and frequencies</td><td>Checking the simulation</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="chapter-brief">
       <h3>One window can produce two kinds of awards</h3>
       <p>
         A spin chooses one stop for each reel and builds one visible window. Every payline

@@ -681,7 +681,7 @@ versions would erase the lesson.
 | A game with its own spin rules | `SpinPlayFactory` — supply a play, inherit determinism, quotas, batching, telemetry | 0 lines; Orca Dive is the first user |
 | New games without a deploy | `games/*.json` plus `GameDefinitionLoader` — the game is data | 0 lines |
 | Ways-pays, cascading reels | The same `SpinPlayFactory` seam; a ways evaluator loops internally over `DrawWindow` | 0 lines |
-| Multi-line exact analysis | `GameAnalyzer` raises `NotSupportedException` today, and the line-pair covariance already exists in `AnalyticMath` for the preset path | the known limit is written down |
+| Larger multi-line exact analysis | `GameAnalyzer` sums the compiled physical outcome table, which is bounded at 100 million windows | move table construction offline or add a compressed multi-row representation |
 | Persisted run history | `RunPlan.RunId` is a stable id stamped on every telemetry sample and log line beside `MasterSeed` | 1 field |
 | Multiple concurrent runs | `RunCoordinator` holds one `ActiveRun` behind a `Lock`; the type already carries per-run state | the 409 is the deliberate policy |
 | Cross-process or replayable telemetry | `ChannelWriter<TelemetrySample>` is the boundary a broker sits behind | 0 lines |
