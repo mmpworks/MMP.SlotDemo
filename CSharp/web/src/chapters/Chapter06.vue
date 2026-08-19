@@ -91,6 +91,36 @@ async function runTelemetry(): Promise<void> {
       </p>
     </section>
 
+    <section class="chapter-brief">
+      <h3>How the confidence band connects to Chapters 4 and 5</h3>
+      <p>
+        The band half-width is <code>z × sigma / square root of N</code>. Here,
+        <code>N</code> is the completed spin count in <code>RunSnapshot.Spins</code>.
+        Sigma is the one-spin swinginess calculated by <code>GameAnalyzer</code>.
+        For the 99% band, <code>z</code> is about 2.576. The engine multiplies that number
+        by sigma and divides by <code>Math.Sqrt(N)</code>.
+      </p>
+      <p>
+        The engine places that half-width on both sides of the analytic RTP calculated
+        before the run. The measured RTP is the value being checked; it does not choose the
+        center or sigma. This keeps the mathematical reference independent of the random
+        simulation.
+      </p>
+      <table class="lab-table">
+        <thead><tr><th>Math symbol</th><th>Meaning</th><th>Source</th></tr></thead>
+        <tbody>
+          <tr><td><code>N</code></td><td>Completed spins</td><td><code>RunSnapshot.Spins</code></td></tr>
+          <tr><td><code>sigma</code></td><td>One-spin payout swinginess</td><td><code>GameAnalysis.SigmaPerUnitWagered</code></td></tr>
+          <tr><td><code>z</code></td><td>Confidence-level number; about 2.576 for 99%</td><td><code>NormalQuantile.TwoSided99</code></td></tr>
+          <tr><td><code>√N</code></td><td>Square root of completed spins</td><td><code>Math.Sqrt(snapshot.Spins)</code></td></tr>
+        </tbody>
+      </table>
+      <p class="lab-note">
+        At 1,000,000 spins, <code>√N = 1,000</code>. One hundred times as many spins makes
+        the band ten times narrower, because the square root of 100 is 10.
+      </p>
+    </section>
+
     <section class="lab">
       <h3>Lab 1 — Same seed, same answer</h3>
       <p class="lab__lede">

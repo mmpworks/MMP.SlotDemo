@@ -549,6 +549,17 @@ Read the doc comment, then the closure.
 
 **Scene:** TERMINAL, CPU meter visible.
 
+Before running the command, put the confidence-band formula beside the terminal:
+
+```text
+band half-width = z x sigma / square root of N
+```
+
+Say what each value means. `N` is `RunSnapshot.Spins`. Sigma is the one-spin payout
+swinginess calculated in episodes 4 and 5. `z` is 2.576 for this project's two-sided 99%
+band. The square root comes from averaging independent spins. Use one million spins on the
+whiteboard so `square root of N = 1,000`; do not leave the formula as unexplained symbols.
+
 - Run ten million spins. Every core pegged, and it lands inside a second on the
   recording machine. Time one take before you record and say the number you actually
   see; the multicore median moved a long way in episode 9.

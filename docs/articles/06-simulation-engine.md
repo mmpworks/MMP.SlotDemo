@@ -221,7 +221,7 @@ flowchart LR
     B0 & B1 & BN -->|"TryWrite<br/>absolute snapshots"| CH[["Channel(1024)<br/>DropOldest, lossy"]]
     CH --> PUMP["single consumer<br/>coalesce to 10 Hz"]
     PUMP --> HUB["SignalR to SPA chart"]
-    RT -->|"after Task.WhenAll:<br/>final quiesced snapshot"| VERDICT["measured RTP vs z*sigma/sqrt(N) band"]
+    RT -->|"after Task.WhenAll:<br/>final quiesced snapshot"| VERDICT["measured RTP compared with the 99% band<br/>2.576 x sigma / square root of completed spins"]
 ```
 
 > 🧪 **Try it live.** The companion site's chapter 6 page (<http://localhost:5090>,
@@ -299,12 +299,78 @@ callback per spin.
 
 ## Watching the estimate converge
 
-Run it and the dashboard shows the measured RTP starting noisy, the
-`±z·σ/√N` band narrowing as `√N` grows, and the line settling into the band the math
-predicted before the first spin. The exact width at ten million spins depends on
-the game's σ; wager size alone does not determine it. A correct run is expected to
-fall inside a 99% band about 99% of the time when the normal approximation is
-appropriate, not on every seed without exception.
+Chapter 4 introduced the confidence band, and Chapter 5 showed where the loaded-game
+analyzer calculates sigma. The simulation supplies the remaining value: how many spins
+have finished.
+
+The band comes from the standard confidence-interval formula for a mean. Chapter 4 links
+to the NIST explanation of that formula. This project uses the normal approximation with
+a two-sided 99% confidence level, so its `z` value is about 2.576.
+
+The band is centered on the analytic RTP calculated from the game rules. It is not centered
+on the simulation's measured RTP:
+
+```text
+lower edge = analytic RTP - band half-width
+upper edge = analytic RTP + band half-width
+```
+
+Keeping the center and sigma analytic gives the simulation an independent reference. A bug
+in the random play path can move measured RTP, but it cannot move the target or make the
+allowed range wider.
+
+The band half-width is:
+
+```text
+band half-width = z x sigma / square root of N
+```
+
+Each symbol has one job:
+
+| Symbol | Meaning in this project | Where it comes from |
+|---|---|---|
+| `N` | Number of completed spins in the current snapshot | `RunSnapshot.Spins` |
+| `sigma`, written `σ` | Standard deviation of one spin's return per unit wagered; the swinginess value from Chapters 4 and 5 | `GameAnalysis.SigmaPerUnitWagered` |
+| `z` | Number selected for the desired confidence level | `NormalQuantile.TwoSided99` is about `2.576` |
+| `square root of N`, written `√N` | The amount that averaging `N` independent spins reduces one-spin noise | `Math.Sqrt(snapshot.Spins)` |
+
+The `x` signs mean multiplication. This is not a value called "z-sigma." The code
+multiplies `z` by sigma, then divides by the square root of the completed spin count.
+
+Suppose a teaching game has `sigma = 5` wager units after `N = 1,000,000` spins. The
+square root of one million is 1,000:
+
+```text
+99% band half-width = 2.576 x 5 / 1,000
+                    = 0.01288
+                    = 1.288 percentage points of RTP
+```
+
+If that game's analytic RTP is 90%, the dashboard's 99% band runs from 88.712% to
+91.288% at one million spins. A measured RTP of 90.4% is inside the band. A measured RTP
+of 92% is outside it and should be investigated.
+
+The production calculation in `ConvergenceRecorder` uses the same four values:
+
+```csharp
+var halfWidth = snapshot.Spins > 0
+    ? NormalQuantile.TwoSided99
+        * sigmaPerUnitWagered
+        / Math.Sqrt(snapshot.Spins)
+    : 0;
+
+var withinBand = Math.Abs(snapshot.MeasuredRtp - analyticRtp) <= halfWidth;
+```
+
+The dashboard plots `snapshot.MeasuredRtp`, which is the returned money divided by the
+wagered money in the random run. At low spin counts that line can move sharply. As `N`
+grows, the square-root term grows and the band narrows. Multiplying the spin count by 100
+narrows the band by 10 because `√100 = 10`.
+
+The exact width at ten million spins depends on the game's sigma; wager size alone does
+not determine it. Across many independent runs, about 99% should finish inside a 99% band
+when the normal approximation fits the payout distribution. A single correct run can
+still land outside it.
 
 An out-of-band run is a signal to investigate, not automatic evidence of a bug. The
 determinism contract makes that investigation repeatable: re-run the same complete
