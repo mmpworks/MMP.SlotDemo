@@ -20,6 +20,13 @@
 }
 
 .controls {
+  /* Every field reserves the same hint band below its control, whether or not it
+     has a hint, so the inputs across a row sit on one line. Without the reserved
+     band, a field carrying a <small> pushed its own input up by the height of
+     that text and broke the row. */
+  --hint-band: 1rem;
+  --control-gap: 0.25rem;
+
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -29,7 +36,8 @@
 
 .controls label {
   display: grid;
-  gap: 0.25rem;
+  grid-template-rows: auto auto var(--hint-band);
+  gap: var(--control-gap);
   font-size: 0.78rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -51,6 +59,32 @@
   color: var(--color-text-primary);
   padding: 0.4rem 0.5rem;
   width: 10rem;
+}
+
+/* Seed input with its randomize button riding alongside, inside one field slot. */
+.seed-field {
+  display: flex;
+  gap: 0.35rem;
+  align-items: stretch;
+}
+
+.seed-field input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.controls .seed-field__roll {
+  margin-bottom: 0;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  flex: 0 0 auto;
+}
+
+.controls button {
+  /* Lift the button clear of the reserved hint band so it lines up with the
+     inputs rather than with the bottom of the row. */
+  margin-bottom: calc(var(--hint-band) + var(--control-gap));
 }
 
 .controls button,

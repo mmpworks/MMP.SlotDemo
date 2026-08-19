@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Channels;
 using MMP.Herald.Events;
@@ -79,6 +80,17 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         public CancellationTokenSource Cancellation { get; } = cancellation;
         public Task Completion { get; set; } = Task.CompletedTask;
         public string Status { get; set; } = "running";
+
+        /// <summary>
+        /// Wall-clock for the throughput readout. Stopped when the run reaches a terminal
+        /// state so a finished run keeps the rate it actually achieved; left running, the
+        /// elapsed time would keep growing and the published rate would decay on screen.
+        /// </summary>
+        public Stopwatch Clock { get; } = Stopwatch.StartNew();
+
+        /// <summary>Spins per second over the run so far, 0 before the first spin lands.</summary>
+        public double SpinsPerSecond(long spins) =>
+            spins <= 0 ? 0 : spins / Math.Max(Clock.Elapsed.TotalSeconds, 1e-9);
     }
 
     public bool IsRunning
@@ -293,6 +305,8 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
                 hitFrequency = latest.HitFrequency,
                 wageredMillicents = latest.WageredMillicents,
                 returnedMillicents = latest.ReturnedMillicents,
+                elapsedSeconds = run.Clock.Elapsed.TotalSeconds,
+                spinsPerSecond = run.SpinsPerSecond(latest.Spins),
             },
             industry = run.Recorder.IndustryCheck() is { } check
                 ? new
@@ -344,15 +358,18 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         await pump.ConfigureAwait(false);
 
         var last = run.Recorder.Complete(final);
+        // Freeze the throughput clock with the totals, before the terminal status goes out.
+        run.Clock.Stop();
         // Terminal status lands only after the final snapshot is in the recorder, so a
         // poller that sees "completed" always sees the finished totals with it.
         run.Status = terminal;
 
         log.Information(Category,
-            "Run {RunId} {Status}: {Spins} spins, measured {Measured}, analytic {Analytic}, band {Band}, verdict {Verdict}, industry {Industry}",
+            "Run {RunId} {Status}: {Spins} spins at {SpinsPerSecond} spins/s, measured {Measured}, analytic {Analytic}, band {Band}, verdict {Verdict}, industry {Industry}",
             new LogProperty("RunId", run.RunId),
             new LogProperty("Status", run.Status),
             new LogProperty("Spins", final.Spins),
+            new LogProperty("SpinsPerSecond", run.SpinsPerSecond(final.Spins)),
             new LogProperty("Measured", final.MeasuredRtp),
             new LogProperty("Analytic", run.Analytic.TotalRtp),
             new LogProperty("Band", last.BandHalfWidth),
@@ -372,35 +389,51 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
     /// crosses several stride boundaries inside one 100 ms drain, and skipping to the
     /// newest sample would skip those curve points. Publishing stays consolidated.
     /// </summary>
+    /// <summary>
+    /// How often the live readout is pushed to the page. Only the readout is throttled:
+    /// samples are drained continuously, because the recorder decides what lands on the
+    /// curve and it decides by spins.
+    /// </summary>
+    private const int ProgressIntervalMs = 100;
+
+    /// <summary>
+    /// Drains telemetry into the recorder as fast as it arrives.
+    ///
+    /// This loop used to sleep 100ms between drains. The channel is bounded and
+    /// drop-oldest, so while it slept the workers overwrote the samples it had not read
+    /// yet. That cost the curve its stride boundaries: sampling became wall-clock driven
+    /// instead of spin driven, which showed up as a curve that hitched between dense
+    /// clusters and long straight jumps. Once the engine got fast enough to finish 10M
+    /// spins inside one sleep, the first drain landed most of the way through the run and
+    /// the curve lost its whole early history, which is the part the lesson is about.
+    ///
+    /// Draining continuously keeps the channel near empty, so the recorder sees the
+    /// samples it needs and the throttle applies only to the SSE readout.
+    /// </summary>
     private async Task PumpAsync(ActiveRun run, ChannelReader<TelemetrySample> reader)
     {
-        var ticks = 0;
-        while (await reader.WaitToReadAsync(CancellationToken.None).ConfigureAwait(false))
+        var sinceProgress = Stopwatch.StartNew();
+        await foreach (var sample in reader.ReadAllAsync(CancellationToken.None).ConfigureAwait(false))
         {
-            var got = false;
-            while (reader.TryRead(out var sample))
-            {
-                got = true;
-                var point = run.Recorder.Observe(sample.Totals);
-                if (point is not null)
-                    Publish("point", new { runId = run.RunId, point });
-            }
+            var point = run.Recorder.Observe(sample.Totals);
+            if (point is not null)
+                Publish("point", new { runId = run.RunId, point });
 
-            if (got && ++ticks % 2 == 0)
-            {
-                // A live readout that updates faster than the curve, at a rate a person
-                // can actually watch.
-                var latest = run.Recorder.Latest;
-                Publish("progress", new
-                {
-                    runId = run.RunId,
-                    spins = latest.Spins,
-                    measuredRtp = latest.MeasuredRtp,
-                    hitFrequency = latest.HitFrequency,
-                });
-            }
+            if (sinceProgress.ElapsedMilliseconds < ProgressIntervalMs) continue;
+            sinceProgress.Restart();
 
-            await Task.Delay(100, CancellationToken.None).ConfigureAwait(false);
+            // A live readout that updates faster than the curve, at a rate a person
+            // can actually watch.
+            var latest = run.Recorder.Latest;
+            Publish("progress", new
+            {
+                runId = run.RunId,
+                spins = latest.Spins,
+                measuredRtp = latest.MeasuredRtp,
+                hitFrequency = latest.HitFrequency,
+                elapsedSeconds = run.Clock.Elapsed.TotalSeconds,
+                spinsPerSecond = run.SpinsPerSecond(latest.Spins),
+            });
         }
     }
 

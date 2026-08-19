@@ -304,6 +304,10 @@ export interface RunDescription {
     hitFrequency: number
     wageredMillicents: number
     returnedMillicents: number
+    /** Wall-clock seconds the run has taken; frozen once the run is terminal. */
+    elapsedSeconds: number
+    /** Spins per second over the run so far; 0 before the first spin lands. */
+    spinsPerSecond: number
   }
   /** GLI-style acceptance: null until the run has at least `minimumSpins` spins. */
   industry: {

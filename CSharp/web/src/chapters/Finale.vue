@@ -24,6 +24,22 @@ const curve = ref<CurvePoint[]>([])
 const liveSpins = ref(0)
 const liveRtp = ref(0)
 const liveHitFrequency = ref(0)
+const liveSpinsPerSecond = ref(0)
+
+/// Spins per second, scaled to the unit that reads cleanly at engine speeds.
+const throughput = computed(() => {
+  const rate = liveSpinsPerSecond.value
+  if (rate <= 0) return '—'
+  if (rate >= 1_000_000) return `${(rate / 1_000_000).toFixed(1)}M`
+  if (rate >= 1_000) return `${(rate / 1_000).toFixed(1)}k`
+  return rate.toFixed(0)
+})
+
+/// A fresh seed for an independent sample of the same game. Kept inside the
+/// signed 32-bit range the seed input accepts.
+function randomizeSeed() {
+  seed.value = Math.floor(Math.random() * 2_147_483_647)
+}
 const error = ref('')
 const busy = ref(false)
 
@@ -56,10 +72,17 @@ function subscribe(): void {
       liveRtp.value = payload.point.measuredRtp
       liveHitFrequency.value = payload.point.hitFrequency
     } else if (event.type === 'progress') {
-      const p = event.data as { spins: number; measuredRtp: number; hitFrequency: number }
+      const p = event.data as {
+        spins: number
+        measuredRtp: number
+        hitFrequency: number
+        elapsedSeconds: number
+        spinsPerSecond: number
+      }
       liveSpins.value = p.spins
       liveRtp.value = p.measuredRtp
       liveHitFrequency.value = p.hitFrequency
+      liveSpinsPerSecond.value = p.spinsPerSecond
     } else if (event.type === 'completed' || event.type === 'cancelled') {
       adopt(event.data as RunDescription)
     }
@@ -72,6 +95,7 @@ function adopt(description: RunDescription): void {
   liveSpins.value = description.latest.spins
   liveRtp.value = description.latest.measuredRtp
   liveHitFrequency.value = description.latest.hitFrequency
+  liveSpinsPerSecond.value = description.latest.spinsPerSecond
 }
 
 async function start(): Promise<void> {
@@ -206,7 +230,12 @@ const industry = computed(() => {
         </template>
         <label>
           Seed
-          <input v-model.number="seed" type="number" min="0" />
+          <span class="seed-field">
+            <input v-model.number="seed" type="number" min="0" />
+            <button type="button" class="seed-field__roll" title="Pick a random seed" @click="randomizeSeed">
+              Roll
+            </button>
+          </span>
         </label>
         <label>
           Workers
@@ -262,6 +291,10 @@ const industry = computed(() => {
         <div class="readout">
           <span class="readout__label">Hit frequency (any award)</span>
           <span class="readout__value">{{ (liveHitFrequency * 100).toFixed(2) }}%</span>
+        </div>
+        <div class="readout">
+          <span class="readout__label">Spins / second</span>
+          <span class="readout__value">{{ throughput }}</span>
         </div>
         <div class="readout">
           <span class="readout__label">Status</span>
