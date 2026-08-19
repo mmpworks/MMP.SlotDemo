@@ -75,6 +75,36 @@ onMounted(async () => {
       </p>
     </section>
 
+    <section class="chapter-brief">
+      <h3>See the work that moved</h3>
+      <p>
+        The first version asks for wraparound on every visible cell. The optimized version
+        appends a few wrapped symbols when the game loads, then reads straight ahead during
+        every spin.
+      </p>
+      <div class="code-pair">
+        <div>
+          <h4>Before: calculate wraparound in the hot loop</h4>
+          <pre><code>// Runs once for every visible cell.
+window[windowOffset + row] =
+    strip[(stop + row) % strip.Length];</code></pre>
+        </div>
+        <div>
+          <h4>After: prepare once, read directly</h4>
+          <pre><code>// Game construction adds Rows - 1 wrapped entries.
+drawStrip[strip.Length + extra] = strip[extra % strip.Length];
+
+// The spin loop now reads a contiguous slice.
+window[windowOffset + row] = drawStrip[stop + row];</code></pre>
+        </div>
+      </div>
+      <p>
+        A five-reel, three-position game writes 15 cells per spin. At ten million spins,
+        that removes wraparound division from 150 million cell reads. The cost is only two
+        extra drawing entries per reel.
+      </p>
+    </section>
+
     <section class="lab">
       <h3>Lab 1 — Race two versions of DrawWindow</h3>
       <p class="lab__lede">
@@ -147,6 +177,18 @@ onMounted(async () => {
         <code>0x0C1C041119</code>. The lookup value contains the total line multiplier,
         the paylines that won, and any feature that starts.
       </p>
+      <pre><code>// Reels 1 and 2 select one flat-array entry.
+state = _firstPairStates[stops[0] * _stopCounts[1] + stops[1]];
+if (state &lt; 0)
+{
+    outcome = null; // No later reel can rescue this prefix.
+    return false;
+}</code></pre>
+      <p>
+        Think of this as opening a folder chosen by reels 1 and 2. Each later reel narrows
+        the folder again. A negative state means the folder is empty. The RNG still draws
+        all five stops, but the payout lookup has no more work to do.
+      </p>
       <p>
         Feature-only results stay in the table. Orca Dive's all-zero key has no line payout,
         but it starts <code>PenguinBonus</code>. The spin path can therefore draw five stops
@@ -185,5 +227,8 @@ onMounted(async () => {
 .bench-bar { height: 100%; background: #39c6a3; }
 .bench-bar--base { background: #7792b8; }
 .bench-row strong { text-align: right; font-variant-numeric: tabular-nums; }
+.code-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.code-pair pre { height: calc(100% - 2.5rem); overflow-x: auto; }
 @media (max-width: 700px) { .bench-row { grid-template-columns: 5rem 1fr; } .bench-row strong { grid-column: 2; text-align: left; } }
+@media (max-width: 800px) { .code-pair { grid-template-columns: 1fr; } }
 </style>

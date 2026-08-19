@@ -13,6 +13,20 @@ This article keeps the original `DrawWindow` implementation beside the productio
 version and runs both from the same seed. The live lab refuses to report a speedup
 unless their checksums match.
 
+## How to read each optimization
+
+Every change in this chapter answers the same five questions:
+
+- **What did the original code do?** Start with code we already know is correct.
+- **What work repeats?** Count the operation instead of guessing that it is expensive.
+- **What moves or disappears?** Show the changed code beside the original.
+- **How do we know the answer stayed the same?** Compare output from the same random seed.
+- **Did it help?** Measure several trials and use the middle result, called the median.
+
+Suppose five trials report 90M, 103M, 101M, 62M, and 99M spins per second. Sort
+them to 62M, 90M, **99M**, 101M, and 103M. The median is 99M. One slow trial does
+not define the result, and neither does one unusually fast trial.
+
 ## Start with a Release baseline
 
 Measure the complete operation that matters. The project runs five samples inside one test
@@ -40,6 +54,23 @@ The initial path also writes complete `Symbol` values. `Symbol` contains a byte 
 reference, and two flags. The simulation evaluators immediately reduce every cell back to its
 ID.
 
+Here is the complete inner part of the teaching baseline:
+
+```csharp
+for (var reel = 0; reel < _strips.Length; reel++)
+{
+    var strip = _strips[reel];
+    var stop = rng.NextInt(strip.Length);
+    var windowOffset = reel * Rows;
+
+    for (var row = 0; row < Rows; row++)
+    {
+        // Remainder wraps a read from the end of the strip back to position 0.
+        window[windowOffset + row] = strip[(stop + row) % strip.Length];
+    }
+}
+```
+
 ## Extend each drawing strip by one window
 
 `StripReelSet` now appends `Rows - 1` wrapped entries when it is constructed:
@@ -56,6 +87,29 @@ The memory cost is small because the engine supports three- to five-position win
 reel gains two to four drawing entries, regardless of whether its physical strip contains 22
 or 128 stops.
 
+Construction pays that small cost once:
+
+```csharp
+var drawStrip = new Symbol[strip.Length + Rows - 1];
+strip.CopyTo(drawStrip, 0);
+
+// Copy the first few symbols after the physical end.
+for (var extra = 0; extra < Rows - 1; extra++)
+    drawStrip[strip.Length + extra] = strip[extra % strip.Length];
+```
+
+The production loop can then use `stop + row` directly:
+
+```csharp
+var drawStrip = _drawStrips[reel];
+for (var row = 0; row < Rows; row++)
+    window[windowOffset + row] = drawStrip[stop + row];
+```
+
+The remainder in the construction loop is not a mistake. It runs only two to four times
+per reel when the game loads. The original remainder ran once per visible cell: 150 million
+times in the ten-million-spin example.
+
 ## Give the worker the representation it uses
 
 The UI needs symbol names and flags. The spin evaluator needs IDs. `StripReelSet` therefore
@@ -70,6 +124,16 @@ Workers allocate one byte window and overwrite it for every spin. Diagnostic and
 code can still request the full symbols. An equivalence test starts both methods with the
 same RNG state and compares the resulting IDs.
 
+```csharp
+var drawIds = _drawIds[reel];
+var windowOffset = reel * Rows;
+for (var row = 0; row < Rows; row++)
+    window[windowOffset + row] = drawIds[stop + row];
+```
+
+This is not an object-allocation trick. Both versions reuse one window array. The savings
+come from moving less data for each position: one symbol ID instead of a complete `Symbol`.
+
 Three repeated preset medians after this change were 104.5M, 107.3M, and 105.0M spins per
 second. The middle result is roughly 39 percent above the previous 75.5M baseline. Orca Dive,
 including its wild and scatter checks, reached a 92.8M median, with warmed samples above 100M.
@@ -80,6 +144,33 @@ Lemire's bounded selection uses a range and rejection threshold. Both depend onl
 reel's stop count. Computing the threshold during every selection repeats a remainder
 calculation millions of times. `StripReelSet` now calculates both values once per reel and
 passes them to the RNG's internal hot-path method.
+
+```csharp
+// Game construction: calculate these values once for each reel.
+var range = (ulong)strip.Length;
+_rngRanges[reel] = range;
+_rngThresholds[reel] = unchecked(0UL - range) % range;
+
+// Spin loop: reuse them for every stop drawn from this reel.
+var stop = rng.NextInt(_rngRanges[reel], _rngThresholds[reel]);
+```
+
+The RNG still rejects the tiny leftover region that would cause modulo bias:
+
+```csharp
+internal int NextInt(ulong range, ulong threshold)
+{
+    while (true)
+    {
+        var product = (UInt128)NextUInt64() * range;
+        if ((ulong)product >= threshold)
+            return (int)(product >> 64);
+    }
+}
+```
+
+This does not weaken the random selection. It moves a fixed calculation out of a loop. The
+range and threshold depend on strip length, not on the random value, symbol, or payout.
 
 The public `NextInt(int bound)` retains validation for general callers. Construction rejects
 empty strips before the optimized path becomes available.
@@ -125,6 +216,24 @@ and convenient to inspect. The spin loop uses a small dense array built from tha
 index = symbolId * countStride + runLength
 ```
 
+```csharp
+// Construction: turn the readable dictionary into a compact lookup array.
+_countStride = maxCount + 1;
+_densePays = new Millicents[(maxSymbol + 1) * _countStride];
+foreach (var (key, value) in pays)
+    _densePays[key.SymbolId * _countStride + key.Count] = value;
+
+// Evaluation: calculate the same slot number and read it.
+var index = symbolId * _countStride + count;
+return (uint)index < (uint)_densePays.Length
+    ? _densePays[index]
+    : Millicents.Zero;
+```
+
+Think of the dictionary as a labeled filing cabinet and the array as numbered slots in a
+parts tray. The cabinet is easier to inspect. The tray is faster when the code already
+knows the slot number. The project keeps both views.
+
 This replaces tuple hashing with bounds checks and an array read. The improvement was modest:
 three medians were 101.2M, 107.2M, and 111.7M spins per second after the byte-window change.
 The representation stayed because it improved the center result and preserved the dictionary
@@ -147,6 +256,21 @@ key:    0x0C1C041119
 This encoding gives every reel a separate byte, so two different stop combinations
 cannot share a key. A byte holds stop numbers 0 through 255, which allows as many as
 256 stops on each reel. Eight reels fit in one `ulong`.
+
+The first lookup packed the key while reading the stops:
+
+```csharp
+ulong key = 0;
+for (var reel = 0; reel < stops.Length; reel++)
+    key = (key << 8) | stops[reel];
+
+if (_outcomes.TryGetValue(key, out var outcome))
+    return outcome;
+```
+
+Packing is cheap. Measurement showed that looking around a large dictionary was not cheap
+on this machine. The idea of precomputing answers was sound; its first storage layout was
+not.
 
 `WinningOutcomeTable` examines the complete stop cycle during game construction. It stores
 an entry when at least one payline pays or a feature starts. The value contains the final
@@ -180,6 +304,49 @@ For Orca Dive, 181 of the 754 two-reel prefixes can still produce a line payout.
 geometry keeps another 155 prefixes alive, for 336 useful prefixes in all. The other 418
 prefixes are dead after two reels. The RNG still draws the remaining stops to preserve its
 stream, but outcome evaluation does no more work for them.
+
+The first lookup combines reel 0 and reel 1 into an ordinary array index:
+
+```csharp
+state = _firstPairStates[stops[0] * _stopCounts[1] + stops[1]];
+if (state < 0)
+{
+    outcome = null;       // This prefix can never become a win or feature trigger.
+    return false;
+}
+```
+
+If that pair survives, each later stop narrows the possibilities again:
+
+```csharp
+for (var reel = firstTransitionReel; reel < _transitions.Length; reel++)
+{
+    var stop = stops[reel];
+    state = _transitions[reel][state * _stopCounts[reel] + stop];
+    if (state < 0)
+    {
+        outcome = null;
+        return false;
+    }
+}
+```
+
+This is like following folders inside folders. Reels 0 and 1 choose the first folder.
+Each later reel chooses a smaller folder inside it. A `-1` means the folder is empty.
+The final answer still includes every winning payline and any triggered feature.
+
+The running spin code is short because construction already did the larger calculation:
+
+```csharp
+// Reuse the same five-byte buffer for every spin.
+reels.DrawStops(ref rng, stops);
+
+var multiplier = 0;
+if (progressiveOutcomes.TryGetValue(stops, out var outcome) && outcome is not null)
+    multiplier = outcome.TotalMultiplier;
+
+var linePay = wager.ScaledMultiply(multiplier);
+```
 
 Orca Dive can pay after one reel, because a single `WildOrca` pays 2x. Reel-0 stops 7
 and 20 put that symbol on the center payline. Those two stops are the immediate-pay
@@ -228,6 +395,10 @@ The current strips are tiny and cache-friendly. Extra offset tables and larger
 generated code cost more than the indirections they set out to remove. Modern .NET's
 JIT also made better inlining decisions than the manual hints did.
 
+That is the lesson from the losing code: a change can look simpler in source and still
+create worse machine code or worse memory access. Keep the measurement; remove the losing
+implementation.
+
 ## Try the paired benchmark
 
 Open `#/ch09`. Choose a preset or PAR-loaded game, a seed, and a window count. The server:
@@ -241,6 +412,31 @@ Open `#/ch09`. Choose a preset or PAR-loaded game, a seed, and a window count. T
 The page displays random selections and visible-cell writes so the scale remains concrete.
 Run it more than once. Laptop power state, other processes, thermals, and the JIT can move a
 short benchmark substantially.
+
+The harness checks correctness before it returns either rate:
+
+```csharp
+if (first.Checksum != second.Checksum)
+    return new RaceResult(..., OutputsMatch: false);
+```
+
+A checksum is a compact fingerprint of every symbol ID drawn. Matching fingerprints are a
+fast test that both paths produced the same stream. Direct equivalence tests remain part of
+the test suite; the checksum does not replace them.
+
+### Source map
+
+```mermaid
+flowchart TD
+    Web["Chapter09.vue: starts the live race"] --> Endpoint["ChapterNineEndpoints.cs: warms, times, and checks output"]
+    Endpoint --> Reel["StripReelSet.cs: baseline and optimized window drawing"]
+    Reel --> Rng["SpinRng.cs: bounded random stop"]
+    Runner["GameRunner.cs: runs loaded PAR games"] --> Reel
+    Runner --> Progressive["ProgressiveOutcomeTable.cs: narrows by reel prefix"]
+    Builder["WinningOutcomeTable.cs: calculates useful outcomes at load time"] --> Progressive
+    Tests["Performance and outcome tests: compare rates and answers"] --> Reel
+    Tests --> Progressive
+```
 
 ## Branch after the proven system
 

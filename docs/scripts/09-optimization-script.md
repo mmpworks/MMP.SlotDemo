@@ -13,6 +13,10 @@ Show optimization as a measured follow-up to a completed system. Keep the origin
 optimized `DrawWindow` methods on screen together, run the live comparison, and include the
 experiments that lost.
 
+For every optimization, use the same on-screen sequence: original code, repeated work,
+changed code, correctness check, and measured result. Do not name a technique without
+showing the lines that perform it.
+
 ## 0:00-2:30 — Establish the rule
 
 Open the episode 8 tests, then `PerformanceBaselineTests.cs`.
@@ -36,12 +40,19 @@ Draw five reels with three visible positions.
 Open `DrawWindowBaseline`. Point to the remainder operation and the full `Symbol` assignment.
 The code is clear and correct. That made it the right first implementation.
 
+Keep the outer reel loop visible. Explain `windowOffset = reel * Rows` before highlighting
+`(stop + row) % strip.Length`; otherwise viewers may mistake the window for one long reel.
+
 ## 7:00-11:00 — Remove wraparound from the loop
 
 Draw `A B C D E A B`. Start the window at D and read `D E A` without a remainder.
 
 State the cost: two appended entries per reel for a three-position window, or at most four
 under the current five-position limit. The physical strip remains unchanged.
+
+Show both construction and use: first the loop that appends `Rows - 1` entries, then the
+production read `drawStrip[stop + row]`. Construction still uses remainder a few times; the
+optimization removes it from millions of spin-time cell reads.
 
 ## 11:00-14:30 — Draw IDs for the evaluator
 
@@ -65,6 +76,10 @@ not a laboratory-grade hardware comparison.
 
 Show the precomputed range and rejection threshold. Then show the dictionary and dense payout
 view. Both are construction-time transformations; neither changes the game data.
+
+For the RNG, place `_rngThresholds[reel] = unchecked(0UL - range) % range` beside the
+spin-time `NextInt(range, threshold)` call. For the paytable, place the construction index
+beside the identical `symbolId * countStride + count` lookup index.
 
 ## 21:00-25:00 — Build the PAR outcome table
 
@@ -90,6 +105,10 @@ cheap; fetching random entries from a large dictionary was not.
 Open `ProgressiveOutcomeTable`. Start with the 754 reel-0/reel-1 pairs. Only 336 can still
 pay or trigger anything, so 418 prefixes stop evaluation there. The remaining arrays narrow
 the state once per reel.
+
+Show the actual `_firstPairStates[...]` lookup and its `state < 0` return. Then show the
+later transition loop. Use the folder analogy from the article before discussing memory
+access or throughput.
 
 Put the equal-work medians together:
 
