@@ -43,8 +43,9 @@ public static class GameAnalyzer
     }
 
     /// <summary>
-    /// Holds the working data and running totals for one analysis. Keeping the totals here
-    /// avoids passing the same set of values through every recursive call.
+    /// Counts one game's supported outcomes and stores the tallies until the report is ready.
+    /// Keeping the tallies here avoids passing wins, payouts, and trigger counts through every
+    /// recursive call.
     /// </summary>
     private sealed class Enumeration
     {

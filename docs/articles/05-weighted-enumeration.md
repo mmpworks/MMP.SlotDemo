@@ -61,10 +61,12 @@ methods produce the same total. `GameAnalyzer` makes stacks of identical reel ou
 > Build one weighted combination, then add all eight weights and confirm that they still
 > represent the original 24 physical outcomes.
 
-## The class has two layers
+## Who checks the game and who counts it
 
-The public `Analyze` method checks whether the game is supported. The private `Enumeration`
-object performs one calculation and holds its running totals.
+Other code calls `Analyze` when it wants a report for one game. `Analyze` first checks the
+request. The game definition must exist, and this version of the analyzer must receive
+exactly one payline. If either check fails, the method reports an error instead of starting
+the calculation.
 
 ```csharp
 public static GameAnalysis Analyze(GameDefinition definition)
@@ -77,6 +79,16 @@ public static GameAnalysis Analyze(GameDefinition definition)
     return new Enumeration(definition).Run();
 }
 ```
+
+If the game passes those checks, the last line creates an `Enumeration` helper and calls
+`Run`. That helper counts the supported outcomes. While it works, it keeps tally marks for
+wins, payouts, bonus triggers, and spins where a line award and bonus trigger happen
+together. When the counting ends, it uses those totals to build the final `GameAnalysis`
+report. The helper is then discarded.
+
+Think of `Analyze` as the front desk. The front desk checks whether the request can be
+handled. `Enumeration` is the worker who takes an accepted request, keeps a tally sheet,
+and returns the finished report.
 
 That one-payline limit has a reason behind it. **Variance measures how widely payouts
 spread around their average.** Average returns from several lines add together cleanly,
