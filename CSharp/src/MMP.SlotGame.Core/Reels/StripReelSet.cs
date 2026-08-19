@@ -128,6 +128,47 @@ public sealed class StripReelSet
         return (double)count / n;
     }
 
+    /// <summary>
+    /// Returns true when <paramref name="symbolId"/> appears anywhere in one reel's
+    /// visible column at the requested stop. The check follows cyclic strip order through
+    /// the extended drawing strip.
+    /// </summary>
+    public bool WindowContains(int reel, int stop, byte symbolId)
+    {
+        var stopCount = _strips[reel].Length;
+        if ((uint)stop >= (uint)stopCount)
+            throw new ArgumentOutOfRangeException(nameof(stop), stop, $"Stop must be 0..{stopCount - 1}.");
+
+        var drawIds = _drawIds[reel];
+        for (var row = 0; row < Rows; row++)
+        {
+            if (drawIds[stop + row] == symbolId) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Counts the physical reel stops that show <paramref name="symbolId"/> at least once
+    /// in the visible column. A stop counts once even when the window contains two copies.
+    /// </summary>
+    public int VisibleStopCount(int reel, byte symbolId)
+    {
+        var count = 0;
+        for (var stop = 0; stop < _strips[reel].Length; stop++)
+        {
+            if (WindowContains(reel, stop, symbolId)) count++;
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Probability that <paramref name="symbolId"/> appears anywhere in one reel's visible
+    /// column: visible starting stops divided by physical stops. A return value of 0.5 means
+    /// 50 percent. Enumerating stops handles overlapping and wraparound windows exactly.
+    /// </summary>
+    public double WindowVisibilityOf(int reel, byte symbolId) =>
+        (double)VisibleStopCount(reel, symbolId) / _strips[reel].Length;
+
     /// <summary>Draws one stop per reel, then fills that reel's column from neighboring strip positions.</summary>
     public void DrawWindow(ref SpinRng rng, Span<Symbol> window)
     {

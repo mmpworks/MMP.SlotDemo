@@ -209,7 +209,14 @@ public static class ParSheetEndpoints
                     .Select(x => x.i).ToArray();
                 var separated = positions.All(a => positions.All(b =>
                     a == b || Math.Min((b - a + strip.Length) % strip.Length, (a - b + strip.Length) % strip.Length) >= reels.Rows));
-                return new { reel = reel + 1, positions, separated };
+                return new
+                {
+                    reel = reel + 1,
+                    positions,
+                    separated,
+                    visibleStops = reels.VisibleStopCount(reel, game.Bonus.ScatterSymbolId),
+                    windowVisibility = reels.WindowVisibilityOf(reel, game.Bonus.ScatterSymbolId),
+                };
             }).ToArray();
 
         log.Information(Category,

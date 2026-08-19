@@ -229,25 +229,12 @@ public static class GameAnalyzer
                     var onPayline = reels.At(reel, stop, payline.Rows[reel]).Id;
                     anyStop[reel][onPayline]++;
 
-                    if (required && !ScatterInWindow(reels, reel, stop, bonus!.ScatterSymbolId)) continue;
+                    if (required && !reels.WindowContains(reel, stop, bonus!.ScatterSymbolId)) continue;
                     triggerStop[reel][onPayline]++;
                 }
             }
 
             return (anyStop, triggerStop);
-        }
-
-        /// <summary>
-        /// Returns true when the requested scatter symbol appears in any visible row for one
-        /// reel position. Reel strips wrap around when the window reaches the end of a strip.
-        /// </summary>
-        private static bool ScatterInWindow(Reels.StripReelSet reels, int reel, int stop, byte scatterId)
-        {
-            for (var row = 0; row < reels.Rows; row++)
-            {
-                if (reels.At(reel, stop, row).Id == scatterId) return true;
-            }
-            return false;
         }
     }
 }

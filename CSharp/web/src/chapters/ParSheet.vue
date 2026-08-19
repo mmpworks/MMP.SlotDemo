@@ -68,7 +68,15 @@ interface ParSheet {
     volatilityIndex: { level: string; vi: number }[]
     bands: { spins: number; halfWidth95: number; halfWidth99: number }[]
   }
-  verification: { scatterReels: { reel: number; positions: number[]; separated: boolean }[] }
+  verification: {
+    scatterReels: {
+      reel: number
+      positions: number[]
+      separated: boolean
+      visibleStops: number
+      windowVisibility: number
+    }[]
+  }
 }
 
 interface SummaryRow {
@@ -185,8 +193,8 @@ const explanations: Record<string, { title: string; body: string }> = {
     body: 'After N spins, measured RTP should sit within ±z·σ/√N of the true figure. The table shows the band tightening with the square root of N: 100× the spins buys 10× the certainty. The proving-ground page draws this same band as a funnel.',
   },
   verification: {
-    title: 'Scatter separation check',
-    body: 'A classic PAR-sheet trap: window-area scatter math assumes scatters sit far enough apart that two never show in one window. If a strip edit put two Penguins within 3 stops, the shipped trigger rate would silently drift from the model. This check reads the actual strips: Penguins sit at stops 0 and 13 on each scatter reel, far enough apart that the exact enumeration equals the clean (6/26)³ form. A regression test pins this.',
+    title: 'Scatter window visibility',
+    body: 'The ordered PAR strips and window height determine how often a scatter is visible. The engine checks every starting stop and counts it once when Penguin appears anywhere in that reel column. This exact count handles overlapping scatter windows. Orca Dive has 6 visible starts among 26 stops on each scatter reel, or 23.08%. Its Penguins are far enough apart that the shortcut 2 Penguins × 3 positions also gives 6.',
   },
   paylines: {
     title: 'Payline patterns',
@@ -433,12 +441,14 @@ const symbolName = computed(() => {
           <button class="par-term par-block__title" @click="explainKey = 'verification'">Verification</button>
           <table class="lab-table">
             <thead>
-              <tr><th>Scatter reel</th><th>Positions</th><th>Separated ≥ window</th></tr>
+              <tr><th>Scatter reel</th><th>Positions</th><th>Visible stops</th><th>Window chance</th><th>Separated ≥ window</th></tr>
             </thead>
             <tbody>
               <tr v-for="s in sheet.verification.scatterReels" :key="s.reel">
                 <td>R{{ s.reel }}</td>
                 <td class="mono">{{ s.positions.join(', ') }}</td>
+                <td>{{ s.visibleStops }}</td>
+                <td>{{ (s.windowVisibility * 100).toFixed(3) }}%</td>
                 <td :class="s.separated ? 'par-pass' : 'par-fail'">{{ s.separated ? 'yes' : 'NO' }}</td>
               </tr>
             </tbody>

@@ -118,6 +118,7 @@ public sealed class StripReelSet
 
     private readonly Symbol[][] _strips;
     private readonly Symbol[][] _drawStrips;
+    private readonly byte[][] _drawIds;
     private readonly ulong[] _rngRanges;
     private readonly ulong[] _rngThresholds;
 
@@ -134,6 +135,7 @@ public sealed class StripReelSet
         // Append the first Rows - 1 symbols once. DrawWindow can then read across
         // the end of a reel without calculating a remainder for every visible cell.
         _drawStrips = new Symbol[_strips.Length][];
+        _drawIds = new byte[_strips.Length][];
         _rngRanges = new ulong[_strips.Length];
         _rngThresholds = new ulong[_strips.Length];
         for (var reel = 0; reel < _strips.Length; reel++)
@@ -150,6 +152,7 @@ public sealed class StripReelSet
             for (var extra = 0; extra < Rows - 1; extra++)
                 drawStrip[strip.Length + extra] = strip[extra % strip.Length];
             _drawStrips[reel] = drawStrip;
+            _drawIds[reel] = drawStrip.Select(symbol => symbol.Id).ToArray();
         }
     }
 
@@ -181,6 +184,30 @@ public sealed class StripReelSet
                 count++;
         return (double)count / n;
     }
+
+    /// <summary>True when the symbol appears in any visible position at this stop.</summary>
+    public bool WindowContains(int reel, int stop, byte symbolId)
+    {
+        var drawIds = _drawIds[reel];
+        for (var row = 0; row < Rows; row++)
+            if (drawIds[stop + row] == symbolId) return true;
+        return false;
+    }
+
+    /// <summary>Counts stops that show the symbol anywhere in this reel's window.
+    /// A stop counts once even when two copies are visible.</summary>
+    public int VisibleStopCount(int reel, byte symbolId)
+    {
+        var count = 0;
+        for (var stop = 0; stop < _strips[reel].Length; stop++)
+            if (WindowContains(reel, stop, symbolId)) count++;
+        return count;
+    }
+
+    /// <summary>Visible starting stops divided by physical stops.
+    /// A return value of 0.5 means 50 percent.</summary>
+    public double WindowVisibilityOf(int reel, byte symbolId) =>
+        (double)VisibleStopCount(reel, symbolId) / _strips[reel].Length;
 
     /// <summary>Draws one stop per reel, then fills its column from neighboring strip positions.</summary>
     public void DrawWindow(ref SpinRng rng, Span<Symbol> window)
@@ -657,16 +684,51 @@ points, to RTP.
 
 ### Expected payout from the bonus
 
-The window is five positions tall. Each Star can appear in the window from five
-different starting stops. The two Stars are far enough apart that those starting
-stops do not overlap, so 10 of the reel's 20 stops show a Star somewhere in the
-window:
+The PAR data provides the two facts needed for an exact visibility calculation: the
+ordered Star positions on each reel and the window height. A symbol-count table by
+itself does not show whether two Stars are close enough for their visible ranges to
+overlap.
+
+`WindowVisibilityOf(reel, symbolId)` checks every possible starting stop. If the
+symbol appears anywhere in that reel's visible column, the stop counts once:
+
+```csharp
+/// <summary>
+/// Returns the chance that a symbol appears anywhere in one reel's visible column.
+/// Checking each stop forms the union of all visible ranges, so overlaps count once.
+/// </summary>
+public double WindowVisibilityOf(int reel, byte symbolId)
+{
+    var visibleStops = 0;
+    for (var stop = 0; stop < StopCount(reel); stop++)
+    {
+        if (WindowContains(reel, stop, symbolId)) visibleStops++;
+    }
+
+    return (double)visibleStops / StopCount(reel);
+}
+```
+
+This fixture has a five-position window. Each Star can be seen from five starting
+stops. The Stars are far enough apart that their starting-stop sets do not overlap,
+so the exact function counts 10 visible stops out of 20:
 
 ```text
-P(Star visible on one reel) = (2 Stars × 5 positions) / 20 stops
-                            = 10 / 20
-                            = 0.5
+VisibleStopCount = 10
+P(Star visible on one reel) = 10 visible stops / 20 physical stops
+                            = 0.5, or 50%
 ```
+
+For separated symbols, the shorter formula reaches the same answer:
+
+```text
+(Star count × window height) / strip length = (2 × 5) / 20 = 0.5
+```
+
+The shortcut fails when the visible ranges overlap. On a 20-stop reel with Stars at
+positions 0 and 2, a five-position window has only seven distinct starting stops that
+show a Star, not ten. `WindowVisibilityOf` returns `7/20 = 0.35` because it counts
+each starting stop once and handles wraparound at the end of the strip.
 
 All three reel windows must contain a Star:
 
