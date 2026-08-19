@@ -90,6 +90,13 @@ public sealed class SimulationEngine
     public RunTotals Totals { get; } = new();
 
     /// <summary>
+    /// What the workers spent their time on. Populated as each worker finishes, so it is
+    /// complete once <see cref="RunAsync"/> returns. Use it, rather than wall-clock around
+    /// the call, to report engine throughput.
+    /// </summary>
+    public EngineTimings Timings { get; } = new();
+
+    /// <summary>
     /// Writes optional progress snapshots to a caller-owned channel. The caller may use a
     /// bounded, drop-oldest channel because dropped snapshots do not affect run totals.
     /// Returns the final snapshot after every worker has completed.
@@ -129,14 +136,19 @@ public sealed class SimulationEngine
         var rng = _streamFactory(workerId);
         var play = _playFactory();
 
+        // Timed separately so engine throughput can be reported without the telemetry
+        // hand-off, which contends with every other worker on one shared channel.
+        long spinTicks = 0, publishTicks = 0;
+
         long done = 0;
         while (done < quota)
         {
-            if (ct.IsCancellationRequested) return; // per batch, not per spin
+            if (ct.IsCancellationRequested) break; // per batch, not per spin
 
             var batch = (int)Math.Min(BatchSize, quota - done);
             long batchWagered = 0, batchReturned = 0, batchHits = 0;
 
+            var spinStart = EngineTimings.Now;
             for (var i = 0; i < batch; i++)
             {
                 var outcome = play(ref rng);
@@ -148,13 +160,18 @@ public sealed class SimulationEngine
 
                 if (observer is not null) observer(in outcome);
             }
+            spinTicks += EngineTimings.ToTicks(spinStart, EngineTimings.Now);
 
             Totals.AddBatch(batch, batchWagered, batchReturned, batchHits);
             done += batch;
 
             // Publish cumulative totals after each batch. TryWrite does not block if the channel is full.
+            var publishStart = EngineTimings.Now;
             telemetry?.TryWrite(new TelemetrySample(_plan.RunId, Totals.Snapshot()));
+            publishTicks += EngineTimings.ToTicks(publishStart, EngineTimings.Now);
         }
+
+        Timings.AddWorker(spinTicks, publishTicks);
     }
 
     /// <summary>

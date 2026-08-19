@@ -29,7 +29,8 @@ public sealed record GameRunResult(
     long BonusMillicents,
     long LineHits,
     long BonusTriggers,
-    GameAnalysis Analytic)
+    GameAnalysis Analytic,
+    EngineTimings Timings)
 {
     public double LineRtp => Totals.WageredMillicents == 0
         ? 0
@@ -61,6 +62,17 @@ public sealed class GameRunner(
         CancellationToken ct = default)
     {
         ConcurrentBag<ComponentTally> tallies = [];
+
+        // Build the outcome tables BEFORE any worker starts.
+        //
+        // CreatePlay reads definition.ProgressiveOutcomes, and the engine calls CreatePlay
+        // from inside each worker. Left cold, the first worker to arrive builds an
+        // exhaustive enumeration of the whole game while every other worker blocks on the
+        // same Lazy. That put a full enumeration inside the worker phase, where it was
+        // charged to the run as though it were spinning: a measured spin loop of 148M
+        // spins/s reported as 7.7M once the wait was included.
+        _ = definition.ProgressiveOutcomes;
+
         var engine = new SimulationEngine(
             plan,
             workerId => SpinRng.ForWorker(plan.MasterSeed, workerId),
@@ -82,7 +94,7 @@ public sealed class GameRunner(
         // the same game a second time after the simulation finishes.
         var analytic = preparedAnalysis ?? GameAnalyzer.Analyze(definition);
         return new GameRunResult(
-            totals, lineMillicents, bonusMillicents, lineHits, bonusTriggers, analytic);
+            totals, lineMillicents, bonusMillicents, lineHits, bonusTriggers, analytic, engine.Timings);
     }
 
     /// <summary>

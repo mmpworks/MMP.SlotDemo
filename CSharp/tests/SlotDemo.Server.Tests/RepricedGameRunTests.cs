@@ -142,6 +142,55 @@ public sealed class RepricedGameRunTests : IClassFixture<WebApplicationFactory<P
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    /// <summary>
+    /// A game run must spend its worker phase spinning, not building tables.
+    ///
+    /// CreatePlay reads definition.ProgressiveOutcomes and the engine calls it from inside
+    /// each worker, so a cold Lazy put an exhaustive enumeration inside the measured run
+    /// while every other worker blocked on it. A loaded game is a fresh object each run, so
+    /// this happened every single time: the worker phase ran 14 to 19 times longer than the
+    /// spin loop it contained. The tables are now built while preparing the run.
+    ///
+    /// The bound is deliberately loose. The point is to separate "the phase is spinning"
+    /// from "the phase is dominated by something else", not to assert a speed.
+    /// </summary>
+    [Fact]
+    public async Task A_game_run_spends_its_worker_phase_spinning()
+    {
+        using var client = _factory.CreateClient();
+
+        // First run warms JIT; the assertion is about table building, not cold code.
+        await StartAsync(client, LongRequest(seed: 71));
+        await WaitForCompletionAsync(client);
+
+        await StartAsync(client, LongRequest(seed: 72));
+        var final = await WaitForCompletionAsync(client);
+        var t = final.GetProperty("throughput");
+
+        var engineSeconds = t.GetProperty("engineSeconds").GetDouble();
+        var workerSeconds = t.GetProperty("workerSeconds").GetDouble();
+
+        Assert.True(engineSeconds > 0, "the workers reported no spin time.");
+        Assert.True(
+            workerSeconds <= engineSeconds * 4,
+            $"worker phase took {workerSeconds:0.####}s around {engineSeconds:0.####}s of spinning; "
+            + "something other than spinning is inside the measured run.");
+    }
+
+    private static object LongRequest(ulong seed) => new
+    {
+        presetName = "",
+        gameFile = Game,
+        baseRtpBasisPoints = 0,
+        freeSpinsRtpBasisPoints = 0,
+        pickBonusRtpBasisPoints = 0,
+        seed,
+        workerCount = 8,
+        targetSpins = 4_000_000,
+        stride = 50_000,
+        targetTotalRtpBasisPoints = 0,
+    };
+
     private async Task<JsonElement> StartAsync(HttpClient client, object request)
     {
         await WaitForIdleAsync(client);

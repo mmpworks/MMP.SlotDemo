@@ -60,7 +60,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         double Sigma);
 
     /// <summary>Runs the subject's spins; both kinds return the quiesced final snapshot.</summary>
-    private delegate Task<RunSnapshot> SubjectRunner(
+    private delegate Task<(RunSnapshot Totals, EngineTimings Timings)> SubjectRunner(
         ChannelWriter<TelemetrySample> telemetry, CancellationToken ct);
 
     /// <summary>
@@ -97,6 +97,12 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         /// is the number to quote for engine speed.
         /// </summary>
         public Stopwatch EngineClock { get; } = new();
+
+        /// <summary>
+        /// The workers' own accounting, available once they finish. Null while a run is
+        /// still going, which is why the live readout falls back to the engine clock.
+        /// </summary>
+        public EngineTimings? Timings { get; set; }
 
     }
 
@@ -264,8 +270,10 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         var analytic = new AnalyticView(
             breakdown.BaseRtp, breakdown.Features, breakdown.TotalRtp, breakdown.SigmaPerUnitWagered);
 
+        var engine = game.Engine();
         return ((facts, analytic,
-            (telemetry, ct) => game.Engine().RunAsync(telemetry, observer: null, ct),
+            async (telemetry, ct) =>
+                (await engine.RunAsync(telemetry, observer: null, ct).ConfigureAwait(false), engine.Timings),
             valid.RunId), null);
     }
 
@@ -308,6 +316,13 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
             scaleFactor = factor;
         }
 
+        // Build the game's outcome tables now, while preparing, rather than letting the
+        // first worker trigger the Lazy once the run is already being timed. A loaded game
+        // is a fresh object every run, so these tables are cold every time; left to the
+        // workers, an exhaustive enumeration lands inside the measured run and is reported
+        // as though the engine were spinning slowly.
+        _ = game.ProgressiveOutcomes;
+
         var runId = Guid.CreateVersion7().ToString("n");
         var plan = new RunPlan(runId, request.Seed, request.WorkerCount, request.TargetSpins);
         var runner = new GameRunner(game, plan, analysis);
@@ -326,7 +341,11 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         var analytic = new AnalyticView(analysis.LineRtp, features, analysis.TotalRtp, analysis.SigmaPerUnitWagered);
 
         return ((facts, analytic,
-            async (telemetry, ct) => (await runner.RunAsync(telemetry, ct).ConfigureAwait(false)).Totals,
+            async (telemetry, ct) =>
+            {
+                var result = await runner.RunAsync(telemetry, ct).ConfigureAwait(false);
+                return (result.Totals, result.Timings);
+            },
             runId), null);
     }
 
@@ -390,10 +409,21 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
             },
             throughput = new
             {
-                // The engine's own rate, workers only. Final once the run is terminal.
-                engineSeconds = run.EngineClock.Elapsed.TotalSeconds,
-                engineSpinsPerSecond = Rate(latest.Spins, run.EngineClock.Elapsed),
-                // What an observer saw, streaming included.
+                // The workers' own accounting: time inside the spin loop, excluding the
+                // telemetry hand-off they also perform. This is the engine's speed. While a
+                // run is still going the workers have not reported yet, so the engine clock
+                // stands in.
+                engineSeconds = run.Timings?.SlowestWorkerSpinTime.TotalSeconds
+                    ?? run.EngineClock.Elapsed.TotalSeconds,
+                engineSpinsPerSecond = run.Timings?.SpinsPerSecond(latest.Spins)
+                    ?? Rate(latest.Spins, run.EngineClock.Elapsed),
+                // What the workers spent handing snapshots to the telemetry channel.
+                telemetrySeconds = run.Timings?.SlowestWorkerPublishTime.TotalSeconds ?? 0,
+                telemetryShare = run.Timings?.PublishShare ?? 0,
+                // The worker phase end to end, telemetry included.
+                workerSeconds = run.EngineClock.Elapsed.TotalSeconds,
+                workerSpinsPerSecond = Rate(latest.Spins, run.EngineClock.Elapsed),
+                // What an observer saw, streaming and bookkeeping included.
                 observedSeconds = run.ObservedClock.Elapsed.TotalSeconds,
                 observedSpinsPerSecond = Rate(latest.Spins, run.ObservedClock.Elapsed),
             },
@@ -427,8 +457,10 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
         try
         {
             run.EngineClock.Start();
-            final = await runner(channel.Writer, ct).ConfigureAwait(false);
+            var produced = await runner(channel.Writer, ct).ConfigureAwait(false);
             run.EngineClock.Stop();
+            final = produced.Totals;
+            run.Timings = produced.Timings;
             // Workers notice cancellation at a batch boundary and return normally, so a
             // cancelled run usually completes without throwing. Check the token to determine
             // whether cancellation ended the run.
@@ -461,7 +493,8 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
             new LogProperty("RunId", run.RunId),
             new LogProperty("Status", run.Status),
             new LogProperty("Spins", final.Spins),
-            new LogProperty("SpinsPerSecond", Rate(final.Spins, run.EngineClock.Elapsed)),
+            new LogProperty("SpinsPerSecond", run.Timings?.SpinsPerSecond(final.Spins)
+                ?? Rate(final.Spins, run.EngineClock.Elapsed)),
             new LogProperty("Measured", final.MeasuredRtp),
             new LogProperty("Analytic", run.Analytic.TotalRtp),
             new LogProperty("Band", last.BandHalfWidth),

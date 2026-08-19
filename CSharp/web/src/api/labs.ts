@@ -310,12 +310,18 @@ export interface RunDescription {
     wageredMillicents: number
     returnedMillicents: number
   }
-  /** Two different questions: how fast the engine ran, and how long the run took to watch. */
+  /** Layers of the same run, from the spin loop outward. */
   throughput: {
-    /** Workers only, excluding telemetry and streaming. Final once the run is terminal. */
+    /** The workers' own spin-loop time, excluding the telemetry hand-off. Engine speed. */
     engineSeconds: number
     engineSpinsPerSecond: number
-    /** Wall-clock including the cost of streaming to a watching page. */
+    /** What the workers spent publishing snapshots to the telemetry channel. */
+    telemetrySeconds: number
+    telemetryShare: number
+    /** The worker phase end to end, telemetry included. */
+    workerSeconds: number
+    workerSpinsPerSecond: number
+    /** Wall-clock including streaming to a watching page. */
     observedSeconds: number
     observedSpinsPerSecond: number
   }
