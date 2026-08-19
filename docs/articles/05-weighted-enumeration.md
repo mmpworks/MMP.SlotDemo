@@ -9,14 +9,15 @@ and watch the average settle. `GameAnalyzer` takes a different route. It counts 
 outcomes and calculates the exact average.
 
 The direct method would try every stop on every reel. Orca Dive has 14,781,416 stop
-combinations. That is possible, but much of the work repeats. If a cherry appears at four
-different stops on reel 1, the payline evaluator sees the same cherry all four times.
+combinations. That is possible, but much of the work repeats. If Salmon appears at four
+different stops on one reel, the payline evaluator sees the same Salmon all four times.
 
-`GameAnalyzer` evaluates that cherry once and gives it a weight of four.
+`GameAnalyzer` evaluates that Salmon choice once and gives it a weight of four.
 
 ## A small example
 
-Imagine a game with three reels. We care about one payline.
+The next table is a small teaching game, not Orca Dive. It uses only Cherry and Bell so its
+24 outcomes can be checked by hand. We care about one payline.
 
 | Reel | Symbols on its stops |
 |---|---|
@@ -63,10 +64,39 @@ methods produce the same total. `GameAnalyzer` makes stacks of identical reel ou
 
 ## Who checks the game and who counts it
 
-Other code calls `Analyze` when it wants a report for one game. `Analyze` first checks the
-request. The game definition must exist, and this version of the analyzer must receive
-exactly one payline. If either check fails, the method reports an error instead of starting
-the calculation.
+In this chapter, a **game** means one complete `GameDefinition`. The project currently loads
+two examples:
+
+| Game | Line game | Bonus feature |
+|---|---|---|
+| Classic Three Reel | One center payline with Seven, Bar, Bell, Wild, Cherry, and Lemon | None |
+| Orca Dive | One center payline with Ocean symbols such as Salmon, Seal, and WildOrca | `PenguinBonus`, triggered by visible Penguin scatters |
+
+`PenguinBonus` is not a separate game passed to `Analyze`. It is one feature inside the
+Orca Dive definition. The analyzer produces one report for Orca Dive containing line RTP,
+bonus RTP, and total RTP.
+
+```mermaid
+flowchart LR
+    FILE["orca-dive.json"] --> LOAD["GameDefinitionLoader"]
+    LOAD --> GAME["Orca Dive GameDefinition"]
+
+    GAME --> REELS["Reel strips and symbols"]
+    GAME --> LINE["Center payline and paytable"]
+    GAME --> BONUS["PenguinBonus feature"]
+
+    GAME --> ANALYZE["GameAnalyzer.Analyze"]
+    ANALYZE --> ENUM["Temporary Enumeration helper"]
+    ENUM --> REPORT["One GameAnalysis report<br/>line RTP + bonus RTP + total RTP"]
+```
+
+The small Cherry-and-Bell table earlier is only a hand-built example of the counting
+method. It is not another bonus game and is not loaded from a PAR file.
+
+Other code calls `Analyze` when it wants a report for one loaded game, such as Orca Dive.
+`Analyze` first checks the request. The game definition must exist, and this version of the
+analyzer must receive exactly one payline. If either check fails, the method reports an
+error instead of starting the calculation.
 
 ```csharp
 public static GameAnalysis Analyze(GameDefinition definition)

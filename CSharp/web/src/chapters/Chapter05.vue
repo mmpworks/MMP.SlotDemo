@@ -47,10 +47,13 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
       <h3>Start with a smaller problem</h3>
       <p>
         Orca Dive has 14,781,416 stop combinations. Playing every one would work, but a
-        cherry that sits on four different stops on one reel produces the same payline
-        result all four times. Article 5 shrinks that problem down to a game small enough
-        to check by hand before the production analyzer takes on the real one. These three
-        reels have 3, 2, and 4 stops. Checking every stop would require
+        Salmon symbol that appears at several stops on one reel produces the same payline
+        symbol each time. The production analyzer groups those repeated Salmon stops.
+      </p>
+      <p>
+        This lab uses a separate, hand-built teaching game containing only Cherry and Bell.
+        It is not Orca Dive and it has no bonus. Its three reels have 3, 2, and 4 stops.
+        Checking every stop would require
         3 × 2 × 4 = 24 outcomes. Repeated symbols let us do less work without estimating.
       </p>
       <p>
