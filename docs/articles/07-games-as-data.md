@@ -35,14 +35,14 @@ The vocabulary for this chapter:
 ## A validation example
 
 Suppose a JSON file says a reel has 22 stops, but its strip lists only 21 symbols. It also
-uses `Whale` on a payline even though no symbol named `Whale` was declared.
+puts `Whale` on that strip even though no symbol named `Whale` was declared.
 
 A parser can read that JSON successfully. The braces and commas are valid. The game is still
 invalid. The loader should report both game problems:
 
 ```text
-Reel 1 declares 22 stops but contains 21.
-Payline "Center" refers to unknown symbol "Whale".
+reel 1 declares 22 stops but the strip has 21.
+reel 1 stop 7 is 'Whale', which is not a declared symbol.
 ```
 
 Reporting both lets the author fix the file in one editing pass.
@@ -57,6 +57,33 @@ Parsing turns JSON text into objects. Validation checks whether those objects de
 game the engine can safely run.
 
 </details>
+
+## Follow one rule from JSON to a spin
+
+Start with the Center payline in `orca-dive.json`:
+
+```json
+"paylines": [
+  { "name": "Center", "rows": [1, 1, 1, 1, 1] }
+]
+```
+
+The five row numbers mean: read visible position 1 on reel 1, position 1 on reel 2,
+and so on through reel 5. These are zero-based positions, so position 1 is the center of
+a three-position window.
+
+That short JSON rule passes through four stages:
+
+| Stage | Source type or method | What happens to the Center payline |
+|---|---|---|
+| Read JSON | `GameDefinitionLoader.TryLoad` | Text becomes a nullable `PaylineDocument` |
+| Validate and compile | `GameDefinitionBuilder.BuildPaylines` | Checks five row values and creates a `Payline` |
+| Prepare answers | `WinningOutcomeTable.Build` | Reads that payline for every reel-stop combination and stores useful results |
+| Play a spin | `ProgressiveOutcomeTable.TryGetValue` | Uses the five drawn stop numbers to find the prepared `WinningOutcome` |
+
+The JSON is configuration. The loader does not reread names and arrays during every spin.
+It validates the descriptive form once, then builds compact objects and lookup tables for
+the repeated work.
 
 ## The game definition file
 
@@ -112,14 +139,20 @@ paylines off the window, paytable rows for symbols that don't exist, geometry
 disagreeing with strips, all rejected with slot-domain messages rather than parser
 stack traces.
 
-The JSON is first deserialized into a plain matching shape, `internal sealed
-class GameDocument` (and a handful of smaller classes alongside it for symbols,
-paylines, pays, and features), before the loader turns it into the validated
-`GameDefinition`. Every one of those classes is declared `internal`, meaning code
-outside this assembly cannot reference the type at all, not even to catch it in a
-variable. The JSON document types are not the public API. Engine users work with
-validated types such as `GameDefinition` and `PayCategory`. The raw document classes
-can change as the file format changes. Code outside this project cannot depend on them.
+The JSON is first deserialized into `GameDocument`. Its smaller document types mirror the
+sections of the file:
+
+| JSON section | Temporary document type | Compiled type |
+|---|---|---|
+| `symbols` | `SymbolDocument` | `Symbol` with a byte id |
+| `reels` | lists of symbol names | `StripReelSet` |
+| `paylines` | `PaylineDocument` | `Payline` |
+| `paytable` | `PayDocument` | `PayCategory` |
+| `features` | `FeatureDocument` | `ScatterPickBonus` and `PickBonus` |
+
+The document types are nullable because an incomplete file must be representable long
+enough to produce a useful validation message. They are also `internal`, so code outside
+the core assembly works with the validated `GameDefinition`, not a half-checked JSON shape.
 
 ## How fractional pays enter a game file
 
@@ -175,12 +208,11 @@ holds those digits with no representation error. That is a different job from th
 accumulation path article 2 rules `double` out of, and the loader converts this
 `decimal` to an integer well before the number reaches any hot path.
 
-That conversion itself is `checked((int)(realMultiplier * Millicents.ScaleFactor))`.
-Ordinarily, casting a value too large for an `int` silently wraps around to a
-meaningless number; `checked` turns that wraparound into a thrown
-`OverflowException` instead. A pay large enough to overflow an `int` would already
-be an absurd paytable entry, and `checked` makes it surface as an exception instead
-of a plausible-looking number.
+That conversion is `checked((int)(realMultiplier * Millicents.ScaleFactor))`. A decimal-to-
+integer conversion already throws `OverflowException` when the value is outside the
+integer range. The `checked` keyword makes the intended boundary visible beside the cast;
+it does not change decimal's overflow behavior. The builder validates practical payout
+limits before a compiled value reaches the evaluator.
 
 > 🧪 **Try it live.** The companion site's chapter 7 page (<http://localhost:5090>,
 > then `#/ch07`) hands the real loader whatever you give it. **Lab 1 — The shipped
@@ -311,15 +343,24 @@ public sealed class PickBonus { /* … */ }
 ```
 
 The Orca Dive screen opens one treasure chest at a time, without replacement. Its *expected value*
-comes from a symmetry argument. In a uniformly random ordering of `b` blanks and
-however many prizes, any one prize is collected exactly when it precedes every blank
-in the ordering, which by symmetry happens with probability `1 / (b + 1)`. Sum that
-over every prize in the bag and the expected collected total falls out with no
-permutation enumeration. Orca Dive's 6 blanks put that
-probability at `1/7` for each of the 24 prizes; a pairwise version of the same
-argument, `2 / ((b+2)(b+1))` for two prizes both preceding the blanks, yields the
-second moment and hence the variance. The two paths answer the same question in
-different ways, which makes disagreement useful evidence of a defect.
+can be understood with a smaller bag. Suppose it contains one 10X prize and two blanks.
+Shuffle the three items. The 10X prize is collected only when it appears before both blanks:
+
+| Order | Collect 10X? |
+|---|:---:|
+| Prize, Blank, Blank | Yes |
+| Blank, Prize, Blank | No |
+| Blank, Blank, Prize | No |
+
+The prize is collected in one of the three possible positions, so its chance is `1/3`.
+With `b` blanks, the prize and those blanks occupy `b + 1` relative positions. The prize
+must be first, giving a collection chance of `1 / (b + 1)`.
+
+Orca Dive has six blanks, so each of its 24 prizes has a `1/7` chance of being collected.
+Add `prize value x 1/7` for all prizes to get the average bonus award. The variance also
+needs the chance that two named prizes both appear before every blank. That probability is
+`2 / ((b + 2)(b + 1))`. `PickBonus.Mean` and `PickBonus.MeanSquared` use these standard
+counting results, while `PickBonus.Play` shuffles and draws the actual bonus during a spin.
 
 ## Reusing the simulation machinery
 
@@ -337,23 +378,28 @@ private SpinPlay CreatePlay(ConcurrentBag<ComponentTally> tallies)
     tallies.Add(tally);
 
     var reels = definition.Reels;
-    var evaluator = new WinEvaluator(definition);
+    var progressiveOutcomes = definition.ProgressiveOutcomes;
     var bonus = definition.Bonus;
     var wager = SimulationConfig.Wager;
-    var window = new Symbol[reels.WindowSize];
-    var cells = new byte[definition.ReelCount];
+    // One stop number per reel. The same array is overwritten on every spin.
+    var stops = new byte[reels.ReelCount];
+    // The bonus reuses this worker-owned buffer when it triggers.
     var scratch = new int[bonus?.Bonus.GiftCount ?? 0];
-    var rows = reels.Rows;
 
     return (ref SpinRng rng) =>
     {
-        reels.DrawWindow(ref rng, window);
+        // Five reels consume five base stop draws. No history of random numbers is stored.
+        reels.DrawStops(ref rng, stops);
 
-        var multiplier = evaluator.EvaluateWindow(window, cells);
+        // Chapter 5 built this lookup from the JSON rules. A miss means no line pays
+        // and no feature starts for this complete stop combination.
+        var multiplier = 0;
+        if (progressiveOutcomes.TryGetValue(stops, out var outcome) && outcome is not null)
+            multiplier = outcome.TotalMultiplier;
         var linePay = wager.ScaledMultiply(multiplier);
 
         var bonusPay = Millicents.Zero;
-        if (bonus is not null && WinEvaluator.IsTriggered(window, rows, bonus))
+        if (bonus is not null && outcome?.TriggeredFeatures.Count > 0)
         {
             bonusPay = wager * bonus.Bonus.Play(ref rng, scratch);
             tally.BonusTriggers++;
@@ -367,6 +413,12 @@ private SpinPlay CreatePlay(ConcurrentBag<ComponentTally> tallies)
     };
 }
 ```
+
+This is the current optimized path. The descriptive JSON still retains symbol names,
+ordered strips, paylines, and feature rules. `WinningOutcomeTable.Build` checks those rules
+during game construction. `ProgressiveOutcomeTable.Build` rearranges the useful answers for
+fast reel-by-reel lookup. The spin loop therefore carries stop ids and a prepared result
+instead of rebuilding a visible `Symbol[]` window and rescoring every line.
 
 `ComponentTally` is a small class with four plain `long` fields, one instance per
 worker, added to a thread-safe `ConcurrentBag` when a worker starts. Its fields need
@@ -389,8 +441,8 @@ every call, would allocate on every single spin that triggers the bonus, tens of
 thousands of times across a run. Accepting the buffer as a parameter instead
 means `CreatePlay` allocates it once per worker, when the worker starts, and
 `Play` reuses it. The signature says who owns the memory and when it
-gets created, which is the same reuse-over-allocation reasoning article 3 covers
-for `DrawWindow`'s `Span<Symbol>` parameter, applied here to an `int[]` instead.
+gets created. The `stops` array follows the same rule: one byte per reel, allocated once
+per worker and overwritten on each spin.
 
 Quota partitioning, seeded streams, batched integer counters, and lossy telemetry
 remain shared. Their existing tests still run against the common engine, so both
@@ -398,18 +450,41 @@ game paths use the same worker loop and determinism rules.
 
 <!-- EXPORT: render this Mermaid block to PNG before publishing -->
 ```mermaid
-flowchart LR
-    JSON["games/orca-dive.json<br/>strips, paytable, wilds, bonus"] --> LOADER["GameDefinitionLoader<br/>validate everything, all errors at once"]
-    LOADER --> DEF["GameDefinition<br/>compiled PayCategories<br/>(exists = valid)"]
-    DEF --> RUNNER["GameRunner<br/>its own SpinPlay"]
-    DEF --> AN["GameAnalyzer<br/>analytic enumeration"]
-    RUNNER --> ENG["SimulationEngine<br/>shared scheduler and counters"]
-    ENG --> MEAS["measured RTP"]
-    AN --> EXPECTED["analytic RTP + sigma"]
-    MEAS <-->|"compare statistically"| EXPECTED
-    PAR["third-party deconstruction"] -.->|transcribed, cross-checked| JSON
-    PAR -.->|"reported counts and returns"| EXPECTED
+flowchart TB
+    PAR["Third-party deconstruction<br/>docs/par-orca-dive.md"] -.->|"transcribed and cross-checked"| JSON["orca-dive.json<br/>CSharp/games/orca-dive.json"]
+
+    subgraph LOAD["Read and compile the document"]
+        JSON --> LOADER["GameDefinitionLoader.TryLoad()<br/>Games/Definition/GameDefinitionLoader.cs"]
+        LOADER --> DOC["GameDocument and smaller document classes<br/>nullable JSON-shaped data<br/>Games/Definition/GameDocument.cs"]
+        DOC --> BUILDER["GameDefinitionBuilder.TryBuild()<br/>validates in dependency order<br/>Games/Definition/GameDefinitionBuilder.cs"]
+        BUILDER --> DEF["GameDefinition<br/>validated symbols, StripReelSet, paylines,<br/>PayCategories, and optional ScatterPickBonus<br/>Games/Definition/GameDefinition.cs"]
+    end
+
+    subgraph PREP["Prepare the repeated work"]
+        DEF --> WBUILD["WinningOutcomeTable.Build()<br/>checks every physical window once<br/>Games/WinningOutcomeTable.cs"]
+        WBUILD --> OUTCOME["WinningOutcome record<br/>combined line pay and triggered features<br/>Games/WinningOutcomeTable.cs"]
+        OUTCOME --> PBUILD["ProgressiveOutcomeTable.Build()<br/>Games/ProgressiveOutcomeTable.cs"]
+        PBUILD --> PTABLE["ProgressiveOutcomeTable<br/>reel-prefix lookup used by spins"]
+        DEF --> ANALYZER["GameAnalyzer.Analyze()<br/>Games/GameAnalyzer.cs"]
+        OUTCOME -->|"multi-line games"| ANALYZER
+        ANALYZER --> ANALYSIS["GameAnalysis record<br/>analytic RTP, sigma, and frequencies<br/>Games/GameAnalysis.cs"]
+    end
+
+    subgraph RUN["Run and compare"]
+        DEF --> RUNNER["GameRunner.CreatePlay()<br/>Games/GameRunner.cs"]
+        PTABLE --> RUNNER
+        RUNNER --> ENGINE["SimulationEngine<br/>workers, counters, and telemetry<br/>Simulation/SimulationEngine.cs"]
+        ENGINE --> SNAPSHOT["RunSnapshot record struct<br/>measured RTP<br/>Simulation/RunTotals.cs"]
+        ANALYSIS --> COMPARE["ConvergenceRecorder<br/>Server/Runs/ConvergenceRecorder.cs"]
+        SNAPSHOT --> COMPARE
+        COMPARE --> VERDICT["Measured RTP checked against<br/>the analytic confidence band"]
+    end
 ```
+
+`LoadFile` and `Load` force both outcome tables to build before returning the definition,
+so a deployed run pays the construction cost before its first spin. `TryLoad` is the
+validation-probe path used by the editor lab; it returns the validated definition without
+forcing those lazy tables.
 
 ## Where the analytic side fits
 

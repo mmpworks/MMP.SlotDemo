@@ -71,9 +71,39 @@ async function validate(): Promise<void> {
         strips, so a PAR-sheet transcription error is caught at load rather than showing up
         later as a wrong RTP.
       </p>
+      <table class="lab-table">
+        <thead><tr><th>Stage</th><th>Source</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Read JSON</td><td><code>GameDefinitionLoader.TryLoad()</code></td><td>Nullable <code>GameDocument</code></td></tr>
+          <tr><td>Validate and compile</td><td><code>GameDefinitionBuilder.TryBuild()</code></td><td>Validated <code>GameDefinition</code></td></tr>
+          <tr><td>Prepare payouts</td><td><code>WinningOutcomeTable.Build()</code></td><td><code>WinningOutcome</code> records</td></tr>
+          <tr><td>Prepare spin lookup</td><td><code>ProgressiveOutcomeTable.Build()</code></td><td>Reel-prefix arrays</td></tr>
+          <tr><td>Run spins</td><td><code>GameRunner.CreatePlay()</code></td><td><code>SpinOutcome</code> values</td></tr>
+        </tbody>
+      </table>
+      <p class="lab-note">
+        The loader reads names for people. The prepared spin path uses byte-sized reel stops
+        and previously calculated outcomes. It does not parse JSON or rescore every payline
+        during each spin.
+      </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Games/Definition/</code> and the shipped
         documents in <code>games/</code>.
+      </p>
+    </section>
+
+    <section class="chapter-brief">
+      <h3>Parsing and validation answer different questions</h3>
+      <p>
+        Parsing checks JSON punctuation and turns the text into a <code>GameDocument</code>.
+        Validation checks the game rules. A file can have correct braces and commas while
+        its reel strip names an undeclared symbol, its payline has the wrong number of row
+        positions, or its declared stop count disagrees with the strip.
+      </p>
+      <p>
+        Paylines in this schema contain one visible row number per reel. They do not name
+        symbols. Unknown symbol checks belong to reel strips, groups, wild substitutions,
+        paytable categories, and feature rules.
       </p>
     </section>
 

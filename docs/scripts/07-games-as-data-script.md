@@ -51,6 +51,12 @@ minutes total, and only to make an engine claim visible.
 
 **Scene:** RIDER, `CSharp/games/orca-dive.json` on screen, scrolled to the strips.
 
+Before scrolling, show the article's source map. Trace one Center payline rule through
+`GameDefinitionLoader`, `GameDefinitionBuilder`, `WinningOutcomeTable`,
+`ProgressiveOutcomeTable`, and `GameRunner`. Name each file on screen. Make clear that
+`WinningOutcomeTable.Build()` is the table builder; there is no separate table-builder
+class.
+
 - "This is a machine reconstructed from a published statistical analysis of a real one.
   Somebody recorded spins, worked out the combination counts and the returns, and
   published them. The engine has never heard of any of it."
@@ -739,6 +745,11 @@ The loader is eighty-nine lines and the builder is six hundred.
 ## 21:00–21:45 — Flash the builder and the shipped game
 
 **Scene:** RIDER, twenty seconds each, no walkthrough.
+
+Point out the boundary between the episode's initial implementation and the current source.
+The initial branch rescored a visible symbol window on every spin. The optimized branch now
+uses a reusable byte stop array and `ProgressiveOutcomeTable.TryGetValue`. The JSON schema
+and validated `GameDefinition` stay the same; episode 9 owns the performance change.
 
 - `GameDefinitionBuilder.cs`. Scroll it. Point at the `Fail` method that every rule calls
   and say the shape: check, accumulate, continue. "It never returns early."

@@ -23,10 +23,9 @@ internal sealed class GameDefinitionBuilder(GameDocument document)
 
     /// <summary>
     /// How the JSON paytable's numbers are interpreted. Compiled pays are always hundredths of
-    /// the TOTAL SPIN BET regardless of which unit the document declared, so the evaluator and
-    /// the analyzer never carry more than one representation. "Total spin bet," not "line
-    /// bet": see <see cref="Games.WinEvaluator.EvaluateWindow"/> for why — a PAR sheet quotes
-    /// pays per line, but this engine applies every declared multiplier against the whole wager.
+    /// the total spin wager, regardless of which unit the document declared. The evaluator and
+    /// analyzer therefore use one representation. This file format applies each multiplier to
+    /// the whole wager; a PAR sheet that quotes per-line pays must be converted when imported.
     /// </summary>
     private enum PayUnit
     {

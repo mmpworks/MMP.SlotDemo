@@ -17,11 +17,9 @@ public sealed class GameDefinitionException(string path, IReadOnlyList<string> e
 /// <summary>
 /// Reads a game from JSON and compiles it into a validated <see cref="GameDefinition"/>.
 ///
-/// Imported games are validated here and nowhere else, in the same spirit as
-/// <see cref="Simulation.SimulationConfig.TryCreate"/>: a definition that comes out of here
-/// satisfied every rule, so nothing downstream re-checks geometry. Errors are collected
-/// and reported together, so someone hand-transcribing a PAR sheet fixes the file in one
-/// pass.
+/// A returned definition has passed every loader rule, so downstream code does not repeat
+/// geometry checks. Errors are collected and reported together so someone transcribing a
+/// PAR sheet can correct related mistakes in one editing pass.
 ///
 /// The checks are the ones a PAR sheet transcription actually gets wrong: a strip that does
 /// not match its declared length, a symbol count that does not match the published table, a

@@ -52,12 +52,9 @@ public sealed record PayCategory
     public bool IsRequired(byte symbolId) => _requires[symbolId];
 
     /// <summary>
-    /// Pay multiplier for a run of <paramref name="count"/>, in hundredths of the TOTAL
-    /// SPIN BET (225 = 2.25X of the whole wager — see <see cref="Games.WinEvaluator.EvaluateWindow"/>
-    /// for why it is the total, not a single line's share), 0 for no pay. Always hundredths
-    /// regardless of the game's declared payUnit: the loader compiles "units", "tenths" and
-    /// "hundredths" pays to this one
-    /// representation.
+    /// Pay multiplier for a run of <paramref name="count"/>, in hundredths of the total
+    /// spin wager. For example, 225 pays 2.25 times the whole wager. Zero means no award at
+    /// that run length. The loader converts every declared pay unit to this representation.
     /// </summary>
     public int PayFor(int count) => count >= 0 && count < _paysByCount.Length ? _paysByCount[count] : 0;
 
@@ -110,9 +107,9 @@ public sealed record ScatterPickBonus
 }
 
 /// <summary>
-/// A complete, VALIDATED game. Reels, symbols, paylines, pay table and features all arrived
-/// as data; nothing in this type or anything downstream of it knows how many reels, symbols
-/// or stops a real game has.
+/// A game whose symbols, reels, paylines, paytable, and feature rules passed validation.
+/// Reel counts, strip lengths, and symbol counts come from the loaded definition rather than
+/// constants in this class.
 ///
 /// Only <see cref="GameDefinitionLoader"/> creates instances, after all validation succeeds.
 /// Downstream code can therefore use a GameDefinition without repeating validation or
