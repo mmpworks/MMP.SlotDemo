@@ -117,28 +117,52 @@ reels, but the idea is the same.
 
 ```mermaid
 flowchart TB
-    subgraph PREP["Game preparation"]
-        PAR["Loaded reels, paylines, paytable, and bonus rules"] --> BUILD["Check every complete stop combination"]
-        BUILD --> WIN["WinningOutcomeTable<br/>complete payout answers"]
-        WIN --> PROG["ProgressiveOutcomeTable<br/>answers arranged by reel prefix"]
-        WIN -->|"multi-line totals"| MATH["GameAnalyzer<br/>exact RTP and variance"]
-        PAR -->|"single-line weighted counts"| MATH
+    subgraph LOAD["Load and validate the game definition"]
+        JSON["PAR JSON file"] --> LOADER["GameDefinitionLoader.TryLoad()<br/>Games/Definition/GameDefinitionLoader.cs"]
+        LOADER --> BUILDER["GameDefinitionBuilder.TryBuild()<br/>Games/Definition/GameDefinitionBuilder.cs"]
+        BUILDER --> DEF["GameDefinition<br/>reels, paylines, paytable, and bonus rules<br/>Games/Definition/GameDefinition.cs"]
     end
 
-    subgraph SPIN["One simulated spin"]
-        DRAW["Draw every reel stop"] --> WALK["Walk reel prefixes through the progressive table"]
-        WALK --> RESULT["Prepared WinningOutcome<br/>all winning lines and triggered features"]
-        RESULT --> PAY["Play triggered bonus and add all awards"]
+    subgraph PREP["Build reusable answers during game preparation"]
+        DEF -->|"first read of WinningOutcomes"| TABLEBUILD["TABLE BUILDER LIVES HERE<br/>WinningOutcomeTable.Build(GameDefinition)<br/>Games/WinningOutcomeTable.cs"]
+        EVAL["WinEvaluator<br/>scores each payline<br/>Games/WinEvaluator.cs"] -->|"used by builder"| TABLEBUILD
+        TABLEBUILD --> OUTCOME["WinningOutcome record<br/>combined multiplier, winning lines, features<br/>Games/WinningOutcomeTable.cs"]
+        OUTCOME --> WINTABLE["WinningOutcomeTable<br/>key to WinningOutcome entries<br/>Games/WinningOutcomeTable.cs"]
+
+        DEF -->|"first read of ProgressiveOutcomes"| PROGBUILD["ProgressiveOutcomeTable.Build()<br/>Games/ProgressiveOutcomeTable.cs"]
+        WINTABLE --> PROGBUILD
+        PROGBUILD --> PROGTABLE["ProgressiveOutcomeTable<br/>answers arranged by reel prefix<br/>Games/ProgressiveOutcomeTable.cs"]
+
+        DEF -->|"one payline: weighted symbol counts"| ANALYZER["GameAnalyzer.Analyze()<br/>Games/GameAnalyzer.cs"]
+        WINTABLE -->|"several paylines: combined window totals"| ANALYZER
+        ANALYZER --> ANALYSIS["GameAnalysis record<br/>exact RTP, sigma, and frequencies<br/>Games/GameAnalysis.cs"]
     end
 
-    PROG --> WALK
-    MATH --> REPORT["GameAnalysis<br/>analytic RTP and sigma"]
-    REPORT --> ACTIVE["ActiveRun keeps the reference while the simulation runs"]
-    DRAW --> TOTALS["RunSnapshot<br/>measured RTP after N spins"]
-    ACTIVE --> COMPARE["ConvergenceRecorder<br/>compare measured RTP with analytic RTP"]
-    TOTALS --> COMPARE
-    COMPARE --> CHART["Chapter 8 referee and Finale convergence chart"]
+    subgraph SPIN["Run random spins"]
+        DEF --> RUNNER["GameRunner<br/>Games/GameRunner.cs"]
+        ANALYSIS -->|"reuse the prepared reference"| RUNNER
+        RUNNER --> DRAW["StripReelSet.DrawStops()<br/>Reels/StripReelSet.cs"]
+        DRAW --> PROGTABLE
+        PROGTABLE -->|"TryGetValue(stops)"| OUTCOME
+        OUTCOME --> SPINRESULT["SpinOutcome readonly record struct<br/>wager, line payout, feature payout<br/>Simulation/SimulationEngine.cs"]
+        SPINRESULT --> SNAPSHOT["RunSnapshot readonly record struct<br/>measured totals after N spins<br/>Simulation/RunTotals.cs"]
+    end
+
+    subgraph SERVER["Keep and compare the two answers"]
+        COORD["RunCoordinator<br/>Server/Runs/RunCoordinator.cs"] --> ACTIVE["ActiveRun nested class<br/>holds the analytic reference and recorder<br/>Server/Runs/RunCoordinator.cs"]
+        ANALYSIS --> COORD
+        SNAPSHOT --> RECORDER["ConvergenceRecorder<br/>compares measured and analytic RTP<br/>Server/Runs/ConvergenceRecorder.cs"]
+        ACTIVE --> RECORDER
+        RECORDER --> POINT["CurvePoint readonly record struct<br/>RTP, band width, and within-band result<br/>Server/Runs/ConvergenceRecorder.cs"]
+        POINT --> CHART["Chapter 8 referee and Finale convergence chart"]
+    end
 ```
+
+The highlighted builder is a method on `WinningOutcomeTable`, not a separate class.
+`GameDefinition` owns two lazy fields. Reading `WinningOutcomes` runs the complete-window
+builder once. Reading `ProgressiveOutcomes` then converts those answers into the faster
+reel-prefix lookup. Start with `GameDefinition.cs` when you want to see when either table
+is created.
 
 For a multi-payline game, the **table builder** is the code that looks at the whole window
 and finds all paying lines and bonus triggers for that exact view. The analyzer reads those

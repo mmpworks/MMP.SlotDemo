@@ -31,6 +31,12 @@ and multiply count by value.
 
 **Scene:** project tree with `Games/GameAnalyzer.cs` and `Rtp/AnalyticMath.cs` visible.
 
+Put the article's source-map diagram on screen first. Point out that the table builder is
+`WinningOutcomeTable.Build()` inside `Games/WinningOutcomeTable.cs`; it is a method, not a
+separate builder class. Follow the arrow back to the lazy `WinningOutcomes` property in
+`Games/Definition/GameDefinition.cs`. Then follow the output through `WinningOutcome`,
+`ProgressiveOutcomeTable`, `GameRunner`, `RunSnapshot`, and `ConvergenceRecorder`.
+
 Explain the boundary:
 
 - `GameAnalyzer` handles loaded games with wilds and a scatter bonus. It uses weighted symbol

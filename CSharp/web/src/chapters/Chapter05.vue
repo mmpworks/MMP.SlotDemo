@@ -83,13 +83,18 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
         random simulation begins.
       </p>
       <table class="lab-table">
-        <thead><tr><th>Component</th><th>Produces</th><th>Used for</th></tr></thead>
+        <thead><tr><th>Component</th><th>Source file</th><th>Produces</th><th>Used for</th></tr></thead>
         <tbody>
-          <tr><td>WinningOutcomeTable</td><td>Complete window results</td><td>Prepared payout data</td></tr>
-          <tr><td>ProgressiveOutcomeTable</td><td>Reel-by-reel narrowing arrays</td><td>Fast spin lookup</td></tr>
-          <tr><td>GameAnalyzer</td><td>RTP, variance, and frequencies</td><td>Checking the simulation</td></tr>
+          <tr><td>WinningOutcomeTable.Build()</td><td><code>Games/WinningOutcomeTable.cs</code></td><td>Complete window results</td><td>Prepared payout data</td></tr>
+          <tr><td>ProgressiveOutcomeTable.Build()</td><td><code>Games/ProgressiveOutcomeTable.cs</code></td><td>Reel-by-reel narrowing arrays</td><td>Fast spin lookup</td></tr>
+          <tr><td>GameAnalyzer.Analyze()</td><td><code>Games/GameAnalyzer.cs</code></td><td>RTP, variance, and frequencies</td><td>Checking the simulation</td></tr>
         </tbody>
       </table>
+      <p class="lab-note">
+        The table builder is the static <code>Build()</code> method inside
+        <code>WinningOutcomeTable.cs</code>. It is created lazily by the
+        <code>WinningOutcomes</code> property in <code>Games/Definition/GameDefinition.cs</code>.
+      </p>
       <p>
         When a run starts, the server stores the analyzer's RTP and sigma with that active
         run. Each simulation checkpoint reports measured RTP. The convergence recorder uses
