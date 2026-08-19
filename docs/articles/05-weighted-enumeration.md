@@ -117,13 +117,75 @@ flowchart TB
     end
 
     PROG --> WALK
-    MATH --> CHECK["Reference values used to check the simulation"]
+    MATH --> REPORT["GameAnalysis<br/>analytic RTP and sigma"]
+    REPORT --> ACTIVE["ActiveRun keeps the reference while the simulation runs"]
+    DRAW --> TOTALS["RunSnapshot<br/>measured RTP after N spins"]
+    ACTIVE --> COMPARE["ConvergenceRecorder<br/>compare measured RTP with analytic RTP"]
+    TOTALS --> COMPARE
+    COMPARE --> CHART["Chapter 8 referee and Finale convergence chart"]
 ```
 
 For a multi-payline game, the **table builder** is the code that looks at the whole window
 and finds all paying lines and bonus triggers for that exact view. The analyzer reads those
 prepared outcomes and totals them to calculate RTP, variance, hit frequency, and trigger
 frequency.
+
+### Where the analyzer's result goes
+
+`GameAnalyzer.Analyze` returns a `GameAnalysis` object. It contains the expected line RTP,
+bonus RTP, total RTP, and standard deviation. For a single-line game it also contains counts
+for each paying category and run length.
+
+The analyzer gets RTP by counting rather than sampling. Each paying result contributes its
+award multiplied by the fraction of physical windows that produce it:
+
+```text
+result's RTP contribution = award x result count / all physical windows
+total RTP = sum of all result contributions + bonus contribution
+```
+
+For the Two-Line Tide window that pays 8X once in 64 physical windows, that window contributes
+`8 / 64 = 0.125`, or 12.5 percentage points, to line RTP. The other paying windows contribute
+the rest. No random seed is involved in this calculation.
+
+When a server run starts, `RunCoordinator.PrepareGame` calls the analyzer **before the first
+random spin**. The coordinator keeps the important values in the active run:
+
+```text
+analytic total RTP
+analytic standard deviation (sigma)
+line and bonus RTP breakdown
+```
+
+It also passes the prepared `GameAnalysis` to `GameRunner`, so the runner does not calculate
+the same reference a second time when the spins finish.
+
+The simulation then produces a `RunSnapshot` at each reporting point. That snapshot contains
+what the random run has measured so far:
+
+```text
+measured RTP = returned money / wagered money
+```
+
+`ConvergenceRecorder` compares the two numbers. It uses the analyzer's sigma to calculate a
+99% band for the current number of spins:
+
+```text
+band half-width = 2.576 x analytic sigma / square root of spins
+
+within band when:
+absolute value(measured RTP - analytic RTP) <= band half-width
+```
+
+This comparison does not change any payout. It answers a test question: "Is the random
+simulation close enough to the value predicted from the game rules?"
+
+Chapter 8 exposes the comparison as the **referee** lab: exact RTP on one side, measured RTP
+on the other, and a within-band result. The Finale uses the same values for the convergence
+chart while millions of spins run.
+
+The reference is stored in memory as part of the active run and returned through the server
+API and event stream. This project does not currently save it to a database.
 
 ## Who checks the game and who counts it
 
@@ -150,8 +212,10 @@ flowchart LR
     GAME --> BONUS["PenguinBonus feature"]
 
     GAME --> ANALYZE["GameAnalyzer.Analyze"]
-    ANALYZE --> ENUM["Temporary Enumeration helper"]
-    ENUM --> REPORT["One GameAnalysis report<br/>line RTP + bonus RTP + total RTP"]
+    ANALYZE -->|"one payline"| ENUM["Temporary weighted Enumeration helper"]
+    ANALYZE -->|"several paylines"| PHYSICAL["Sum compiled physical outcomes"]
+    ENUM --> REPORT["One GameAnalysis report<br/>line RTP + bonus RTP + total RTP + sigma"]
+    PHYSICAL --> REPORT
 ```
 
 The small Cherry-and-Bell table earlier is only a hand-built example of the counting

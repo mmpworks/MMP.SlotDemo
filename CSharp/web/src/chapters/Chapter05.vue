@@ -84,6 +84,12 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
           <tr><td>GameAnalyzer</td><td>RTP, variance, and frequencies</td><td>Checking the simulation</td></tr>
         </tbody>
       </table>
+      <p>
+        When a run starts, the server stores the analyzer's RTP and sigma with that active
+        run. Each simulation checkpoint reports measured RTP. The convergence recorder uses
+        the stored sigma to build a 99% band and checks whether measured RTP is inside it.
+        Chapter 8 shows this as the referee lab, and the Finale plots the same comparison.
+      </p>
     </section>
 
     <section class="chapter-brief">
