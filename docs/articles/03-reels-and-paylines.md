@@ -566,37 +566,137 @@ V and Hat lines still span the full window from top to bottom. Their turning poi
 is the middle reel, so the `middleRow` rounding choice affects zigzags but not those
 two shapes.
 
-## Proof from a hand-built fixture
+## How probability becomes RTP
 
-`MultiRowWindowTests.cs` checks the 4- and 5-position shapes against a small game.
-The following calculation covers its 5-position version.
+RTP is the average amount returned divided by the amount wagered:
 
-The fixture has three 20-stop reels. Each strip contains four A symbols and two Star
-scatters. The Stars are far enough apart that one window cannot show both. Its Center
-line reads position 2 and pays 5 times the wager for three A symbols.
-
-**Line win.** One reel shows A on the line with probability `4/20 = 0.2`. All three
-independent reels show A with probability `0.2³ = 0.008`. At a 5-times award, this
-rule contributes `5 × 0.008 = 0.04`, or 4%, to RTP.
-
-**Scatter trigger.** A 5-position window can reveal each Star from five starting
-stops. With two separated Stars on a 20-stop strip, one reel contains a visible Star
-with probability:
-
-```
-(Star count × rows) / strip length  =  (2 × 5) / 20  =  0.5
+```text
+RTP = average payout per spin / wager per spin
 ```
 
-All three reels must contain a Star, so the trigger probability is `0.5³ = 0.125`.
+The simulator wagers 1 credit per spin. If its average payout is 0.79 credits per
+spin, its RTP is `0.79 / 1 = 0.79`, or 79%.
 
-**Bonus return.** The fixture has one prize worth 8 and one blank that ends the
-round with a consolation award of 2. Article 7 derives the mean collected prize as
-`8 × 1/(1+1) = 4`. The mean bonus award is therefore 6, and its RTP contribution is
-`0.125 × 6 = 0.75`.
+We can calculate that average without running the game. Suppose an award has a
+1-in-4 chance and pays 8 credits. Across four equally likely results, three return
+zero and one returns 8:
 
-**Total return.** Line RTP plus bonus RTP is `0.04 + 0.75 = 0.79`. The test checks
-the line probability, trigger probability, and total to 12 decimal places because
-these decimal values do not all have exact binary floating-point representations.
+```text
+(0 + 0 + 0 + 8) / 4 = 2 credits per spin, on average
+```
+
+The shorter calculation multiplies the chance by the award:
+
+```text
+expected payout = probability × award
+                = 1/4 × 8
+                = 2 credits per spin
+```
+
+This average is called the **expected value**. For a game with several ways to pay,
+calculate the expected payout from each rule and add them. The sum is the game's
+average payout per spin. Dividing that sum by the wager gives RTP.
+
+The calculation uses three standard ideas:
+
+1. **Expected value:** multiply each award by its probability.
+2. **Independent events:** when separate reels must all meet a condition, multiply
+   their probabilities.
+3. **Linearity of expectation:** add the expected payouts from the line and bonus.
+   This addition remains valid even when both can occur on the same spin.
+
+## Calculating RTP for a hand-built game
+
+`MultiRowWindowTests.cs` uses a small game whose probabilities can be checked by
+hand. Its 5-position version has:
+
+- three independent reels with 20 stops each;
+- four A symbols on each reel;
+- two Star scatters on each reel; and
+- a 1-credit wager on every spin.
+
+The Center line pays 5 credits when all three reels show A. The bonus starts when
+all three reel windows contain a Star.
+
+### Expected payout from the line
+
+One reel shows A on the Center line on 4 of its 20 stops:
+
+```text
+P(A on one reel) = 4 / 20 = 0.2
+```
+
+The reels stop independently. For all three reels to show A, multiply their
+probabilities:
+
+```text
+P(A on all three reels) = 0.2 × 0.2 × 0.2 = 0.008
+```
+
+The line therefore pays 5 credits on 0.8% of spins. Its expected payout is:
+
+```text
+line expected payout = probability × award
+                     = 0.008 × 5 credits
+                     = 0.04 credits per spin
+```
+
+With a 1-credit wager, this line contributes `0.04 / 1 = 0.04`, or 4 percentage
+points, to RTP.
+
+### Expected payout from the bonus
+
+The window is five positions tall. Each Star can appear in the window from five
+different starting stops. The two Stars are far enough apart that those starting
+stops do not overlap, so 10 of the reel's 20 stops show a Star somewhere in the
+window:
+
+```text
+P(Star visible on one reel) = (2 Stars × 5 positions) / 20 stops
+                            = 10 / 20
+                            = 0.5
+```
+
+All three reel windows must contain a Star:
+
+```text
+P(bonus starts) = 0.5 × 0.5 × 0.5 = 0.125
+```
+
+The bonus contains one 8-credit prize and one blank. There are two equally likely
+orders:
+
+| Order | Prize collected | Consolation | Total award |
+|---|---:|---:|---:|
+| Prize, then blank | 8 | 2 | 10 |
+| Blank first | 0 | 2 | 2 |
+
+The average bonus award is `(10 + 2) / 2 = 6` credits. Since the bonus starts on
+12.5% of spins:
+
+```text
+bonus expected payout = 0.125 × 6 credits
+                      = 0.75 credits per spin
+```
+
+### Add the expected payouts, then divide by the wager
+
+The line and bonus can occur on the same spin. Linearity of expectation still lets
+us add their averages because each calculation measures its own contribution over
+all spins.
+
+| Source | Probability | Award when it occurs | Expected payout |
+|---|---:|---:|---:|
+| Three A symbols | 0.008 | 5 credits | 0.04 credits |
+| Star bonus | 0.125 | 6 credits on average | 0.75 credits |
+| **Total** | | | **0.79 credits** |
+
+```text
+RTP = total expected payout / wager
+    = 0.79 credits / 1 credit
+    = 0.79
+    = 79%
+```
 
 The 4-position fixture uses 16-stop strips with the same four A symbols and two
 Stars. Its line probability is `(4/16)³ = 0.015625`; line RTP is `0.078125`. Its
