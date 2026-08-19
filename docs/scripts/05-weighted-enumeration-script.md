@@ -29,7 +29,8 @@ and multiply count by value.
 
 Explain the boundary:
 
-- `GameAnalyzer` handles a loaded, single-payline game with wilds and a scatter bonus.
+- `GameAnalyzer` handles loaded games with wilds and a scatter bonus. It uses weighted symbol
+  groups for one line and physical-window entries for several lines.
 - `AnalyticMath` handles the built-in model, including multiple paylines.
 - Neither one runs random spins.
 
@@ -39,9 +40,9 @@ Do not teach the formulas yet. The audience only needs to know why both files ex
 
 **Scene:** `Analyze` method.
 
-Read its comment, then show the one-payline guard. Explain that simulation still works for
-multi-line games. Exact variance is the missing part because two lines can read the same reel
-and influence each other.
+Read its comment, then show the two branches. One payline creates `Enumeration`, which groups
+repeated line symbols. Several paylines call `AnalyzePhysicalOutcomes`, which squares the
+combined line award already stored for each physical window.
 
 ## 5:00–7:30 — Constructor and `BuildWeights`
 
@@ -51,6 +52,11 @@ Before opening the constructor, show the article's five-reel Blue7/Penguin windo
 three Blue7 symbols across the center payline, stop at Seal, then point to Penguin on reels
 1, 3, and 5. State that this one stopped window produces both a line award and a bonus
 trigger.
+
+Then show the Two-Line Tide window. Read Pearl across the Top line for 5X and Shell across
+the Center line for 3X. Point to Starfish on reels 1 and 3. Write the lookup result beside
+the window: `Top + Center = 8X; StarfishBonus triggered`. Explain that the spin loop plays
+the bonus and returns either 8X or 10X for this fixture.
 
 Put the article's `BuildWeights` diagram on screen. Follow one reel stop from left to right:
 first check the payline symbol, then scan the visible positions for a scatter. Pause on the

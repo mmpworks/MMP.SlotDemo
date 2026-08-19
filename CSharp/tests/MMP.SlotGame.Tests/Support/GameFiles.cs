@@ -11,6 +11,7 @@ public static class GameFiles
 {
     public const string OrcaDive = "orca-dive";
     public const string ClassicThreeReel = "classic-three-reel";
+    public const string TwoLineTide = "two-line-tide";
 
     private static readonly Dictionary<string, GameDefinition> Cache = new(StringComparer.Ordinal);
     private static readonly Lock Gate = new();

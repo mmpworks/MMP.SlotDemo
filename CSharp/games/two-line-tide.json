@@ -1,0 +1,39 @@
+{
+  "name": "Two-Line Tide",
+  "source": "Hand-built teaching game for two paylines and one scatter bonus.",
+  "windowRows": 3,
+  "symbols": [
+    { "name": "Pearl" },
+    { "name": "Shell" },
+    { "name": "Starfish", "scatter": true },
+    { "name": "Blank" }
+  ],
+  "reels": [
+    ["Pearl", "Shell", "Starfish", "Blank"],
+    ["Pearl", "Shell", "Starfish", "Blank"],
+    ["Pearl", "Shell", "Starfish", "Blank"]
+  ],
+  "paylines": [
+    { "name": "Top", "rows": [0, 0, 0] },
+    { "name": "Center", "rows": [1, 1, 1] }
+  ],
+  "paytable": [
+    { "symbol": "Pearl", "pays": { "3": 5 } },
+    { "symbol": "Shell", "pays": { "3": 3 } }
+  ],
+  "features": [
+    {
+      "kind": "scatterPickBonus",
+      "name": "StarfishBonus",
+      "scatter": "Starfish",
+      "requiredReels": [0, 2],
+      "prizes": [
+        { "value": 2, "count": 1 }
+      ],
+      "blanks": {
+        "count": 1,
+        "consolation": 0
+      }
+    }
+  ]
+}

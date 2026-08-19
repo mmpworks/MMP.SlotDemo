@@ -29,8 +29,9 @@ public static class ChapterSevenEndpoints
     public sealed record EnumerateRequest(string GameFile);
 
     /// <summary>
-    /// The exhaustive census visits every stop combination and counts the wins in each
-    /// category. It provides an independent check on the analytic and simulated results.
+    /// The exhaustive census prices every stop combination. A single-payline report also
+    /// breaks wins out by category. A multi-payline window may pay several categories, so
+    /// that report keeps the combined window result instead.
     /// </summary>
     private static IResult Enumerate(EnumerateRequest request, StructuredLogger log)
     {

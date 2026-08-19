@@ -16,7 +16,7 @@ CSharp/MMP.SlotDemo.slnx
 ├── src/MMP.SlotGame.Core/       net10.0 — engine. Zero ASP.NET, zero Herald.
 ├── src/SlotDemo.Server/         net10.0 — ASP.NET host, SSE, Herald wiring, chapter labs.
 ├── web/                         Vue 3 + Vite + TypeScript SPA (outside the .slnx).
-├── games/                       game definitions as DATA: orca-dive.json, classic-three-reel.json.
+├── games/                       game definitions as DATA: Orca Dive, Classic Three Reel, and Two-Line Tide.
 ├── tests/MMP.SlotGame.Tests/    engine: unit, statistical, concurrency, fuzz, ground truth.
 └── tests/SlotDemo.Server.Tests/ host: endpoints, Herald wiring, HTTP fuzz.
 ```
@@ -491,22 +491,19 @@ estimate is a cross-check.
 
 ### Exhaustive enumeration — the loaded game
 
-`GameAnalyzer` prices a `GameDefinition` by enumerating **symbol tuples** weighted by how
-many stops produce them, rather than every stop tuple. For Orca Dive that is tens of
-thousands of tuples instead of 14 781 416 stops, for the same answer, and it follows from a
-payline reading one cell per reel. The scatter reads the whole window rather than a single
-cell, so it rides the same enumeration as a second weight per reel: the count of stops showing
-that symbol on the payline *and* a scatter somewhere in the window. That gives the joint
-distribution of line pay and feature trigger exactly, which matters because a scatter in the
-window costs that reel a payline symbol, so adding the two variances independently would be
-wrong.
+For a single-payline `GameDefinition`, `GameAnalyzer` enumerates **symbol tuples** weighted
+by how many stops produce them, rather than every stop tuple. For Orca Dive that is tens of
+thousands of tuples instead of 14 781 416 stops. The scatter rides the same enumeration as a
+second weight per reel: stops showing that payline symbol and a scatter in the window.
 
-Reel count is a loop bound rather than a constant; the same recursive descent analyzes a
-3-reel classic and a 5-reel video game. `MaxEnumeration` (200 000 000) fails loudly on a
-definition far past what enumeration should attempt. **Known limit:** exact analysis covers
-single-payline games. Multi-line definitions simulate correctly and raise
-`NotSupportedException` from the analyzer, because combining the line-pair covariance with
-wilds and a window-coupled feature is a separate piece of work.
+For a multi-payline definition, one symbol per reel cannot describe every line. The analyzer
+instead sums the compiled physical outcome table. Each entry already contains the combined
+line multiplier and feature trigger for one stopped window. Squaring that combined award
+keeps line-to-line covariance; the line-times-trigger sum keeps line-to-bonus covariance.
+
+Reel count is a loop bound rather than a constant. The weighted recursive descent analyzes
+a 3-reel classic and a 5-reel video game. `MaxEnumeration` (200 000 000) bounds that route;
+the compiled physical table has its own 100 000 000-window construction limit.
 
 ### The scalar
 

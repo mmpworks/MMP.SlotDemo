@@ -79,8 +79,8 @@ async function runReferee(): Promise<void> {
     <section class="lab">
       <h3>Lab 1 — The census</h3>
       <p class="lab__lede">
-        The classic game's space is 11,616 combinations; Orca Dive's is 14,781,416. Both
-        enumerate in well under a second.
+        Two-Line Tide has 64 combinations, the classic game has 11,616, and Orca Dive has
+        14,781,416. Two-Line Tide is the hand-checkable two-payline-plus-bonus example.
       </p>
 
       <div class="controls">
@@ -89,6 +89,7 @@ async function runReferee(): Promise<void> {
           <select v-model="gameFile">
             <option value="classic-three-reel.json">Classic Three Reel</option>
             <option value="orca-dive.json">Orca Dive</option>
+            <option value="two-line-tide.json">Two-Line Tide</option>
           </select>
         </label>
         <button type="button" :disabled="busy" @click="enumerate">Enumerate</button>
@@ -133,6 +134,10 @@ async function runReferee(): Promise<void> {
             </tr>
           </tbody>
         </table>
+        <p v-if="(enumeration.combinations?.length ?? 0) === 0" class="lab-note">
+          A multi-payline window can pay several categories at once. This report prices the
+          combined window result, so it does not split the count into one category row.
+        </p>
       </div>
       <p v-else-if="enumeration" class="lab-note">{{ enumeration.reason }}</p>
     </section>

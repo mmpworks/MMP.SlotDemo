@@ -504,15 +504,14 @@ out of reels.
   the comment explains the choice without counting them. "A class chosen for
   readability."
 
-### Beat 12 — two guards, both loud
+### Beat 12 — two analysis routes, each bounded
 
-- `Analyze` refuses a multi-payline game by name, and the message says multi-line games
-  simulate correctly and are not analyzed here yet.
-- `GuardEnumerationSize` refuses anything past 200 million symbol combinations, because a
-  definition that large is likely a mistake and the analyzer throws instead of appearing
-  to hang.
-- **The class comment calls the first one a known limit.** "A limitation in a doc comment
-  is a design decision. The same limitation discovered at runtime is a bug report."
+- `Analyze` sends a single-payline game through weighted symbol enumeration.
+- A multi-payline game uses the compiled physical-window table, which keeps all line and
+  bonus overlaps attached to the window that produced them.
+- `GuardEnumerationSize` limits weighted enumeration to 200 million symbol combinations.
+  Physical-window construction has its own 100 million-combination limit. Both bounds turn
+  an oversized definition into a clear error instead of an apparent hang.
 
 > **Illustration (40 seconds, BROWSER).** Chapter 8 page, Lab 1 — "The census." Run the
 > analyzer over the classic three-reel game and over Orca Dive. Read the two figures the

@@ -85,10 +85,35 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
         reels 1, 3, and 5: each shows Penguin, so the bonus triggers on the same spin.
       </p>
       <p>
-        The slot engine supports several paylines. The one-payline limit belongs only to
-        the exact <code>GameAnalyzer</code>. With several lines, exact variance must include
-        every line-to-line relationship and every line-to-bonus relationship. That complete
-        calculation has not been added to <code>GameAnalyzer</code> yet.
+        Orca Dive has one payline. The next fixture shows how the same engine handles two.
+      </p>
+    </section>
+
+    <section class="chapter-brief">
+      <h3>Two-Line Tide: two paylines and one bonus</h3>
+      <p>
+        This small loaded game has three reels with four stops each. At stop 0 on every
+        reel, one window pays both lines and triggers the bonus:
+      </p>
+      <table class="lab-table">
+        <thead><tr><th>Visible position</th><th>Reel 1</th><th>Reel 2</th><th>Reel 3</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><th>Top payline</th><td><strong>Pearl</strong></td><td><strong>Pearl</strong></td><td><strong>Pearl</strong></td><td>5× wager</td></tr>
+          <tr><th>Center payline</th><td><strong>Shell</strong></td><td><strong>Shell</strong></td><td><strong>Shell</strong></td><td>3× wager</td></tr>
+          <tr><th>Bottom</th><td><strong>Starfish</strong></td><td>Starfish</td><td><strong>Starfish</strong></td><td>Bonus trigger</td></tr>
+        </tbody>
+      </table>
+      <p class="lab-note">
+        The lookup returns an 8× combined line multiplier, both payline names, and
+        StarfishBonus. The bonus then pays either 0× or 2×, so this spin returns either
+        8× or 10× the wager.
+      </p>
+      <p>
+        The exact math checks all <code>4 × 4 × 4 = 64</code> windows. Line awards total
+        16 wager units, giving 25% line RTP. StarfishBonus contributes 56.25%, for 81.25%
+        total RTP. For variance, the analyzer squares each window's combined line award.
+        The window above contributes <code>8² = 64</code>, which keeps the relationship
+        between the two line wins.
       </p>
     </section>
 

@@ -10,7 +10,10 @@ public sealed record GameAnalysis
 {
     public required GameDefinition Definition { get; init; }
 
-    /// <summary>Combinations per (pay category, run length), out of <see cref="StopCombinations"/>.</summary>
+    /// <summary>
+    /// Combinations per (pay category, run length), out of <see cref="StopCombinations"/>.
+    /// Empty for a multi-payline analysis because one window may pay several categories.
+    /// </summary>
     public required IReadOnlyDictionary<(int CategoryIndex, int Count), long> CombinationCounts { get; init; }
 
     public required long StopCombinations { get; init; }

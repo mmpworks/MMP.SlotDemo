@@ -65,12 +65,13 @@ methods produce the same total. `GameAnalyzer` makes stacks of identical reel ou
 ## Who checks the game and who counts it
 
 In this chapter, a **game** means one complete `GameDefinition`. The project currently loads
-two examples:
+three examples:
 
 | Game | Line game | Bonus feature |
 |---|---|---|
 | Classic Three Reel | One center payline with Seven, Bar, Bell, Wild, Cherry, and Lemon | None |
 | Orca Dive | One center payline with Ocean symbols such as Salmon, Seal, and WildOrca | `PenguinBonus`, triggered by visible Penguin scatters |
+| Two-Line Tide | Top and Center paylines with Pearl and Shell | `StarfishBonus`, triggered by visible Starfish scatters |
 
 `PenguinBonus` is not a separate game passed to `Analyze`. It is one feature inside the
 Orca Dive definition. The analyzer produces one report for Orca Dive containing line RTP,
@@ -134,39 +135,115 @@ three-Blue7 line award. Next, scan the full window on reels 1, 3, and 5. Each of
 shows Penguin, so `PenguinBonus` also triggers. The engine adds the line award and bonus
 award to the same spin total.
 
-Other code calls `Analyze` when it wants a report for one loaded game, such as Orca Dive.
-`Analyze` first checks the request. The game definition must exist, and this version of the
-analyzer must receive exactly one payline. If either check fails, the method reports an
-error instead of starting the calculation.
+Other code calls `Analyze` when it wants a report for one loaded game. `Analyze` first checks
+that the definition exists. It then chooses a counting method based on the number of paylines:
 
 ```csharp
 public static GameAnalysis Analyze(GameDefinition definition)
 {
     ArgumentNullException.ThrowIfNull(definition);
 
-    if (definition.Paylines.Count != 1)
-        throw new NotSupportedException(...);
+    if (definition.Paylines.Count > 1)
+        return AnalyzePhysicalOutcomes(definition);
 
     return new Enumeration(definition).Run();
 }
 ```
 
-If the game passes those checks, the last line creates an `Enumeration` helper and calls
-`Run`. That helper counts the supported outcomes. While it works, it keeps tally marks for
-wins, payouts, bonus triggers, and spins where a line award and bonus trigger happen
-together. When the counting ends, it uses those totals to build the final `GameAnalysis`
-report. The helper is then discarded.
+For one payline, `Enumeration` groups stops that put the same symbol on that line. For two or
+more paylines, `AnalyzePhysicalOutcomes` reads the compiled physical-window table. It keeps
+the complete window because different paylines may use different visible positions.
 
 Think of `Analyze` as the front desk. The front desk checks whether the request can be
 handled. `Enumeration` is the worker who takes an accepted request, keeps a tally sheet,
 and returns the finished report.
 
-### Why this exact analyzer stops at one payline
+### A two-payline game with a bonus
 
-The slot engine can play games with several paylines. `WinningOutcomeTable` scores every
-configured line, and the simulation adds every line award. The one-payline check applies
-only to `GameAnalyzer`, the code that calculates exact RTP and variance without playing
-random spins.
+`two-line-tide.json` is a 3-reel teaching game with 4 stops per reel. It has a Top payline,
+a Center payline, and `StarfishBonus`. When all three reels stop at position 0, the visible
+window is:
+
+| Visible position | Reel 1 | Reel 2 | Reel 3 | Result |
+|---|---|---|---|---|
+| **Top payline** | **Pearl** | **Pearl** | **Pearl** | 5 times wager |
+| **Center payline** | **Shell** | **Shell** | **Shell** | 3 times wager |
+| Bottom | **Starfish** | Starfish | **Starfish** | Bonus triggers on required reels 1 and 3 |
+
+The simulation's compiled lookup returns one result for this window:
+
+```text
+winning paylines = Top, Center
+line multiplier  = 5 + 3 = 8
+triggered feature = StarfishBonus
+```
+
+The spin loop multiplies the wager by 8 for the line award. It then plays
+`StarfishBonus`, which pays either 0 or 2 times the wager in this small fixture. Finally,
+it adds the line and bonus money into one `SpinOutcome`.
+
+```text
+total spin payout = Top award + Center award + bonus award
+                  = 5X + 3X + either 0X or 2X
+                  = either 8X or 10X
+```
+
+### Build the exact RTP
+
+Each reel has 4 stops, so the game has `4 x 4 x 4 = 64` physical windows. Only three
+windows pay a line:
+
+| Combined line result | Physical windows | Line award | Award total added |
+|---|---:|---:|---:|
+| Top Pearl and Center Shell | 1 | 8X | 8 |
+| Center Pearl | 1 | 5X | 5 |
+| Top Shell | 1 | 3X | 3 |
+| No line award | 61 | 0X | 0 |
+| **Total** | **64** |  | **16** |
+
+```text
+line RTP = 16 / 64 = 0.25 = 25%
+```
+
+Starfish is visible in 3 of the 4 windows on each required reel. Reels 1 and 3 must both
+show it, so the trigger chance is:
+
+```text
+bonus trigger chance = 3/4 x 3/4 = 9/16 = 56.25%
+average bonus award when triggered = 1X
+bonus RTP = 9/16 x 1 = 56.25%
+total RTP = 25% + 56.25% = 81.25%
+```
+
+The average bonus is 1X because its two equally likely results are 0X and 2X.
+
+### Build the exact variance
+
+For variance, the analyzer squares the **combined** line award for each physical window.
+The window that pays both lines contributes `8 x 8 = 64`, rather than treating the 5X and
+3X lines as unrelated. That square already contains their shared-window relationship.
+
+The analyzer also records whether each line-paying window triggers the bonus. The 8X window
+and the 3X window trigger it; the 5X window does not. Their line-times-trigger total is 11.
+
+```text
+average squared line award = (8^2 + 5^2 + 3^2) / 64 = 98/64
+average line x trigger      = (8 + 3) / 64 = 11/64
+average squared bonus       = 2
+
+E[total^2] = 98/64 + 2 x (11/64) x 1 + (36/64) x 2
+           = 3
+
+variance = E[total^2] - E[total]^2
+         = 3 - (13/16)^2
+```
+
+This physical-window method includes every line-to-line and line-to-bonus relationship
+without writing a separate formula for each pair.
+
+### Why the analyzer uses two counting methods
+
+With one line and one bonus, a spin has two payout parts:
 
 With one line and one bonus, a spin has two payout parts:
 
@@ -193,11 +270,11 @@ Var(total) = Var(line 1) + Var(line 2) + Var(bonus)
            + 2 Cov(line 2, bonus)
 ```
 
-`GameAnalyzer` currently stores one payline result per reel and one line-to-bonus overlap.
-It does not yet store all line pairs and every line-to-bonus pair. The guard rejects a
-multi-payline definition instead of returning an RTP band with missing covariance terms.
-`AnalyticMath` handles line-to-line covariance for the simpler built-in games, whose bonus
-terms are independent of their reel windows.
+The one-payline `Enumeration` method can group stops by the single symbol read from each reel.
+That saves work. Several paylines read several visible positions, so grouping by one symbol
+would lose information. The multi-payline path instead visits the compiled physical-window
+table and squares the total line award stored for each window. The production spin loop reads
+that same table, while the analytic path sums all table entries before any random spins run.
 
 ## Preparing the counts
 
@@ -374,8 +451,9 @@ division still uses floating-point numbers for ratios.
 
 The project has two exact calculation paths.
 
-`GameAnalyzer` groups identical payline-symbol outcomes from a loaded game. It supports wilds
-and a window-based scatter bonus, but currently requires one payline.
+`GameAnalyzer` groups identical payline-symbol outcomes when a loaded game has one line. For
+several lines, it sums the compiled physical-window table so line and bonus overlaps remain
+attached to the windows that produced them.
 
 `AnalyticMath` uses probability formulas for built-in games. It handles several paylines by
 calculating the covariance between each pair. Its version 1 features are independent of the

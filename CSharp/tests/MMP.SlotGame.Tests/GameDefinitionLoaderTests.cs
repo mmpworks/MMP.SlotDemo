@@ -34,6 +34,7 @@ public sealed class GameDefinitionLoaderTests
     [Theory]
     [InlineData(GameFiles.OrcaDive)]
     [InlineData(GameFiles.ClassicThreeReel)]
+    [InlineData(GameFiles.TwoLineTide)]
     public void ShippedDefinitions_LoadWithoutErrors(string name)
     {
         var loaded = GameDefinitionLoader.TryLoad(GameFiles.ReadJson(name), out var definition, out var errors);

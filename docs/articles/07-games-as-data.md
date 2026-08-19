@@ -427,10 +427,11 @@ costs that reel a payline symbol. Article 8 covers the accumulator this enumerat
 uses and the overflow arithmetic behind it. A single-payline game's analytic
 enumeration scales with distinct symbols per reel rather than stops per reel.
 
-One limit: this analyzer covers single-payline games. Multi-line expected value is a
-plain sum. Multi-line variance with wilds *and* a window-coupled scatter needs
-line-pair covariance machinery this codebase has yet to build. Multi-line definitions
-simulate correctly today, and `GameAnalyzer` has no way to check them.
+For several paylines, the analyzer switches methods. One symbol per reel no longer
+describes the whole window, so it sums the compiled physical outcomes instead. Each
+outcome contains the combined line award and feature trigger. Squaring the combined
+award keeps line-to-line covariance, and counting the triggered outcomes keeps
+line-to-bonus covariance. `two-line-tide.json` is the small test fixture for that path.
 
 ## What the tests show
 

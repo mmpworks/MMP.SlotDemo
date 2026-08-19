@@ -4,9 +4,10 @@ using MMP.SlotGame.Core.Money;
 namespace MMP.SlotGame.Core.Games;
 
 /// <summary>
-/// Calculates the exact return of a loaded, single-payline game without running random spins.
-/// It tries every symbol combination that can appear on the payline. Each combination is
-/// counted as many times as it appears on the physical reel strips.
+/// Calculates the exact return of a loaded game without running random spins.
+/// A one-payline game groups physical stops that place the same symbol on that line. A game
+/// with several paylines keeps each physical window because its lines may read different
+/// visible positions.
 ///
 /// For example, suppose the first reel has four cherry stops and two bell stops. A combination
 /// beginning with a cherry represents four times as many reel stops as one beginning with a
@@ -15,10 +16,10 @@ namespace MMP.SlotGame.Core.Games;
 /// The analyzer also counts stops that show the bonus scatter anywhere in the visible window.
 /// This is necessary because the line win and the bonus trigger can happen on the same spin.
 ///
-/// This class supports any number of reels, but stores one payline result and its overlap with
-/// the bonus. Games with several paylines still simulate correctly. Their exact variance also
-/// needs every line-to-line and line-to-bonus covariance pair, which this analyzer does not yet
-/// store.
+/// A single-payline game uses weighted symbol counting. A multi-payline game uses the compiled
+/// physical outcome table because one stopped window can connect several line awards and the
+/// bonus. Squaring each window's combined line award preserves every line-to-line covariance;
+/// recording whether that same window triggers the bonus preserves line-to-bonus covariance.
 /// </summary>
 public static class GameAnalyzer
 {
@@ -29,19 +30,71 @@ public static class GameAnalyzer
     public const long MaxEnumeration = 200_000_000;
 
     /// <summary>
-    /// Validates that the game has one payline, then calculates its exact return and variance.
-    /// No random-number generator is used.
+    /// Calculates exact return and variance. No random-number generator is used.
     /// </summary>
     public static GameAnalysis Analyze(GameDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
 
-        if (definition.Paylines.Count != 1)
-            throw new NotSupportedException(
-                $"Game '{definition.Name}' has {definition.Paylines.Count} paylines; exact analysis covers "
-                + "single-payline games. Multi-line games simulate correctly but are not analyzed here yet.");
+        if (definition.Paylines.Count > 1)
+            return AnalyzePhysicalOutcomes(definition);
 
         return new Enumeration(definition).Run();
+    }
+
+    /// <summary>
+    /// Prices a multi-payline game from its compiled physical outcomes. Each stored multiplier
+    /// is already the sum of every winning line for that window. Its square therefore includes
+    /// the line-pair overlap needed for variance. Feature moments add the random pick award and
+    /// the line-times-trigger term handles windows that pay lines and start the feature together.
+    /// </summary>
+    private static GameAnalysis AnalyzePhysicalOutcomes(GameDefinition definition)
+    {
+        var table = definition.WinningOutcomes;
+        var scale = (double)Millicents.ScaleFactor;
+        var total = (double)table.CombinationCount;
+        var lineUnits = 0.0;
+        var lineSquareUnits = 0.0;
+        var lineTriggerUnits = 0.0;
+
+        foreach (var entry in table.Entries)
+        {
+            var outcome = entry.Value;
+            var line = outcome.TotalMultiplier / scale;
+            lineUnits += line;
+            lineSquareUnits += line * line;
+            if (outcome.TriggeredFeatures.Count > 0) lineTriggerUnits += line;
+        }
+
+        var meanLine = lineUnits / total;
+        var meanLineSquared = lineSquareUnits / total;
+        var meanLineTimesTrigger = lineTriggerUnits / total;
+        var triggerProbability = (double)table.FeatureTriggerCombinationCount / total;
+        var bonus = definition.Bonus?.Bonus;
+        var bonusMean = bonus?.Mean ?? 0.0;
+        var bonusMeanSquared = bonus?.MeanSquared ?? 0.0;
+        var bonusRtp = triggerProbability * bonusMean;
+        var mean = meanLine + bonusRtp;
+        var meanSquared = meanLineSquared
+            + 2.0 * meanLineTimesTrigger * bonusMean
+            + triggerProbability * bonusMeanSquared;
+
+        return new GameAnalysis
+        {
+            Definition = definition,
+            // A physical outcome can contain several pay categories. This summary prices
+            // their combined award; the single-line analyzer owns category-level counts.
+            CombinationCounts = new Dictionary<(int CategoryIndex, int Count), long>(),
+            StopCombinations = table.CombinationCount,
+            HitCombinations = table.WinningCombinationCount,
+            TriggerCombinations = table.FeatureTriggerCombinationCount,
+            LineRtp = meanLine,
+            BonusRtp = bonusRtp,
+            LineSigma = Math.Sqrt(Math.Max(0.0, meanLineSquared - meanLine * meanLine)),
+            BonusSigma = Math.Sqrt(Math.Max(
+                0.0, triggerProbability * bonusMeanSquared - bonusRtp * bonusRtp)),
+            SigmaPerUnitWagered = Math.Sqrt(Math.Max(0.0, meanSquared - mean * mean)),
+        };
     }
 
     /// <summary>
