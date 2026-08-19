@@ -536,18 +536,24 @@ Walking all five configured lines through the five-step pipeline:
 - **Hat** (`2,1,0,1,2`): `C, B, C, Y, C`. The first two symbols differ. Run
   length 1. Hat pays nothing.
 
-Total line award for the spin: Center's 10 plus V's 10, for 20 times the total spin
-wager under this engine's convention. In a traditional per-line paytable, those
-amounts would first be based on each line's wager and then added. Either convention
-can work, but the data and evaluator must use the same one. RTP always divides the
-total award by the **total spin wager**. This is the rule
-`LinePayEvaluator` below and article 7's `WinEvaluator.EvaluateWindow` both apply:
-every line is scored separately by the same five-step process, and every line
-that pays adds its amount to the spin's total. Center and V share two cells: reel
-2's row 1 and reel 4's row 1 sit on both lines, which is why the two lines break at
-the same reel (reel 4, where both read Y). Two lines sharing cells tend to pay
-together, which is the correlation this article opened with. Article 4 turns that
-same fact into the analytic variance formula for a multi-line game.
+Only two lines pay on this spin:
+
+- Center pays 10 times the spin wager.
+- V pays 10 times the spin wager.
+
+The two awards add together, so the spin pays 20 times its wager. With this
+simulator's standard 1-credit wager, the player receives 20 credits, or 2,000,000
+millicents.
+
+This engine uses the full spin wager when it calculates each line's award. It does
+not divide the wager among the five paylines. Some traditional slot math divides
+the wager among the lines first. Both systems are valid, but a paytable written for
+one system will produce the wrong payouts if it is used with the other.
+
+Center and V also pass through the same position on reels 2 and 4. On reel 4, both
+lines read Y, so both winning runs stop there. Because the lines share positions,
+their results are related rather than independent. Article 4 accounts for that
+relationship when it calculates the variance of a game with several paylines.
 
 ## How many rows can this engine's window have?
 
