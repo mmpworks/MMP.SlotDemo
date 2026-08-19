@@ -19,6 +19,11 @@ const workers = ref(8)
 const targetSpins = ref(10_000_000)
 const stride = ref(50_000)
 
+/// Shipped games run on their published paytable by default. Ticking this re-prices the
+/// line paytable to a chosen total RTP, the way a cabinet's payback versions are produced.
+const repriceGame = ref(false)
+const gameTargetBp = ref(9_600)
+
 const run = ref<RunDescription | null>(null)
 const curve = ref<CurvePoint[]>([])
 const liveSpins = ref(0)
@@ -113,6 +118,8 @@ async function start(): Promise<void> {
       targetSpins: targetSpins.value,
       stride: stride.value,
       gameFile: isGameSubject.value ? subject.value.slice('game:'.length) : '',
+      targetTotalRtpBasisPoints:
+        isGameSubject.value && repriceGame.value ? gameTargetBp.value : 0,
     })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Run failed to start.'
@@ -214,6 +221,23 @@ const industry = computed(() => {
             </optgroup>
           </select>
         </label>
+        <template v-if="isGameSubject">
+          <label>
+            Re-price paytable
+            <span class="reprice-field">
+              <input v-model="repriceGame" type="checkbox" />
+              <input
+                v-model.number="gameTargetBp"
+                type="number"
+                min="7500"
+                max="9900"
+                step="100"
+                :disabled="!repriceGame"
+              />
+            </span>
+            <small>target total RTP in basis points</small>
+          </label>
+        </template>
         <template v-if="!isGameSubject">
           <label>
             Base RTP (bp)
@@ -256,10 +280,19 @@ const industry = computed(() => {
         <button type="button" class="ghost" @click="cancel">Stop</button>
       </div>
 
-      <p v-if="isGameSubject" class="lab-note">
-        A shipped game brings its paytable with it, so there is no RTP to choose. Its
-        enumerated reference is shown as Analytic RTP below, and the run should settle into
-        the band around it.
+      <p v-if="isGameSubject && !repriceGame" class="lab-note">
+        A shipped game brings its own paytable, and by default the run uses it as published.
+        Its enumerated reference is shown as Analytic RTP below, and the run should settle
+        into the band around it.
+      </p>
+      <p v-if="isGameSubject && repriceGame" class="lab-note">
+        Line RTP is the sum of probability times pay, so one scalar re-prices the whole
+        paytable. The strips are untouched, which means the game still hits just as often
+        and only the amounts change. The feature keeps its own prize table, so its share of
+        the return is a floor the total cannot go under. Each re-priced pay rounds to a
+        whole hundredth of the wager, so the Analytic RTP below lands near the request
+        rather than exactly on it, and it is that enumerated figure the run is measured
+        against.
       </p>
       <p v-if="outsideLimits === 'ceiling'" class="lab__error">
         Aggregate {{ aggregateBp }} bp is over the solver's {{ limits?.maxAggregateBasisPoints }} bp

@@ -288,6 +288,11 @@ export interface RunDescription {
     stopsPerReel: string
     paylines: number
     targetRtp: number
+    /** What the game shipped with, before any re-pricing. */
+    publishedRtp: number
+    /** 1 when the published paytable is used as-is. */
+    payScaleFactor: number
+    isRepriced: boolean
     workers: number
     targetSpins: number
     seed: number

@@ -1,5 +1,26 @@
 # Current State
-_as of 2026-08-16_
+_as of 2026-08-19_
+
+## 2026-08-19 session
+
+- **Curve sampling fixed.** The telemetry pump slept 100ms between drains against a
+  bounded drop-oldest channel, so sampling was wall-clock driven while the recorder's
+  stride is spin driven. Charts hitched between dense clusters and straight jumps, and
+  once the engine outran one sleep a 10M run lost its whole early history. The pump now
+  drains continuously and throttles only the SSE readout. Measured: 400 points for 400
+  strides, first point one stride in, widest gap one stride.
+- **Throughput split in two.** `EngineClock` brackets the workers alone; `ObservedClock`
+  covers request to terminal status including streaming. Published as a `throughput`
+  block. A run watched in a browser read 6.0M spins/s while the same work headless
+  measured 105M; the engine was never slow, the readout was charging streaming to it.
+- **Shipped games can be re-priced to a target RTP.** `GameDefinition.WithScaledPays(k)`
+  returns a re-priced copy; `/api/run` takes `targetTotalRtpBasisPoints`. Geometry is
+  untouched so hit frequency is identical; the feature keeps its own prize table and is a
+  floor under the total. Verified on Orca Dive across 7500-9900 bp with bonus RTP fixed at
+  26.510% throughout. Out-of-limit targets are refused, never clamped.
+- `/api/par/summary` 500 fixed (First() on the empty CombinationCounts a multi-payline
+  game reports by design). PAR endpoints had no server tests before this.
+- Lab control rows aligned; seed Roll button added.
 
 ## 2026-08-16 session
 

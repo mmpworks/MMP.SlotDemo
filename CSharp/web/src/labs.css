@@ -61,6 +61,28 @@
   width: 10rem;
 }
 
+/* Checkbox and its number field sharing one control slot. */
+.reprice-field {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.reprice-field input[type='checkbox'] {
+  width: auto;
+  flex: 0 0 auto;
+  accent-color: var(--color-accent);
+}
+
+.reprice-field input[type='number'] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.reprice-field input:disabled {
+  opacity: 0.45;
+}
+
 /* Seed input with its randomize button riding alongside, inside one field slot. */
 .seed-field {
   display: flex;

@@ -58,6 +58,31 @@ public sealed record PayCategory
     /// </summary>
     public int PayFor(int count) => count >= 0 && count < _paysByCount.Length ? _paysByCount[count] : 0;
 
+    /// <summary>
+    /// A copy of this category with every award multiplied by <paramref name="factor"/>.
+    ///
+    /// Line RTP is linear in the pays, so one scalar re-prices a whole table. Rounding is
+    /// half-even to the same whole hundredth of the wager the loader produces, which keeps
+    /// the copy in the representation the evaluator already reads and avoids the low bias
+    /// truncation would introduce. A zero stays zero: zero means "no award at this run
+    /// length", which is a rule about the game rather than a price to scale.
+    /// </summary>
+    public PayCategory WithScaledPays(double factor)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(factor);
+        if (!double.IsFinite(factor))
+            throw new ArgumentOutOfRangeException(nameof(factor), factor, "Scale factor must be finite.");
+
+        var scaled = new int[_paysByCount.Length];
+        for (var count = 0; count < _paysByCount.Length; count++)
+        {
+            if (_paysByCount[count] == 0) continue;
+            scaled[count] = (int)Math.Round(_paysByCount[count] * factor, MidpointRounding.ToEven);
+        }
+
+        return new PayCategory(Index, Name, Kind, _continuesRun, _requires, scaled);
+    }
+
     /// <summary>The longest run this category can ever pay on. Useful for reporting, not for evaluation.</summary>
     public int MaxPayingCount
     {
@@ -169,6 +194,31 @@ public sealed class GameDefinition
 
     /// <summary>The same calculated outcomes arranged as reel-by-reel narrowing tables.</summary>
     public ProgressiveOutcomeTable ProgressiveOutcomes => _progressiveOutcomes.Value;
+
+    /// <summary>
+    /// A copy of this game with every line award multiplied by <paramref name="factor"/>.
+    ///
+    /// This is the one lever that moves RTP without touching geometry: strips, paylines and
+    /// symbols are carried over unchanged, so the probability of every combination, and
+    /// therefore the hit frequency, is identical. Only what each hit pays changes, which
+    /// also scales volatility and the top award.
+    ///
+    /// The feature is NOT scaled. A bonus contributes trigger probability times its mean
+    /// award, which is a separate lever with its own prize table; folding it into this
+    /// factor would silently re-price a part of the game the caller did not ask about.
+    ///
+    /// Each pay rounds independently, so the realized RTP lands a little off a naive
+    /// target times factor. Re-analyze the returned game to read what it actually pays.
+    /// </summary>
+    public GameDefinition WithScaledPays(double factor)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(factor);
+        if (!double.IsFinite(factor))
+            throw new ArgumentOutOfRangeException(nameof(factor), factor, "Scale factor must be finite.");
+
+        var scaled = Categories.Select(category => category.WithScaledPays(factor)).ToArray();
+        return new GameDefinition(Name, Source, Symbols, Reels, Paylines, scaled, Bonus);
+    }
 
     public int ReelCount => Reels.ReelCount;
 
