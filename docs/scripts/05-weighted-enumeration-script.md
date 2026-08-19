@@ -58,8 +58,8 @@ anyStop     = payline shows this symbol
 triggerStop = payline shows this symbol AND the window shows the scatter
 ```
 
-Use the five-row table beside the diagram: "Five positions put cherry on the line. Two of
-those five also show a scatter. The analyzer stores five and two."
+Use the two-row Orca Dive table beside the diagram: "Two reel-1 stops put Salmon on the
+center line. One of those windows also shows Penguin. The analyzer stores two and one."
 
 ## 7:30–8:30 — `ScatterInWindow`
 
