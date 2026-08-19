@@ -32,6 +32,11 @@ export interface ChartGeometry {
   halfRange: number
 }
 
+/**
+ * Distance from analytic RTP to either funnel edge. The funnel tightens because spins is
+ * under the square root in the denominator: 100 times as many spins gives one tenth the
+ * half-width. The upper edge adds this value; the lower edge subtracts it.
+ */
 export function bandHalfWidth(sigma: number, spins: number, z = TWO_SIDED_99): number {
   return (z * sigma) / Math.sqrt(spins)
 }

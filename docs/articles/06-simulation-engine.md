@@ -369,6 +369,59 @@ wagered money in the random run. At low spin counts that line can move sharply. 
 grows, the square-root term grows and the band narrows. Multiplying the spin count by 100
 narrows the band by 10 because `√100 = 10`.
 
+### How the formula becomes the funnel
+
+The funnel is created by **one divided by the square root of `N`**, written `1/√N`.
+`√N` grows as spins accumulate. Because it is in the denominator, the half-width shrinks.
+
+Using the teaching game's `sigma = 5`, the graph receives these widths:
+
+| Completed spins `N` | `√N` | 99% half-width | Full distance from lower to upper edge |
+|---:|---:|---:|---:|
+| 10,000 | 100 | 12.880 percentage points | 25.760 percentage points |
+| 100,000 | about 316.23 | 4.073 percentage points | 8.146 percentage points |
+| 1,000,000 | 1,000 | 1.288 percentage points | 2.576 percentage points |
+| 10,000,000 | about 3,162.28 | 0.407 percentage points | 0.814 percentage points |
+
+The chart draws three kinds of lines:
+
+```text
+RTP
+ ^       upper edge = analytic RTP + half-width
+ | \________________________________
+ |  ~~~ measured RTP: the random run can move up and down
+ |---------------------------------- analytic RTP: fixed centerline
+ |  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ | /_________________________________ lower edge = analytic RTP - half-width
+ +----------------------------------> completed spins N
+```
+
+- The horizontal axis is completed spins. It moves from the start of the run on the left
+  to the target spin count on the right.
+- The vertical axis is RTP. Higher points mean the run has returned more money per unit
+  wagered.
+- The analytic RTP is a fixed horizontal centerline.
+- The upper and lower edges use the same half-width on opposite sides of that centerline.
+- The measured RTP line comes from successive `RunSnapshot` values. It can cross the
+  centerline and can briefly leave the band.
+
+The chart code in `web/src/chart/convergence.ts` samples the formula at 160 spin counts.
+For each count, it calculates one upper point and one lower point:
+
+```ts
+const half = bandHalfWidth(sigma, spins)
+upper.push(point(spins, analyticRtp + half))
+lower.push(point(spins, analyticRtp - half))
+```
+
+Those points form the shaded funnel. The measured polyline is built separately from the
+simulation checkpoints. The horizontal scale is linear: twice as far across the graph
+means twice as many completed spins.
+
+Very early bands can be much wider than the useful portion of the graph. The renderer lets
+those early edges run off the top and bottom instead of shrinking the rest of the chart
+into a thin line. The visible funnel therefore appears to enter from outside the frame.
+
 The exact width at ten million spins depends on the game's sigma; wager size alone does
 not determine it. Across many independent runs, about 99% should finish inside a 99% band
 when the normal approximation fits the payout distribution. A single correct run can

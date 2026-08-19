@@ -119,6 +119,27 @@ async function runTelemetry(): Promise<void> {
         At 1,000,000 spins, <code>√N = 1,000</code>. One hundred times as many spins makes
         the band ten times narrower, because the square root of 100 is 10.
       </p>
+      <h4>How that formula draws a funnel</h4>
+      <p>
+        The tightening comes from <code>1 / √N</code>. The square root grows as spins are
+        completed, but it sits under the division line, so the band half-width gets smaller.
+        The analytic RTP stays fixed through the middle. The renderer adds the half-width
+        for the upper edge and subtracts it for the lower edge.
+      </p>
+      <table class="lab-table">
+        <thead><tr><th>Graph mark</th><th>What it shows</th><th>How it is calculated</th></tr></thead>
+        <tbody>
+          <tr><td>Horizontal centerline</td><td>RTP calculated from the game rules</td><td><code>analyticRtp</code></td></tr>
+          <tr><td>Upper funnel edge</td><td>Top of the 99% range</td><td><code>analyticRtp + halfWidth</code></td></tr>
+          <tr><td>Lower funnel edge</td><td>Bottom of the 99% range</td><td><code>analyticRtp - halfWidth</code></td></tr>
+          <tr><td>Moving line</td><td>RTP measured by the random run so far</td><td><code>RunSnapshot.MeasuredRtp</code></td></tr>
+        </tbody>
+      </table>
+      <p class="lab-note">
+        Read left to right for completed spins and bottom to top for RTP. Early funnel edges
+        may begin outside the visible frame because the band is extremely wide when only a
+        few spins have finished.
+      </p>
     </section>
 
     <section class="lab">

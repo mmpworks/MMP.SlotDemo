@@ -560,6 +560,16 @@ swinginess calculated in episodes 4 and 5. `z` is 2.576 for this project's two-s
 band. The square root comes from averaging independent spins. Use one million spins on the
 whiteboard so `square root of N = 1,000`; do not leave the formula as unexplained symbols.
 
+Draw the graph in four strokes. First draw the fixed analytic RTP across the center. Draw
+the upper edge as `analytic RTP + half-width`, then the lower edge as `analytic RTP -
+half-width`. Add the measured RTP last as an uneven line between them. Label the horizontal
+axis "completed spins N" and the vertical axis "RTP." Say, "The funnel comes from one over
+the square root of N. N grows, so the amount we add and subtract gets smaller."
+
+Show the article's 10,000-to-10-million table. Point out that 100 times as many spins makes
+the funnel 10 times narrower. Mention that the web chart uses a linear horizontal scale and
+clips the extremely wide opening bands at the top and bottom of the frame.
+
 - Run ten million spins. Every core pegged, and it lands inside a second on the
   recording machine. Time one take before you record and say the number you actually
   see; the multicore median moved a long way in episode 9.
