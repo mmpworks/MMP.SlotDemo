@@ -222,9 +222,17 @@ Two games can both have 50% RTP and still behave very differently:
 | B | Nine spins pay 0; one spin in ten pays 5 credits | 0.5 credit |
 
 Game A never moves away from its average. Game B usually pays nothing and sometimes
-pays much more than its average. **Variance** measures that spread. **Standard
-deviation**, written as `sigma`, is the square root of variance and uses the same
-units as the payout.
+pays much more than its average.
+
+**Variance measures how far one set of results spreads from its average.** Think of two
+days with the same average temperature of 70 degrees. One day moves between 68 and 72;
+the other moves between 40 and 100. The second day has more variance because its readings
+sit much farther from 70. Slot payouts work the same way: frequent zeroes and rare large
+awards create more variance than steady small awards, even when the RTP is equal.
+
+**Standard deviation**, written as `sigma`, is the square root of variance. It expresses
+the spread in the original unit, such as credits per spin, which makes it easier to use in
+the confidence-band calculation.
 
 For one payline, calculate variance with:
 
@@ -264,13 +272,18 @@ Consider the Center and V paylines from Article 3. They share visible positions.
 One reel stop can therefore help or hurt both lines at once. Their payouts may move
 together, so the calculation needs a **covariance** term:
 
+**Covariance measures whether two results tend to move together.** Picture two boats on
+the same wave. They usually rise and fall together, like two paylines helped by the same
+reel window; that is positive covariance. The two ends of a seesaw move in opposite
+directions; that is negative covariance. Results with no consistent relationship have
+covariance near zero.
+
 ```
 Var(Σ Xᵢ) = Σ Var(Xᵢ) + 2 · Σᵢ<ⱼ Cov(Xᵢ, Xⱼ)
 ```
 
-Positive covariance means the lines tend to rise and fall together. Negative
-covariance means one tends to pay when the other does not. The ordered reel strips
-determine the sign and size; the code does not guess.
+The ordered reel strips determine the covariance's sign and size. The code calculates
+that relationship from the actual symbol positions.
 
 To calculate covariance, the engine first counts how often two visible positions on
 one reel show each pair of symbols. This is the same strip-counting method used by

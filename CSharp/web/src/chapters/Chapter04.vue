@@ -186,6 +186,11 @@ async function runBand(): Promise<void> {
         swings. The engine calculates it from the reel strips and paytable, including
         paylines that share visible positions. More spins make the expected range narrower.
       </p>
+      <p class="lab-note">
+        Variance measures how far payouts spread from their average. Covariance measures
+        whether two payouts tend to move together, like two boats rising on the same wave
+        when shared reel positions help both paylines.
+      </p>
 
       <div class="controls">
         <label>

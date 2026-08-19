@@ -78,11 +78,14 @@ public static GameAnalysis Analyze(GameDefinition definition)
 }
 ```
 
-That one-payline limit has a reason behind it. Average returns from several lines add
-together cleanly. Their variance does not, because two paylines can read different rows
-of the same reel and their results then move together. `AnalyticMath` handles that
-relationship for the built-in games. `GameAnalyzer` has yet to combine that work with
-wild substitutions and window-based bonuses.
+That one-payline limit has a reason behind it. **Variance measures how widely payouts
+spread around their average.** Average returns from several lines add together cleanly,
+but their variance may not. Two paylines can read different positions on the same reel,
+so one stopped window can affect both payouts. The resulting relationship is called
+**covariance**: positive when the two line results tend to rise and fall together,
+negative when one tends to rise as the other falls, and near zero when they have no
+consistent relationship. `AnalyticMath` handles that relationship for the built-in games.
+`GameAnalyzer` has yet to combine it with wild substitutions and window-based bonuses.
 
 ## Preparing the counts
 
@@ -128,9 +131,10 @@ in the code:
 | 22 | Red7 / Salmon / Green7 | Yes | No | +1 | 0 |
 | **Total** |  |  |  | **2** | **1** |
 
-Why keep both? A line win and a bonus trigger can happen on the same spin. The analyzer must
-count their overlap to calculate variance correctly. Adding line variance and bonus variance
-as if they were unrelated would lose that overlap.
+Why keep both? A line win and a bonus trigger can happen on the same spin. Their relationship
+is another form of covariance. Think of two boats lifted by the same wave: the same reel
+window can produce the line award and reveal the Penguin that starts the bonus. The analyzer
+keeps the overlap so the total payout's variance includes those shared spins.
 
 `ScatterInWindow` performs the small check used while building the table:
 
