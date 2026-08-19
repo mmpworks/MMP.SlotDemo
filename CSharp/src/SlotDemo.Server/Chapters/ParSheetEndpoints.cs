@@ -53,7 +53,12 @@ public static class ParSheetEndpoints
                     hits = c.Value,
                 })
                 .OrderByDescending(x => x.pay)
-                .First();
+                // FirstOrDefault, not First: CombinationCounts is empty by design for any
+                // game with more than one payline, because one stopped window can pay several
+                // categories and GameAnalyzer routes those to AnalyzePhysicalOutcomes. Such a
+                // game has no single jackpot rule to name, and it must not take down the
+                // summary for every other game on the page.
+                .FirstOrDefault();
 
             rows.Add(new
             {
@@ -70,8 +75,8 @@ public static class ParSheetEndpoints
                 // outcome (bonus triggers included), a higher figure. The field name says
                 // which event this one measures.
                 lineHitFrequencyPercent = analysis.HitFrequency * 100,
-                playsPerJackpot = top.hits > 0 ? (double)analysis.StopCombinations / top.hits : 0,
-                jackpotCredits = top.pay,
+                playsPerJackpot = top is { hits: > 0 } ? (double)analysis.StopCombinations / top.hits : 0,
+                jackpotCredits = top?.pay ?? 0,
                 playsPerBonus = analysis.TriggerProbability > 0 ? 1.0 / analysis.TriggerProbability : (double?)null,
                 volatilityIndex90 = 1.6449 * analysis.SigmaPerUnitWagered,
             });
