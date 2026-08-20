@@ -31,7 +31,7 @@ minutes total, and only to make an engine claim visible.
       variance of a sum
 
 **Companion site — the illustration**
-- [ ] `E:\dev\MMP.SlotDemo`, branch `main`
+- [ ] This repository checked out, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
 - [ ] `http://localhost:5090/#/ch04`, all three labs run once — Lab 1 "Solve a paytable,"
       Lab 2 "The band, priced before any spin," Lab 3 "Orca Dive: the paytable that

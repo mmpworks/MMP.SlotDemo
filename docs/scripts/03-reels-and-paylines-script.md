@@ -34,7 +34,7 @@ minutes total, and only to make an engine claim visible.
       slow to draw on camera)
 
 **Companion site — the illustration**
-- [ ] `E:\dev\MMP.SlotDemo`, branch `main`
+- [ ] This repository checked out, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
 - [ ] `http://localhost:5090/#/ch03`, each lab run once so nothing pays first-request
       cost

@@ -214,7 +214,7 @@ The article series, video scripts, and PAR reference migrated in from MMP.SlotGa
 shipped system. Four Clancy→Cussler waves ran (findings + dispositions in
 `docs/_editing/`, gitignored): facts/references/register, script navigation
 layer, a 288-site subtraction pass per the MMP.Humanization runbook
-(`E:\dev\MMP.Humanization\RUNBOOK.md` — load it before ANY prose pass), and the
+(the MMP.Humanization RUNBOOK, loaded before ANY prose pass), and the
 article-01 rewrite as the series front door with a chapter-by-chapter roadmap.
 README's hand-maintained test counts were removed rather than fixed. Verified
 green after the pass: engine 197+9 gated, server 80, SPA 45, build 0 warnings.
@@ -229,7 +229,7 @@ paste-block sync stops depending on agent discipline — with a pin manifest: si
 blocks in scripts 02/03/04/06 deliberately pin the pre-optimization state
 (episodes teach the initial system; ep9 shows the optimized versions side by
 side), so those diff against the pinned commit, never HEAD. Video assets for
-ep1–3 live in `E:\dev\MMP.Media\generated\slotdemo-series\` (callouts wired into
+ep1–3 are rendered outside this repo (callouts wired into
 scripts 01–03; MMP.Media + slotdemo-series-video repos committed locally,
 unpushed). The Chapter 1 blueprint page question above remains open.
 

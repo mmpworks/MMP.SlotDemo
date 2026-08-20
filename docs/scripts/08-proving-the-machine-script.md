@@ -31,7 +31,7 @@ segment: the closing ten-million-spin run, and it runs on camera.
 - [ ] Clipboard manager staged with Block A
 
 **Companion site — the finale**
-- [ ] `E:\dev\MMP.SlotDemo`, branch `main`
+- [ ] This repository checked out, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
 - [ ] `http://localhost:5090/#/ch08`, Lab 1 — "The census" — run once
 - [ ] The finale run page loaded and a full ten-million-spin run completed once before

@@ -30,7 +30,7 @@ minutes total, and only to make an engine claim visible.
 - [ ] Clipboard manager staged with Block A then Block B
 
 **Companion site — the illustration**
-- [ ] `E:\dev\MMP.SlotDemo`, branch `main`
+- [ ] This repository checked out, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
 - [ ] `http://localhost:5090/#/ch02`, each lab run once so nothing pays first-request cost
 - [ ] `logs/` cleared so the viewer starts empty

@@ -2,7 +2,7 @@
 
 Engagement date: 2026-08-13 · Status: OPEN · First engagement of the contractor tier
 (tier ratified by Steve 2026-08-13; mechanics per
-`E:\dev\MMP.AiUpgrade\docs\contractors-proposal-2026-08-11.md`).
+the internal MMPWorks contractors proposal, 2026-08-11).
 
 ## Scope (acceptance-gate form)
 

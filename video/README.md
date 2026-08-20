@@ -23,7 +23,7 @@ matter to this particular job:
 3. **The decks are data-driven.** One `Deck` component reads
    `src/data/chapters.ts`; nine chapters are nine rows, not nine files. The
    same array drives the title cards, so a chapter title is written down once.
-4. **The house already runs it.** `E:\dev\slotdemo-series-video` is a Remotion
+4. **The house already runs it.** the house already maintains a separate Remotion
    project producing the episode 1–3 figures, and this project mirrors its
    conventions (silent compositions, physical-mass easing, tokens mirrored from
    the site) so the two bodies of work cut together.
@@ -128,7 +128,7 @@ npm run typecheck
 ## Visual register
 
 MMPWorks house — the optimism of 1940s–50s science fiction, per
-`E:\dev\MMP.Media\brand\artistic-direction.md`. Deco framing over a near-black
+the internal MMPWorks brand artistic-direction document. Deco framing over a near-black
 cinematic ground, brass as the single accent, geometric display type
 letterspaced rather than condensed, restrained motion.
 

@@ -25,7 +25,7 @@ own; the illustrations borrow `#/finale` and `#/ch06`.
 - [ ] Test runner loaded with `ConfigValidationTests`
 
 **Companion site — the illustration**
-- [ ] `E:\dev\MMP.SlotDemo`, branch `main`
+- [ ] This repository checked out, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
 - [ ] `http://localhost:5090/#/ch06` and `#/finale` each loaded once so nothing pays
       first-request cost

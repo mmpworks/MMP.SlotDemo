@@ -28,7 +28,7 @@ minutes total, and only to make an engine claim visible.
 - [ ] Task Manager or a CPU meter on a second monitor for the all-cores-busy shot
 
 **Companion site — the illustration**
-- [ ] `E:\dev\MMP.SlotDemo`, branch `main`
+- [ ] This repository checked out, branch `main`
 - [ ] `cd CSharp/web && npm run build`, then `dotnet run --project CSharp/src/SlotDemo.Server`
 - [ ] `http://localhost:5090/#/ch06`, the engine lab and the telemetry lab each run once
 - [ ] `logs/` cleared so the viewer starts empty
