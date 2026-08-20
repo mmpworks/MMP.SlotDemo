@@ -36,8 +36,8 @@ minutes total, and only to make an engine claim visible.
 - [ ] `logs/` cleared so the viewer starts empty
 
 **OBS**
-- [ ] `MMP.Media/generated/slotdemo-series/episodes/ep02/` staged locally as an OBS
-      media source folder
+- [ ] Episode 2 stills and clips staged locally as an OBS media source folder.
+      These are rendered separately and are not required to build or run this repo.
 - [ ] Scenes: `RIDER`, `BROWSER`, `TERMINAL`
 - [ ] Zoom-to-mouse hotkey bound and tested at code-reading zoom
 - [ ] Rider font sized for capture

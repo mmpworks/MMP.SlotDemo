@@ -58,6 +58,13 @@ into a fresh directory and building everything from scratch, including the Docke
 
 - Decision: MMP.SlotDemo keeps ALL its video and image assets in this repo.
   MMP.Media is no longer used for SlotDemo media.
+  - **Refined 2026-08-19:** this covers assets the repo actually needs. The
+    rendered episode stills and clips (128MB, mostly 11MB PNG title plates) are
+    OBS staging inputs for recording sessions; nothing in the build or the site
+    reads them, so they are NOT vendored here and the repo stays free of an LFS
+    dependency. The scripts describe them as locally staged rather than naming
+    another repository, so a clean clone has no cross-repo reference. Steve's
+    call, taken while closing out the v1.0.0 repo audit.
 - New doc: `docs/run-walkthrough.md` — step-by-step walk of one simulation run,
   from harness startup through the SPA to the verdict, with a file map.
 - Article 1 gained a "One run, step by step" section and a restructured

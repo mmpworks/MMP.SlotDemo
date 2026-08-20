@@ -32,8 +32,9 @@ own; the illustrations borrow `#/finale` and `#/ch06`.
 - [ ] A finished 10M-spin run left on screen in a second tab for the cold open
 
 **OBS**
-- [ ] `MMP.Media/generated/slotdemo-series/episodes/ep01/` staged locally as an OBS
-      media source folder, with `strip/` and `symbols/` alongside it
+- [ ] Episode 1 stills and clips staged locally as an OBS media source folder, with
+      the strip and symbol art alongside them. These are rendered separately and are
+      not required to build or run this repo.
 - [ ] Scenes: `WHITEBOARD`, `RIDER`, `BROWSER`
 - [ ] Zoom-to-mouse hotkey bound and tested at diagram-reading zoom
 - [ ] Pen pressure and color tested on camera; thin lines vanish at 1080p
