@@ -3,6 +3,15 @@ _as of 2026-08-19_
 
 ## 2026-08-19 session
 
+- **Independent verification lives in `python/verification/`.** A Python
+  re-implementation of Orca Dive's math that shares no code with the engine: it reads
+  `games/orca-dive.json`, recompiles the pay categories, enumerates all 14,781,416 stop
+  combinations, and prices the pick bonus by exact subset-sum rather than the engine's
+  closed form. It agrees with the engine on every published figure, and its sigma values
+  are now pinned in `OrcaDiveParSheetTests`. `coverage.py` measures the confidence band's
+  real coverage (98.86/98.96/98.94% against a nominal 99%); `skew.py` shows why that was
+  worth checking, since 26% of line variance sits in a 4-in-14.8M outcome. Requires numpy.
+
 - **Curve sampling fixed.** The telemetry pump slept 100ms between drains against a
   bounded drop-oldest channel, so sampling was wall-clock driven while the recorder's
   stride is spin driven. Charts hitched between dense clusters and straight jumps, and
