@@ -10,10 +10,9 @@
  */
 
 /**
- * Below this, a completed run is treated as still warming up. Set from the observed
- * settled range on developer hardware, where warm runs land at 130M and above and cold
- * ones an order of magnitude lower, so the gap is wide enough that one threshold separates
- * them without tuning.
+ * Fallback threshold, used only until the server's readiness answer arrives. The server
+ * owns this number so the page never keeps a second copy that can drift from the one the
+ * warm-up service actually applies.
  */
 export const WARMED_SPINS_PER_SECOND = 100_000_000
 
@@ -21,8 +20,13 @@ export const WARMED_SPINS_PER_SECOND = 100_000_000
  * A run is only judged once it has finished; a run still in flight has not had the chance
  * to reach its rate yet, and a rate of zero means nothing has been measured at all.
  */
-export function isWarmupRun(status: string | undefined, spinsPerSecond: number): boolean {
+export function isWarmupRun(
+  status: string | undefined,
+  spinsPerSecond: number,
+  threshold: number = WARMED_SPINS_PER_SECOND,
+): boolean {
   if (status !== 'completed') return false
   if (!Number.isFinite(spinsPerSecond) || spinsPerSecond <= 0) return false
-  return spinsPerSecond < WARMED_SPINS_PER_SECOND
+  if (!Number.isFinite(threshold) || threshold <= 0) return false
+  return spinsPerSecond < threshold
 }

@@ -57,6 +57,8 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
 builder.Services.AddSingleton<LogStreamService>();
 builder.Services.AddSingleton<RunStreamService>();
 builder.Services.AddSingleton(sp => new RunCoordinator(sp.GetRequiredService<RunStreamService>(), log));
+builder.Services.AddSingleton(sp => new EngineWarmupService(log));
+builder.Services.AddHostedService(sp => sp.GetRequiredService<EngineWarmupService>());
 
 // Framework categories -> sys.* levels, app categories -> plain levels.
 builder.Logging.ClearProviders();

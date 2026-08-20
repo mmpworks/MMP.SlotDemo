@@ -22,6 +22,18 @@ describe('isWarmupRun', () => {
     expect(isWarmupRun(undefined, 1_000)).toBe(false)
   })
 
+  it('uses the threshold the server reports when one is given', () => {
+    // A slower machine settles lower, so the server may hand down a smaller number and the
+    // page must judge against that rather than its own fallback.
+    expect(isWarmupRun('completed', 60_000_000, 50_000_000)).toBe(false)
+    expect(isWarmupRun('completed', 40_000_000, 50_000_000)).toBe(true)
+  })
+
+  it('reports nothing when the threshold itself is missing', () => {
+    expect(isWarmupRun('completed', 10_000_000, 0)).toBe(false)
+    expect(isWarmupRun('completed', 10_000_000, Number.NaN)).toBe(false)
+  })
+
   it('treats an absent measurement as nothing to report', () => {
     expect(isWarmupRun('completed', 0)).toBe(false)
     expect(isWarmupRun('completed', -1)).toBe(false)

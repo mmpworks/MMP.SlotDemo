@@ -37,6 +37,23 @@ public static class RunEndpoints
             }),
         }));
 
+        // Whether the engine has been warmed enough to be worth timing. The page holds its
+        // run button until this reports ready, so a visitor's first run is a real
+        // measurement rather than a compilation. The threshold lives here, with the rest of
+        // the run limits, so the page reads it instead of keeping a second copy.
+        app.MapGet("/api/run/readiness", (EngineWarmupService warmup) =>
+        {
+            var state = warmup.Snapshot;
+            return Results.Ok(new
+            {
+                ready = state.Ready,
+                settled = state.Settled,
+                bestSpinsPerSecond = state.BestSpinsPerSecond,
+                passesRun = state.PassesRun,
+                thresholdSpinsPerSecond = EngineWarmupService.SettledSpinsPerSecond,
+            });
+        });
+
         app.MapPost("/api/run", (RunRequest request, RunCoordinator runs) =>
         {
             var (status, body) = runs.Start(request);

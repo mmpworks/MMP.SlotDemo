@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { getJson, postJson } from '../api/labs'
-import type { CurvePoint, RunDescription, RunLimits } from '../api/labs'
+import type { CurvePoint, RunDescription, RunLimits, RunReadiness } from '../api/labs'
 import { WARMED_SPINS_PER_SECOND, isWarmupRun } from '../run/warmup'
 import { buildGeometry } from '../chart/convergence'
 
@@ -22,6 +22,28 @@ const stride = ref(50_000)
 
 /// Shipped games run on their published paytable by default. Ticking this re-prices the
 /// line paytable to a chosen total RTP, the way a cabinet's payback versions are produced.
+/// Engine readiness. The run button stays pending until the server says the engine has
+/// been warmed, so a visitor's first run is a real measurement rather than a compilation.
+const readiness = ref<RunReadiness | null>(null)
+let readinessTimer: number | undefined
+
+async function pollReadiness() {
+  try {
+    const state = await getJson<RunReadiness>('/api/run/readiness')
+    readiness.value = state
+    if (state.ready) return
+  } catch {
+    // A failed poll is not fatal; try again on the next tick rather than stranding
+    // the button in a state the visitor cannot clear.
+  }
+  readinessTimer = window.setTimeout(pollReadiness, 500)
+}
+
+const engineReady = computed(() => readiness.value?.ready === true)
+const warmupThreshold = computed(
+  () => readiness.value?.thresholdSpinsPerSecond ?? WARMED_SPINS_PER_SECOND,
+)
+
 const repriceGame = ref(false)
 const gameTargetBp = ref(9_600)
 
@@ -42,7 +64,9 @@ const throughput = computed(() => {
 })
 
 /// True when a finished run's rate reads as a warm-up rather than the engine's real speed.
-const isWarmup = computed(() => isWarmupRun(run.value?.status, liveEngineRate.value))
+const isWarmup = computed(() =>
+  isWarmupRun(run.value?.status, liveEngineRate.value, warmupThreshold.value),
+)
 
 /// A fresh seed for an independent sample of the same game. Kept inside the
 /// signed 32-bit range the seed input accepts.
@@ -53,6 +77,14 @@ const error = ref('')
 const busy = ref(false)
 
 let source: EventSource | null = null
+
+onMounted(() => {
+  void pollReadiness()
+})
+
+onUnmounted(() => {
+  if (readinessTimer !== undefined) window.clearTimeout(readinessTimer)
+})
 
 onMounted(async () => {
   try {
@@ -274,8 +306,13 @@ const industry = computed(() => {
           <input v-model.number="stride" type="number" min="1000" step="10000" />
           <small>one chart point per this many spins</small>
         </label>
-        <button type="button" :disabled="busy || outsideLimits !== null" @click="start">
-          {{ busy ? 'Starting…' : 'Run the proof' }}
+        <button
+          type="button"
+          :disabled="busy || !engineReady || outsideLimits !== null"
+          :title="engineReady ? undefined : 'The engine is warming up; a run started now would time a compilation.'"
+          @click="start"
+        >
+          {{ !engineReady ? 'Warming up…' : busy ? 'Starting…' : 'Run the proof' }}
         </button>
         <button type="button" class="ghost" @click="cancel">Stop</button>
       </div>
@@ -342,7 +379,7 @@ const industry = computed(() => {
         <span class="warmup-banner__word">Warm-up run</span>
         <span>
           {{ throughput }} spins/second is below the
-          {{ (WARMED_SPINS_PER_SECOND / 1_000_000).toFixed(0) }}M this engine settles at. The
+          {{ (warmupThreshold / 1_000_000).toFixed(0) }}M this engine settles at. The
           first runs after the server starts pay for compiling the spin loop, so the clock
           is slow while the math is already right: the spins, the measured RTP and the
           verdict below are final. Roll a new seed and run it again to read the engine's

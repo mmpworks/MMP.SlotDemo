@@ -275,3 +275,8 @@
 .proving-ground--warmup .readout__value {
   color: var(--color-text-primary);
 }
+
+/* The engine is still warming, so the run button is deliberately held closed. */
+.lab-note--pending {
+  color: var(--color-log-warning);
+}

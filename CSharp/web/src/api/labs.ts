@@ -358,3 +358,15 @@ export interface OptimizationBenchmarkView {
   percentFaster: number
   memoryTradeoff: string
 }
+
+
+/** Whether the engine has been warmed enough that a run's clock is worth reading. */
+export interface RunReadiness {
+  /** The page may start a run. True even on a machine that never reached the threshold. */
+  ready: boolean
+  /** Whether the engine actually reached its target speed, which is a separate question. */
+  settled: boolean
+  bestSpinsPerSecond: number
+  passesRun: number
+  thresholdSpinsPerSecond: number
+}
