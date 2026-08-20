@@ -340,9 +340,11 @@ its band, and report the disagreement.
 The pair is there so the simulator behaves the way a casino floor does. A test lab
 applies no such limit when it validates, because its simulation answers one question
 only: does the implemented game match its submitted math package? RTP limits get
-enforced earlier, at the **approval** step, on paper. Our floor borrows the legal
-minimum most jurisdictions set, since Nevada requires at least 75% theoretical
-payback. Our ceiling stands in for the commercial maximum every operator keeps,
+enforced earlier, at the **approval** step, on paper. Our floor borrows a real
+regulatory minimum: Nevada Gaming Commission Regulation 14.040(1)(a) sets 75%
+theoretical payback as the floor for a gaming device. Other jurisdictions set
+their own, and they differ (New Jersey's is 83%), so treat 75% as one example
+rather than a universal number. Our ceiling stands in for the commercial maximum every operator keeps,
 because a game paying out more than it takes in is a losing product.
 
 ## Scale once, then freeze it
@@ -375,10 +377,15 @@ large-scale simulation agreeing inside a tight tolerance. A lab that "helpfully"
 clamped its inputs would be certifying a game nobody submitted.
 
 The proving ground reports that yardstick directly. Beside the statistical band
-verdict, the finale page shows an **industry check**: the measured RTP must sit
-within ±0.5 percentage points of the analytic RTP over at least ten million spins,
-the fixed tolerance certification practice quotes. The band is the stronger test,
-since it narrows as √N.
+verdict, the finale page shows an **acceptance yardstick** of our own: the measured RTP must sit
+within ±0.5 percentage points of the analytic RTP over at least ten million spins.
+That figure is a common convention rather than a clause we can cite from a
+published standard, so treat it as our acceptance rule, not an external authority.
+
+Neither check is automatically the stronger one. The band is z·σ/√N, so it comes in
+under 0.5pp at ten million spins only while σ stays below about 6.146. Orca Dive
+sits at 6.129, which makes its band the tighter of the two by a fraction of a
+percent. A swingier game would have the wider band at the same spin count.
 
 Downstream code can take the **request** as already validated, because the invariant
 rides on the type. When a `SimulationConfig` turns up as a parameter three layers
@@ -668,6 +675,7 @@ the band narrows with √N.
   lists percentage calculations, reel strips, paytables, source code, and RNG evidence
   among common submission materials.
 - [Nevada Technical Standard 1](https://www.gaming.nv.gov/siteassets/content/home/features/TechnicalStandard1.pdf)
+- [Nevada Gaming Commission Regulation 14](https://gaming.nv.gov/about/regulations/) — where the 75% minimum theoretical payback actually lives, in 14.040(1)(a); Technical Standard 1 covers randomness and device behaviour, not minimum return
   is a useful example of jurisdiction-specific requirements for gaming devices and
   random selection. This teaching simulator is not a claim of compliance or
   certification.

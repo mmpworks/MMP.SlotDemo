@@ -688,11 +688,19 @@ carrying an odd factor, 6 and 10 and 26 included.
 rather than the generator. Take a certified hardware RNG producing flawlessly uniform
 64-bit values, fold it with `% 26`, and it still favors 16 of the 26 stops (2⁶⁴ mod
 26 = 16). On a 64-bit source that excess is about one part in 10¹⁸, too small to
-measure in any simulation you could run. It is also provably nonzero, and game
-certification asks for provably zero. Nevada's Technical Standard 1 requires each
-outcome of a random selection to be equally probable, and "equal to eighteen decimal
-places" falls short of equal. The rejection method makes the probabilities equal. On
-a 64-bit source, the discard fires about once per 10¹⁸ draws.
+measure in any simulation you could run. No test would catch it: the bias is
+about one part in 10¹⁸, and seeing it would take on the order of 10³⁵ draws.
+
+So the case for rejection here is not that skipping it would show up in an RTP.
+It would not, ever. The case is that rejection costs nothing and replaces "too
+small to matter" with "equal by construction", and only one of those two is a
+statement you can defend without arguing about how small is small enough. On a
+64-bit source the discard fires about once per 10¹⁸ draws, so you pay nothing
+for the stronger claim.
+
+The bias becomes real, and visible, the moment the source is narrow. That is why
+the lab below uses an 8-bit source: it is the only place in this series where you
+can actually see the skew.
 
 **The rejected set is the leftover, fixed in advance.** Return to the deal: 256 raw
 values, 26 bins, nine full laps, and 22 values left over that cannot
@@ -854,8 +862,15 @@ smaller contracts:
 - Spin logic declares its RNG dependency in its signature.
 - A run can be replayed when its full input record is preserved.
 
-The paytable rounding rule and worker-seeding recipe each have one implementation, so
-a policy change has one authoritative place to edit.
+The paytable rounding rule and the worker-seeding recipe each have one authoritative
+implementation in the engine, so a policy change has one place to edit.
+
+One honest caveat about this site: the chapter 2 labs run their own copies of
+`Millicents` and `SpinRng`, under `SlotDemo.Server/Chapters/`, because the labs also
+need to demonstrate deliberately broken variants such as unmixed seeding. They are
+kept byte-identical to the engine's versions by hand. That means the labs on this
+page are running a copy, not the shipped type, and a change to the engine has to be
+mirrored there.
 
 Next in the series: what a reel actually is, and the modeling mistake that gets every
 single-symbol probability right and every two-symbol probability wrong.

@@ -129,7 +129,7 @@ const shelves: Shelf[] = [
         free: true,
         url: 'https://patents.google.com/patent/US4448419A/en',
         about: 'The virtual-reel patent that created the modern slot machine: map many RNG values onto few physical stops, and the odds no longer depend on the physical reel. Every weighted strip in use today descends from this filing.',
-        series: 'Our strips implement this idea. Episode 3\'s even-interleave builder is a Telnaes mapping written out in the open.',
+        series: 'A long strip with one symbol repeated many times buys mathematically what a virtual reel buys, so strip LENGTH carries the Telnaes idea here. The even-interleave builder is NOT a Telnaes mapping: it orders a given count table and leaves every stop equally likely, which is the opposite of weighting. Episode 3 lists virtual reels among the things this engine does not model.',
       },
       {
         title: 'How to calculate the return for a slot machine (Appendix 1 & 2)',
@@ -210,7 +210,7 @@ const shelves: Shelf[] = [
         kind: 'standard',
         free: true,
         url: 'https://www.gaming.nv.gov/siteassets/content/home/features/TechnicalStandard1.pdf',
-        about: 'Nevada\'s own device standards: randomness, minimum return, fraud prevention. Shorter than GLI-11 and interesting for what a state chooses to pin down in law.',
+        about: 'Nevada\'s own device standards: randomness, fraud prevention, and device behaviour (the 75% minimum payback lives in Nevada Gaming Commission Regulation 14, not in this standard). Shorter than GLI-11 and interesting for what a state chooses to pin down in law.',
         series: 'The 99% aggregate cap in our SimulationConfig follows the shape of rules like these.',
       },
     ],

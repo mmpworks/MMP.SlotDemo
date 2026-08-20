@@ -288,8 +288,8 @@ payout, paylines, and feature state share one value object; the table does not a
 new payline list for every key.
 
 The first implementation drew five stops, packed their bytes, and performed one dictionary
-lookup. It was correct and slow. A same-work benchmark measured 1.97 million outcomes per
-second, compared with 13.78 million for the original rule evaluator. The 1.5-million-entry
+lookup. It was correct and slow. A same-work benchmark measured 2.14 million outcomes per
+second, compared with 16.07 million for the original rule evaluator. The 1.5-million-entry
 dictionary sent the CPU to widely separated memory locations often enough to cost more than
 the arithmetic it removed.
 
@@ -364,7 +364,7 @@ payout/feature checksums:
 | Packed 40-bit key plus dictionary | 2.14M | 0.133x |
 | Progressive transition arrays | 20.53M | 1.277x |
 
-The progressive table was 27.7 percent faster than direct evaluation and 9.58 times faster
+The progressive table was 27.7 percent faster than direct evaluation and 9.59 times faster
 than the packed dictionary in this test.
 
 The complete multicore loaded-game benchmark moved from a 14.03M median with the dictionary

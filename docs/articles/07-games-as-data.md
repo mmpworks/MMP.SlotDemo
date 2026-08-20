@@ -8,13 +8,18 @@ Everything so far has run generated games: preset reel shapes, a canonical payta
 scaled to a target. That shows the engine and the math agreeing with *each other*,
 which is useful, and a skeptic can fairly call it a closed loop. Stronger evidence
 comes from game data and results derived outside this codebase. The public
-third-party page Orca Dive's numbers are modeled on supplies reconstructed reel
-strips, the visible paytable and bonus rules, and calculated returns. (The dated
+third-party page Orca Dive's numbers are modeled on supplies per-reel symbol COUNTS,
+the visible paytable and bonus rules, and calculated returns. The strip ORDERINGS in
+`games/orca-dive.json` are ours, not the source's. (The dated
 citation lives in `docs/par-orca-dive.md`. This article is about the loader.)
 
 Orca Dive is a fictional game invented for this series. Its math reproduces a published
 PAR deconstruction of a real commercial machine: the source's author reconstructed the
-strips from 212 recorded spins and read the awards off the machine's rule screens.
+symbol counts from 212 recorded spins and read the awards off the machine's rule
+screens. Orderings were not published, so ours are chosen to reproduce the source's
+figures: the scatter placement in particular was picked so the Penguin shows on 6 of
+26 stops, which is what makes the trigger rate match. Order matters for scatters and
+multi-row windows, so that part of the cross-check is ours rather than the source's.
 Reproducing that source's combination counts and returns is a valuable independent
 cross-check of this engine; it certifies nothing (and the source is not an official
 manufacturer PAR sheet).

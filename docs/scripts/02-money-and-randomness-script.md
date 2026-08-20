@@ -415,9 +415,11 @@ Here that hazard is turned into discipline.
 > **Illustration (40 seconds, BROWSER).** Bias lab: 8-bit draw space, 37 buckets,
 > 200,000 samples. Modulo's worst bucket lands about **15%** off expected with a
 > visible step; multiply-shift stays down at sampling noise, with the rejection count
-> showing the price. "At 64 bits this same skew is real and far too small to see. That
-> is the kind of bug that passes review and turns up later as an RTP that misses its
-> target by a hair." Cut back.
+> showing the price. "At 64 bits this same skew is real and far too small to see, and it
+> would never move an RTP: the worst case is about one part in 10^18. Rejection earns its
+> place because it costs nothing here and turns 'too small to matter' into 'equal by
+> construction'. The 8-bit source in this lab is the only place you can see the bias at
+> all." Cut back.
 
 > **Asset (FULL FRAME, two clips back to back):**
 > `slotdemo-series/episodes/ep02/ep02-2.1-modulo-bias-1080p.mp4`, then

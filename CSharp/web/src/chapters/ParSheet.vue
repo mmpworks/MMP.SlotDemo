@@ -127,11 +127,11 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   geometry: {
     title: 'Geometry',
-    body: 'Five reels, each its own strip with its own length, showing three rows in the window. Ragged strip lengths (26/29/26/29/26) are normal on real machines. This game reads one payline across the center row; more paylines would change the feel but, for regular line pays, RTP stays the same because bet and wins scale together.',
+    body: 'Five reels, each its own strip with its own length, showing three rows in the window. Ragged strip lengths (26/29/26/29/26) are normal on real machines. This game reads one payline across the center row. Under the line-bet convention that most real sheets use, adding paylines leaves RTP unchanged because the bet and the wins scale together. This engine prices every pay against the TOTAL spin bet instead, so here adding paylines multiplies RTP, and a paytable transcribed from a line-bet sheet has to be converted before it is loaded.',
   },
   summary: {
     title: 'The summary table',
-    body: 'This is the column layout researchers found on real PAR sheets. In 2009, Kevin Harrigan and Mike Dixon obtained 23 PAR sheets for Ontario slot machines through freedom-of-information requests and published a summary in this column layout (their Table 1): game and geometry, wager, symbols per reel, payback percentage, hit frequency, plays per jackpot, jackpot size, plays per bonus, and volatility index. Our games appear here in the same columns, so you can read this row against their published rows for Double Diamond Deluxe (92.6% payback, VI 10.5) or Lobstermania (85 to 96.2% across versions).',
+    body: 'This is the column layout researchers found on real PAR sheets. In 2009, Kevin Harrigan and Mike Dixon obtained PAR sheets for four Ontario slot machine games through freedom-of-information requests and published a summary in this column layout (their Table 1, which covers 23 approved versions of those games): game and geometry, wager, symbols per reel, payback percentage, hit frequency, plays per jackpot, jackpot size, plays per bonus, and volatility index. Our games appear here in the same columns, so you can read this row against their published rows for Double Diamond Deluxe (92.6% payback, VI 10.5) or Lobstermania (85 to 96.2% across versions).',
   },
   playsPerJackpot: {
     title: 'Plays per jackpot',
@@ -143,7 +143,7 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   census: {
     title: 'Reel census',
-    body: 'How many times each symbol appears on each strip. This table sets the odds: a symbol\'s chance of landing on a payline cell is its count divided by that strip\'s length. The machine holds no separate probability table. The census differs per reel: Wild Orca is 2-in-26 on reel 1 but 1-in-29 on reel 2.',
+    body: 'How many times each symbol appears on each strip. This table sets the odds: a symbol\'s chance of landing on a payline cell is its count divided by that strip\'s length. This engine holds no separate probability table; a virtual-reel machine does, which is the Telnaes design the Library page describes. The census differs per reel: Wild Orca is 2-in-26 on reel 1 but 1-in-29 on reel 2.',
   },
   wild: {
     title: 'Wild symbol (★)',
@@ -183,7 +183,7 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   prizeTiers: {
     title: 'Prize tiers',
-    body: 'The treasure chests by value. Many small prizes and a few large ones shape the bonus. The 5× tier carries more of the expected value than any other: nine prizes at 5× come to 45 of the prize pool\'s 144, ahead of the single 20× and the three 10× together. The maximum award is every prize plus the safe-return award, 145× bet.',
+    body: 'The treasure chests by value. Many small prizes and a few large ones shape the bonus. The 5× tier carries more of the expected value than any other: nine prizes at 5× come to 45 of the prize pool\'s 144, the largest single tier. The maximum award is every prize plus the safe-return award, 145× bet.',
   },
   volatility: {
     title: 'Sigma and the volatility index',
@@ -203,7 +203,7 @@ const explanations: Record<string, { title: string; body: string }> = {
   },
   strips: {
     title: 'Strip order',
-    body: 'The full ordered strips, exactly as the window slides over them. Order changes nothing for single-line pays (only counts matter) but everything for scatters and multi-row windows, because adjacent stops enter the window together. Strip order is the part of a real PAR sheet that stays confidential. Orca Dive\'s is in `games/orca-dive.json`, so you can read it against the counts above.',
+    body: 'The full ordered strips, exactly as the window slides over them. Order changes nothing for single-line pays (only counts matter) but everything for scatters and multi-row windows, because adjacent stops enter the window together. Strip order is the part a manufacturer guards most closely, though the Harrigan and Dixon sheets cited above were released under freedom-of-information law. Orca Dive\'s is in `games/orca-dive.json`, so you can read it against the counts above.',
   },
 }
 

@@ -45,7 +45,8 @@ function tilt(count: number): number {
     <p class="lab__lede">
       Orca Dive's first reel has 26 stops. A 64-bit random source is too large for its
       modulo bias to show on a chart, so this lab temporarily uses a smaller source. Both
-      charts use the same random draws. Only the method that turns a draw into a reel stop
+      charts start from the same seed, and diverge at the first rejection because Lemire
+      discards draws and modulo does not. Only the method that turns a draw into a reel stop
       changes.
     </p>
 

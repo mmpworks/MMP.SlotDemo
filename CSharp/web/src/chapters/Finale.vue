@@ -209,7 +209,7 @@ const verdict = computed(() => {
   return { withinBand: last.withinBand, status: r.status, point: last }
 })
 
-// The fixed industry yardstick beside the statistical band: within ±0.5pp of the
+// Our fixed acceptance yardstick beside the statistical band: within ±0.5pp of the
 // analytic RTP over at least ten million spins.
 const industry = computed(() => {
   const r = run.value
@@ -434,18 +434,20 @@ const industry = computed(() => {
         </span>
       </div>
 
-      <!-- The industry acceptance beside the statistical band: the fixed yardstick
-           test labs quote (±0.5pp over at least 10M spins). -->
+      <!-- A fixed acceptance yardstick beside the statistical band: +/-0.5pp over at
+           least 10M spins. This is our own acceptance rule, chosen as a common lab
+           convention; it is not a clause quoted from GLI-11 or any other standard, and
+           the label says so rather than borrowing an authority the repo cannot cite. -->
       <div
         v-if="verdict"
         class="verdict-banner verdict-banner--industry"
         :class="{ 'verdict-banner--failed': industry !== null && !industry.passed }"
       >
         <span class="verdict-banner__word">
-          {{ industry === null ? 'INDUSTRY CHECK — NOT QUALIFIED' : industry.passed ? 'INDUSTRY CHECK — PASS' : 'INDUSTRY CHECK — FAIL' }}
+          {{ industry === null ? 'ACCEPTANCE YARDSTICK — NOT QUALIFIED' : industry.passed ? 'ACCEPTANCE YARDSTICK — PASS' : 'ACCEPTANCE YARDSTICK — FAIL' }}
         </span>
         <span v-if="industry === null" class="mono">
-          needs at least 10,000,000 spins before the ±0.50pp yardstick applies
+          our ±0.50pp yardstick applies from 10,000,000 spins
         </span>
         <span v-else class="mono">
           deviation {{ (industry.deviation * 100).toFixed(4) }}pp of
