@@ -241,3 +241,37 @@
   font-size: 0.82rem;
   color: var(--color-text-muted);
 }
+
+/* A finished run whose clock reads as warm-up rather than engine speed. The chart is
+   tinted so a low number is noticed rather than quoted, and the numbers themselves stay
+   exactly as measured: the math of a warm-up run is correct, only its timing is not. */
+.proving-ground--warmup .chart {
+  background: color-mix(in srgb, var(--color-log-warning) 7%, transparent);
+  border-left: 2px solid var(--color-log-warning);
+}
+
+.warmup-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: baseline;
+  margin: 0 0 var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: color-mix(in srgb, var(--color-log-warning) 10%, transparent);
+  border-left: 3px solid var(--color-log-warning);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.warmup-banner__word {
+  font-family: var(--font-display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-log-warning);
+  white-space: nowrap;
+}
+
+.proving-ground--warmup .readout__value {
+  color: var(--color-text-primary);
+}

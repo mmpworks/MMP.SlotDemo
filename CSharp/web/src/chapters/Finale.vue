@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { getJson, postJson } from '../api/labs'
 import type { CurvePoint, RunDescription, RunLimits } from '../api/labs'
+import { WARMED_SPINS_PER_SECOND, isWarmupRun } from '../run/warmup'
 import { buildGeometry } from '../chart/convergence'
 
 defineProps<{ title: string; blurb: string }>()
@@ -39,6 +40,9 @@ const throughput = computed(() => {
   if (rate >= 1_000) return `${(rate / 1_000).toFixed(1)}k`
   return rate.toFixed(0)
 })
+
+/// True when a finished run's rate reads as a warm-up rather than the engine's real speed.
+const isWarmup = computed(() => isWarmupRun(run.value?.status, liveEngineRate.value))
 
 /// A fresh seed for an independent sample of the same game. Kept inside the
 /// signed 32-bit range the seed input accepts.
@@ -280,6 +284,13 @@ const industry = computed(() => {
         <button type="button" class="ghost" @click="cancel">Stop</button>
       </div>
 
+      <p class="lab-note">
+        The first runs after the server starts read slow. The engine compiles its spin loop
+        on first use and re-optimizes it once it has been used enough, so throughput climbs
+        over the first few runs and then settles. Results do not change with it: the same
+        seed returns the same spins, the same measured RTP and the same verdict every time.
+        Only the clock is warming up.
+      </p>
       <p v-if="isGameSubject && !repriceGame" class="lab-note">
         A shipped game brings its own paytable, and by default the run uses it as published.
         Its enumerated reference is shown as Analytic RTP below, and the run should settle
@@ -307,7 +318,7 @@ const industry = computed(() => {
     </section>
 
     <!-- Simulation controls and convergence chart. -->
-    <section class="proving-ground">
+    <section class="proving-ground" :class="{ 'proving-ground--warmup': isWarmup }">
       <div class="proving-ground__head">
         <div class="readout">
           <span class="readout__label">Spins</span>
@@ -334,6 +345,18 @@ const industry = computed(() => {
           <span class="readout__value">{{ run?.status ?? 'idle' }}</span>
         </div>
       </div>
+
+      <p v-if="isWarmup" class="warmup-banner">
+        <span class="warmup-banner__word">Warm-up run</span>
+        <span>
+          {{ throughput }} spins/second is below the
+          {{ (WARMED_SPINS_PER_SECOND / 1_000_000).toFixed(0) }}M this engine settles at. The
+          first runs after the server starts pay for compiling the spin loop, so the clock
+          is slow while the math is already right: the spins, the measured RTP and the
+          verdict below are final. Roll a new seed and run it again to read the engine's
+          real speed.
+        </span>
+      </p>
 
       <svg
         v-if="chart"
