@@ -185,8 +185,9 @@ Read the reason out of the comment.
 - A wild substitutes for other symbols, so a line's payout becomes the maximum over
   several interpretations. Maximum is not linear, and the closed-form expected value in
   episode 4 stops being a plain sum.
-- A scatter triggers on a count anywhere in the window, which couples a feature to the
-  window rather than leaving it an independent term.
+- A scatter triggers on window position rather than on a payline: this engine fires when
+  the scatter is visible on every reel the bonus requires. Either way it couples a feature
+  to the window rather than leaving it an independent term.
 - Keeping both off the preset strips is what lets the preset pipeline's analytic math
   stay a closed form. The games that want wilds and scatters get priced a different way:
   `GameAnalyzer` enumerates them, which is episode 5's machinery. "Two pricing paths, and

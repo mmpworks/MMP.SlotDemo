@@ -52,19 +52,35 @@ public sealed class WinEvaluator(GameDefinition definition)
         foreach (var category in _categories)
         {
             var run = 0;
-            var satisfied = false;
+            var satisfiedFrom = -1;
             while (run < cells.Length && category.Continues(cells[run]))
             {
-                satisfied |= category.IsRequired(cells[run]);
+                if (satisfiedFrom < 0 && category.IsRequired(cells[run])) satisfiedFrom = run;
                 run++;
             }
-            if (!satisfied) continue;
+            if (satisfiedFrom < 0) continue;
 
-            var pay = category.PayFor(run);
+            // Take the best-paying prefix, not simply the longest one. A PAR sheet can list
+            // a symbol that pays at three of a kind and nothing above it; landing four or
+            // five is a strictly better outcome and must not pay strictly less. Prefixes
+            // shorter than satisfiedFrom + 1 are excluded because the category was not
+            // satisfied yet: three wilds ahead of an Ace is not an Ace three of a kind.
+            // For a table that pays at every length, the top entry is the highest, so this
+            // picks the same win the run length alone would have.
+            var pay = 0;
+            var count = 0;
+            for (var length = run; length > satisfiedFrom; length--)
+            {
+                var candidate = category.PayFor(length);
+                if (candidate <= pay) continue;
+                pay = candidate;
+                count = length;
+            }
+
             if (pay == 0 || pay < best.Multiplier) continue;
-            if (pay == best.Multiplier && run <= best.Count) continue;
+            if (pay == best.Multiplier && count <= best.Count) continue;
 
-            best = new LineWin(category.Index, run, pay);
+            best = new LineWin(category.Index, count, pay);
         }
 
         return best;
