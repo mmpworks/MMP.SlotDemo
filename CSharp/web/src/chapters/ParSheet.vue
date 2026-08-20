@@ -304,7 +304,12 @@ const symbolName = computed(() => {
             Column set from the published study of 23 real Ontario PAR sheets
             (<button class="par-term" @click="explainKey = 'versions'">multiple approved versions</button>
             of one game differ mainly in this table's payback column). Their mechanical
-            games reported VI at the 90% confidence level; we compute ours the same way.
+            games reported VI at the 90% confidence level, and their Table 2 spells the
+            calculation out: volatility index is the z-score for the confidence interval
+            times the game's standard deviation, with z of 1.65 for 90%, giving Double
+            Diamond Deluxe 10.476 from a standard deviation of 6.349285. We use the same
+            z, including their rounding, so this column reads directly against theirs.
+            The exact 90% z is 1.6449, which would move that VI to 10.444.
           </p>
         </section>
 

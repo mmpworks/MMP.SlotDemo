@@ -84,7 +84,7 @@ public static class ParSheetEndpoints
                     : (double?)null,
                 jackpotCredits = top?.pay,
                 playsPerBonus = analysis.TriggerProbability > 0 ? 1.0 / analysis.TriggerProbability : (double?)null,
-                volatilityIndex90 = NormalQuantile.TwoSided90 * analysis.SigmaPerUnitWagered,
+                volatilityIndex90 = NormalQuantile.VolatilityIndexZ * analysis.SigmaPerUnitWagered,
             });
         }
 

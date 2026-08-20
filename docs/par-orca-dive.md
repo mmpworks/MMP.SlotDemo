@@ -286,3 +286,24 @@ it opens real treasure chests without replacement, and the closed form exists to
 | Bonus trigger rate | 0.0122895 | (6/26)^3 exactly |
 | Bonus return | 26.510% | 26.5102% |
 | Total RTP | 86.111% | 86.1112% |
+
+## Volatility index: which z, and why
+
+The VI column is quoted at the 90% confidence level, matching Harrigan and Dixon so the
+figures can be read side by side. Their Table 2 states the calculation and works an
+example:
+
+> Volatility index = (z-score for confidence interval) * (standard deviation of the game)
+>
+> z-score for a 90% confidence interval is: 1.65
+>
+> Volatility index: 10.476 i.e., 6.349285 x 1.65
+
+Two details worth keeping straight. Their z is the rounded 90% value; the exact one is
+1.6449, which would turn that 10.476 into 10.444 and change the printed digit. And the
+interval it feeds is payback plus or minus VI divided by the square root of plays, which
+is the same z*sigma/sqrt(N) the proving ground draws, written the way a PAR sheet writes
+it.
+
+Verified against the paper 2009-06, Journal of Gambling Issues issue 23, Table 2, on
+2026-08-19.
