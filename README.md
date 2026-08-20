@@ -24,6 +24,27 @@ dotnet run -c Release --project CSharp/src/SlotDemo.Server
 Dev loop for the SPA: `npm run dev` in `CSharp/web` (Vite on `:5173`, proxies
 `/api` to `:5090`).
 
+Or in Docker, which builds the SPA and the server together:
+
+```bash
+docker compose -f docker/docker-compose.yml up --build
+```
+
+Everything the site needs is in this repository. The only external dependencies are
+public NuGet and npm packages, so a fresh clone builds and runs with no other checkout.
+
+## What else is here
+
+| Directory | What it is |
+|---|---|
+| `CSharp/src` | The engine (`MMP.SlotGame.Core`) and the server that hosts the labs |
+| `CSharp/web` | The Vue SPA: chapter labs, the PAR sheet, and the TEACH ME reading section |
+| `CSharp/games` | The shipped game definitions the labs and the PAR sheet load |
+| `docs/articles` | The nine articles, served to the site's TEACH ME section |
+| `docs/scripts` | Recording scripts for the video series |
+| `python/verification` | An independent re-derivation of the math, sharing no code with the engine |
+| `video` | The Remotion project for the series' video assets |
+
 ## The pages
 
 | Page | What it shows | Lab endpoints |
@@ -37,6 +58,7 @@ Dev loop for the SPA: `npm run dev` in `CSharp/web` (Vite on `:5173`, proxies
 | 07 Proof | Exhaustive enumeration census, simulation vs referee verdict | `/api/ch7/enumerate` `/referee` |
 | PAR | The full Probability & Accounting Report for Orca Dive, computed live from every stop combination | `/api/par/sheet` `/api/par/summary` |
 | Books | The slot-math, PAR-sheet, PRNG, and regulation reading behind the series | — |
+| Teach me! | The nine articles, read on the site, cross-linked with the labs both ways | `/api/articles` |
 | Run | **The proving ground** — a live 10M-spin run converging inside the band | `/api/run/*` |
 
 ## The proving ground

@@ -1,0 +1,9 @@
+# Build outputs and dependency trees are rebuilt inside the image; copying them in
+# makes the context huge and can leak a host-built binary into the container.
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/TestResults/
+.git/
+logs/
