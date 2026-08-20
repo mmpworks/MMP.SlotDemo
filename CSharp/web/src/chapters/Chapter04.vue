@@ -4,6 +4,7 @@ import { postJson } from '../api/labs'
 import type { BandView, PublishedView, SolveView } from '../api/labs'
 import ComprehensionCheck from '../components/ComprehensionCheck.vue'
 import OptimizationPreview from '../components/OptimizationPreview.vue'
+import ReadTheArticle from '../components/ReadTheArticle.vue'
 
 defineProps<{ title: string; blurb: string }>()
 
@@ -74,6 +75,7 @@ async function runBand(): Promise<void> {
   <article>
     <header class="chapter-head">
       <h2>{{ title }}</h2>
+      <ReadTheArticle chapter="ch04" />
       <p class="chapter-blurb">{{ blurb }}</p>
     </header>
 

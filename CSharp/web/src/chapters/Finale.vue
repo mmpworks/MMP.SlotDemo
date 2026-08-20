@@ -4,6 +4,7 @@ import { getJson, postJson } from '../api/labs'
 import type { CurvePoint, RunDescription, RunLimits, RunReadiness } from '../api/labs'
 import { WARMED_SPINS_PER_SECOND, isWarmupRun } from '../run/warmup'
 import { buildGeometry } from '../chart/convergence'
+import ReadTheArticle from '../components/ReadTheArticle.vue'
 
 defineProps<{ title: string; blurb: string }>()
 
@@ -222,6 +223,7 @@ const industry = computed(() => {
   <article>
     <header class="chapter-head">
       <h2>{{ title }}</h2>
+      <ReadTheArticle chapter="finale" />
       <p class="chapter-blurb">{{ blurb }}</p>
     </header>
 

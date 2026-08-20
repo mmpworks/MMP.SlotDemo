@@ -105,6 +105,7 @@ app.MapParSheet(log);
 
 // ---- Simulation runs: the finale page's start/watch/stop surface. ----
 app.MapRuns();
+app.MapArticles(log);
 
 // ---- Log relay: Herald's HttpJson sink posts batches here; SSE fans them out. ----
 app.MapPost("/api/logs/ingest", async (HttpRequest request, LogStreamService stream) =>

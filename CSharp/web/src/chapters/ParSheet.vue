@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { getJson, postJson } from '../api/labs'
 import PaylinePattern from '../components/PaylinePattern.vue'
+import ReadTheArticle from '../components/ReadTheArticle.vue'
 
 defineProps<{ title: string; blurb: string }>()
 
@@ -228,6 +229,7 @@ const symbolName = computed(() => {
   <article>
     <header class="chapter-head">
       <h2>{{ title }}</h2>
+      <ReadTheArticle chapter="par" />
       <p class="chapter-blurb">{{ blurb }}</p>
     </header>
 

@@ -5,6 +5,7 @@ import DieLab from './ch02/DieLab.vue'
 import BiasLab from './ch02/BiasLab.vue'
 import ComprehensionCheck from '../components/ComprehensionCheck.vue'
 import OptimizationPreview from '../components/OptimizationPreview.vue'
+import ReadTheArticle from '../components/ReadTheArticle.vue'
 
 defineProps<{ title: string; blurb: string }>()
 </script>
@@ -14,6 +15,7 @@ defineProps<{ title: string; blurb: string }>()
     <header class="chapter__head">
       <h2>{{ title }}</h2>
       <p class="chapter__blurb">{{ blurb }}</p>
+    <ReadTheArticle chapter="ch02" />
     </header>
 
     <section class="chapter__brief">

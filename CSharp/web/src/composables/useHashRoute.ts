@@ -8,8 +8,13 @@ import { onMounted, onUnmounted, ref } from 'vue'
 export function useHashRoute(fallback: string) {
   const current = ref(readHash() || fallback)
 
+  /**
+   * The page id is the FIRST path segment. Anything after it belongs to the page: the
+   * teach section uses #/teach/<article-id> so an article can be linked to directly, and
+   * without this split that whole hash would fail to match a page and fall back home.
+   */
   function readHash(): string {
-    return window.location.hash.replace(/^#\/?/, '')
+    return window.location.hash.replace(/^#\/?/, '').split('/')[0]
   }
 
   function sync(): void {

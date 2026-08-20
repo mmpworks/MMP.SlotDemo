@@ -5,6 +5,7 @@ import PaylinePattern from '../components/PaylinePattern.vue'
 import ComprehensionCheck from '../components/ComprehensionCheck.vue'
 import OptimizationPreview from '../components/OptimizationPreview.vue'
 import type { CensusView, ReelSnapshotView, SourceView, SpinView } from '../api/labs'
+import ReadTheArticle from '../components/ReadTheArticle.vue'
 
 defineProps<{ title: string; blurb: string }>()
 
@@ -124,6 +125,7 @@ function payFor(category: SourceView['paytable'][number], count: number): string
   <article>
     <header class="chapter-head">
       <h2>{{ title }}</h2>
+      <ReadTheArticle chapter="ch03" />
       <p class="chapter-blurb">{{ blurb }}</p>
     </header>
 

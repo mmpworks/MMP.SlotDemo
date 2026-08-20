@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { getJson, postJson } from '../api/labs'
 import type { OptimizationBenchmarkView, SourceView } from '../api/labs'
 import ComprehensionCheck from '../components/ComprehensionCheck.vue'
+import ReadTheArticle from '../components/ReadTheArticle.vue'
 
 defineProps<{ title: string; blurb: string }>()
 
@@ -57,6 +58,7 @@ onMounted(async () => {
   <article>
     <header class="chapter-head">
       <h2>{{ title }}</h2>
+      <ReadTheArticle chapter="ch09" />
       <p class="chapter-blurb">{{ blurb }}</p>
     </header>
 

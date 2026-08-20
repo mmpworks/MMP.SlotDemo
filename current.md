@@ -3,6 +3,16 @@ _as of 2026-08-19_
 
 ## 2026-08-19 session
 
+- **TEACH ME section added.** The nine articles are now readable on the site, in their own
+  nav band separated from the labs by a rule: the labs are things you run, TEACH ME is
+  things you read. `docs/articles` stays the single source and is copied to the server's
+  output at build time, served by `/api/articles`, rendered with `marked`. Navigation runs
+  both ways: every article offers "Run this chapter's lab", every chapter page offers
+  "Read the article for this chapter". The pairing lives in `web/src/teach/pairing.ts`
+  with tests, because it is not a clean 1:1 (episode 1 has no lab; PAR and the proving
+  ground have no article). `#/teach/<article-id>` deep-links to one article, which needed
+  the hash router to read only the FIRST segment as the page id.
+
 - **Independent verification lives in `python/verification/`.** A Python
   re-implementation of Orca Dive's math that shares no code with the engine: it reads
   `games/orca-dive.json`, recompiles the pay categories, enumerates all 14,781,416 stop

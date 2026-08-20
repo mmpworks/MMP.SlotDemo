@@ -16,6 +16,9 @@
     <!-- Game definitions are DATA, imported at run time. They travel to the output so the
          server loads the same files the engine's own tests do. -->
     <Content Include="..\..\games\*.json" Link="games\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../../docs/articles/*.md" Link="articles/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The article series is served to the TEACH ME section. docs/articles stays the
+         single source: these are copied, never duplicated. -->
   </ItemGroup>
 
   <ItemGroup>

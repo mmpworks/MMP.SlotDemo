@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { chapters } from '../chapters/registry'
+import { labChapters, teachChapters } from '../chapters/registry'
 
 defineProps<{ current: string }>()
 const emit = defineEmits<{ (e: 'navigate', id: string): void }>()
@@ -8,7 +8,7 @@ const emit = defineEmits<{ (e: 'navigate', id: string): void }>()
 <template>
   <nav class="chapter-nav" aria-label="Chapters">
     <button
-      v-for="chapter in chapters"
+      v-for="chapter in labChapters"
       :key="chapter.id"
       class="chapter-nav__tab"
       :class="{
@@ -19,6 +19,24 @@ const emit = defineEmits<{ (e: 'navigate', id: string): void }>()
       :aria-current="chapter.id === current ? 'page' : undefined"
       :title="chapter.title"
       :aria-label="chapter.title"
+      @click="emit('navigate', chapter.id)"
+    >
+      {{ chapter.label }}
+    </button>
+
+    <!-- The reading section sits apart from the labs, with a rule between them, because
+         it answers a different question: the labs are things you run, these are things
+         you read. -->
+    <span class="chapter-nav__divider" aria-hidden="true" />
+
+    <button
+      v-for="chapter in teachChapters"
+      :key="chapter.id"
+      class="chapter-nav__tab chapter-nav__tab--teach"
+      :class="{ 'chapter-nav__tab--active': chapter.id === current }"
+      type="button"
+      :aria-current="chapter.id === current ? 'page' : undefined"
+      :title="chapter.title"
       @click="emit('navigate', chapter.id)"
     >
       {{ chapter.label }}
@@ -63,5 +81,21 @@ const emit = defineEmits<{ (e: 'navigate', id: string): void }>()
 
 .chapter-nav__tab--pending {
   color: var(--color-text-muted);
+}
+
+.chapter-nav__divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--color-rule);
+  margin: 0 var(--space-xs);
+}
+
+.chapter-nav__tab--teach {
+  color: var(--color-accent);
+  border: var(--rule-brass);
+}
+
+.chapter-nav__tab--teach:hover {
+  color: var(--color-accent-bright);
 }
 </style>
