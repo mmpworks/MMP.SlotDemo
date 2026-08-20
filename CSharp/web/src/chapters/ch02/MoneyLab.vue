@@ -44,9 +44,9 @@ function formatCredits(value: number): string {
   <section class="lab">
     <h3>Lab 1 — Money as an integer</h3>
     <p class="lab__lede">
-      A wager goes in as credits, comes back as a count of millicents, and the same total is
-      then computed a second way in <code>double</code>. Push the repeat count up and watch
-      only one of the two answers stay put.
+      Orca Dive wagers one credit per spin. This lab calculates the same repeated payout
+      with integer millicents and with <code>double</code>. Increase the repeat count to see
+      whether the two totals remain equal.
     </p>
 
     <div class="controls">
@@ -112,8 +112,8 @@ function formatCredits(value: number): string {
         <BitStrip :bits="result.wager.bits" :fraction-bits="FRACTION_BITS" label="wager, 64 bits" />
         <BitStrip :bits="result.pay.bits" :fraction-bits="FRACTION_BITS" label="pay, 64 bits" />
         <p class="bits__note">
-          Outlined bits sit below one credit. This is one integer laid out end to end, with
-          no mantissa or exponent dividing it up.
+          The outlined bits represent amounts smaller than one credit. Millicents stores the
+          entire amount as one integer; there is no floating-point mantissa or exponent.
         </p>
       </div>
 
@@ -137,10 +137,10 @@ function formatCredits(value: number): string {
         <p class="mono">(0.1 + 0.2) + 0.3 = {{ result.associativeLeft }}</p>
         <p class="mono">0.1 + (0.2 + 0.3) = {{ result.associativeRight }}</p>
         <p class="assoc__note">
-          Same three numbers, two groupings, two answers. Workers finish in whatever order
-          the scheduler hands out, so a double-based total carries a race condition inside
-          its arithmetic. Integer addition gives the same total in any order, which is what
-          makes an N-worker run match a 1-worker run bit for bit.
+          The same three numbers produce different floating-point answers when their grouping
+          changes. Worker completion order can change that grouping. Integer addition gives
+          the same total in every order, allowing a multi-worker run to match a one-worker
+          run bit for bit.
         </p>
       </div>
     </div>

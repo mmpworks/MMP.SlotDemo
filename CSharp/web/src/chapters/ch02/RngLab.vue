@@ -35,9 +35,9 @@ async function compare(useMixing: boolean): Promise<void> {
   <section class="lab">
     <h3>Lab 2 — One seed, many workers</h3>
     <p class="lab__lede">
-      Every worker needs its own stream, and the streams have to be unrelated. Run it with
-      SplitMix64 mixing, then run the same seed with the naive <code>seed + workerId</code>
-      and compare the first draws. The shared-prefix count is the tell.
+      Each simulation worker needs a repeatable random stream that does not copy a neighbor's
+      early pattern. Run both seeding methods and compare workers 0 and 1. The shared-prefix
+      count reports how many leading bits their first values have in common.
     </p>
 
     <div class="controls">
@@ -96,9 +96,9 @@ async function compare(useMixing: boolean): Promise<void> {
 
       <p class="note">
         The reduced column is what a reel actually consumes: a stop index inside a strip of
-        {{ bound }} positions — at 26, these are stop numbers on Orca Dive's first reel. Replay matching means the same seed and worker id rebuilt the
-        identical stream — that property is what turns a ten-million-spin run into something
-        you can hand to somebody else and have them reproduce.
+        The reduced values are reel stops. At the default length of 26, they are valid stop
+        numbers for Orca Dive's first reel. "Replay matched" means the same seed and worker
+        ID rebuilt the same stream, which lets another run reproduce the result.
       </p>
     </div>
   </section>

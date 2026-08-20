@@ -69,7 +69,7 @@ async function runTelemetry(): Promise<void> {
     </header>
 
     <section class="chapter-brief">
-      <h3>What the episode builds</h3>
+      <h3>One run, divided among workers</h3>
       <p>
         Think of it as a factory floor. Each worker is handed a fixed stack of spins at the
         start of the shift, so the same worker always plays the same spins and a run
@@ -96,7 +96,7 @@ async function runTelemetry(): Promise<void> {
       <p>
         The band half-width is <code>z × sigma / square root of N</code>. Here,
         <code>N</code> is the completed spin count in <code>RunSnapshot.Spins</code>.
-        Sigma is the one-spin swinginess calculated by <code>GameAnalyzer</code>.
+        Sigma is the typical one-spin swing calculated by <code>GameAnalyzer</code>.
         For the 99% band, <code>z</code> is about 2.576. The engine multiplies that number
         by sigma and divides by <code>Math.Sqrt(N)</code>.
       </p>
@@ -145,10 +145,9 @@ async function runTelemetry(): Promise<void> {
     <section class="lab">
       <h3>Lab 1 — Same seed, same answer</h3>
       <p class="lab__lede">
-        Three runs of the same configuration, on Orca Dive by default with wilds and the
-        scatter bonus. Wall time varies with whatever else the machine is doing. The
-        totals come back identical to the last millicent, because the bonus draws from the
-        same per-worker stream as the reels. Vary the seed to see a real difference.
+        Run Orca Dive three times with the same seed and worker count. Other programs may
+        change the elapsed time, but the returned money and hit counts should match. The
+        second button changes the seed for each run so you can compare the two cases.
       </p>
 
       <div class="controls">
@@ -212,8 +211,8 @@ async function runTelemetry(): Promise<void> {
           </tbody>
         </table>
         <p class="lab-note">
-          Read the returned column. Integer money (M2), fixed quotas, and seeded per-worker
-          streams (the R3 discipline) together make an N-worker run reproducible.
+          Compare the returned-money column across the three runs. Integer money, fixed
+          worker quotas, and seeded worker streams make the result reproducible.
         </p>
       </div>
     </section>
@@ -222,8 +221,8 @@ async function runTelemetry(): Promise<void> {
       <h3>Lab 2 — Starve the telemetry lane</h3>
       <p class="lab__lede">
         A deliberately slow reader drains the snapshot channel while eight workers flood
-        it. Shrink the capacity and the drop rate climbs. The exact totals never move,
-        because the two lanes never touch.
+        it. Shrink the capacity and more display updates are dropped. The final money and
+        spin totals use a separate path, so dropped chart points cannot change them.
       </p>
 
       <div class="controls">

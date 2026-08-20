@@ -8,7 +8,7 @@ import OptimizationPreview from '../components/OptimizationPreview.vue'
 defineProps<{ title: string; blurb: string }>()
 const emit = defineEmits<{ (e: 'navigate', id: string): void }>()
 
-const gameFile = ref('classic-three-reel.json')
+const gameFile = ref('orca-dive.json')
 const enumeration = ref<EnumerateView | null>(null)
 
 const seed = ref(20260811)
@@ -57,17 +57,13 @@ async function runReferee(): Promise<void> {
     </header>
 
     <section class="chapter-brief">
-      <h3>What the episode proves</h3>
+      <h3>Check Orca Dive three different ways</h3>
       <p>
-        A simulator that checks its own math is a circular argument: if the engine and the
-        analytic calculator share a misunderstanding of the game, they will agree with each
-        other and both be wrong. Breaking that circle takes a referee that shares data with
-        both sides and code with neither. Three implementations share nothing but the game
-        data: closed-form analysis,
-        Monte-Carlo simulation, and exhaustive enumeration. The enumerator walks every stop
-        combination with no randomness and no sampling, and counts what each category pays.
-        When the simulation's measured RTP lands inside the band around the enumerator's
-        exact figure, all three methods agree.
+        Two calculations can agree because they share the same bug. This project adds a
+        third check that shares the Orca Dive data but uses separate counting code. The
+        analyzer uses formulas, the simulation draws random spins, and the enumerator visits
+        every stop combination. Agreement among those three paths is stronger evidence than
+        any one path checking itself.
       </p>
       <p class="chapter-source">
         Source: <code>src/MMP.SlotGame.Core/Games/GameAnalyzer.cs</code>,
@@ -79,8 +75,9 @@ async function runReferee(): Promise<void> {
     <section class="lab">
       <h3>Lab 1 — The census</h3>
       <p class="lab__lede">
-        Two-Line Tide has 64 combinations, the classic game has 11,616, and Orca Dive has
-        14,781,416. Two-Line Tide is the hand-checkable two-payline-plus-bonus example.
+        Orca Dive is selected first. Its five strips create 14,781,416 stop combinations,
+        and the census visits every one. Use Classic Three Reel for a shorter 11,616-result
+        run or Two-Line Tide for a 64-result example that can be checked by hand.
       </p>
 
       <div class="controls">
@@ -145,10 +142,10 @@ async function runReferee(): Promise<void> {
     <section class="lab">
       <h3>Lab 2 — Simulation against the referee</h3>
       <p class="lab__lede">
-        Play real spins with real randomness, then set the measurement beside the exact
-        figures. The band is z·σ/√N at the 99% level, computed from the enumerator's own
-        sigma. Hit frequency here counts line wins only, the same convention the PAR sheet
-        uses.
+        Simulate the selected game, then compare the measured results with the census. The
+        99% band uses <code>z × sigma / square root of N</code>, with sigma taken from the
+        census and N equal to the number of spins. Hit frequency counts line wins, matching
+        the Orca Dive PAR sheet.
       </p>
 
       <div class="controls">

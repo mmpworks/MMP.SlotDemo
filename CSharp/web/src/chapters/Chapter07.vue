@@ -19,7 +19,7 @@ const busy = ref(false)
 onMounted(async () => {
   try {
     games.value = await getJson<GameSummary[]>('/api/ch6/games')
-    selected.value = games.value[0] ?? null
+    selected.value = games.value.find((game) => game.file === 'orca-dive.json') ?? games.value[0] ?? null
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load games.'
   }
@@ -59,17 +59,13 @@ async function validate(): Promise<void> {
     </header>
 
     <section class="chapter-brief">
-      <h3>What the episode builds</h3>
+      <h3>Load Orca Dive from JSON</h3>
       <p>
-        Where does a game live: in code, or in data? Everything so far has run generated
-        games built from a canonical paytable, which proves the engine and the math agree
-        with each other but nothing outside the codebase. This episode answers the question
-        with data. A slot game is a document: symbols, strips, paylines, paytable, and optionally a
-        scatter-triggered bonus, all in one JSON file. The loader compiles it into a
-        validated <code>GameDefinition</code> or returns the complete list of problems in
-        one pass. It checks the declared facts (stop counts, symbol tallies) against the
-        strips, so a PAR-sheet transcription error is caught at load rather than showing up
-        later as a wrong RTP.
+        Orca Dive lives in <code>games/orca-dive.json</code>. The document contains its
+        symbols, ordered reel strips, payline, paytable, wild rule, and Penguin Bonus. The
+        loader turns that document into a <code>GameDefinition</code>. It also recounts the
+        stops and symbols, catching a PAR-sheet transcription error before a simulation
+        reports the wrong RTP.
       </p>
       <table class="lab-table">
         <thead><tr><th>Stage</th><th>Source</th><th>Result</th></tr></thead>
@@ -108,7 +104,7 @@ async function validate(): Promise<void> {
     </section>
 
     <section class="lab">
-      <h3>Lab 1 — The shipped games, read by the real loader</h3>
+      <h3>Lab 1 — Read the shipped game files</h3>
       <p v-if="error" class="lab__error">{{ error }}</p>
 
       <div class="game-picker">
@@ -169,9 +165,9 @@ async function validate(): Promise<void> {
     <section class="lab">
       <h3>Lab 2 — Feed the loader anything</h3>
       <p class="lab__lede">
-        Paste a definition and the loader answers with the compiled game, or with every
-        problem in the file at once. An author fixes a document in one pass instead of
-        load-fix-load-fix.
+        Paste a game definition and validate it. A valid document becomes a compiled game.
+        An invalid document reports all independent problems found in that pass, so related
+        mistakes can be fixed together.
       </p>
 
       <div class="controls">

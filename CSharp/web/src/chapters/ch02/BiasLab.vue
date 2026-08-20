@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { runBiasLab, type BiasResponse } from '../../api/chapters'
 
 const seed = ref(7)
-const bound = ref(37)
+const bound = ref(26)
 const bits = ref(8)
 const samples = ref(200_000)
 
@@ -43,10 +43,10 @@ function tilt(count: number): number {
   <section class="lab">
     <h3>Lab 4 — Where modulo bias hides</h3>
     <p class="lab__lede">
-      Reducing a 64-bit draw with <code>%</code> skews the low buckets, but at 64 bits the
-      skew is far too small to see. Narrow the draw space to a handful of bits and the same
-      arithmetic shows its shape. Both histograms come from the same seed and the same
-      generator; only the reduction differs.
+      Orca Dive's first reel has 26 stops. A 64-bit random source is too large for its
+      modulo bias to show on a chart, so this lab temporarily uses a smaller source. Both
+      charts use the same random draws. Only the method that turns a draw into a reel stop
+      changes.
     </p>
 
     <div class="controls">
@@ -123,11 +123,10 @@ function tilt(count: number): number {
       </div>
 
       <p class="note">
-        The step in the modulo chart falls at bucket {{ result.space % bound }} — every bucket
-        below it has one extra source value feeding it. On a reel strip that means certain
-        stops come up slightly more often than the strip says they should, which moves the
-        measured RTP away from the number the paytable was solved for. The multiply-shift
-        version pays for evenness with the rejected draws counted above.
+        Buckets below {{ result.space % bound }} receive one extra source value in the modulo
+        chart. Those reel stops become slightly more likely than the PAR sheet says. Lemire's
+        method rejects the leftover draws counted above, then redraws, so every stop keeps
+        the same chance.
       </p>
     </div>
   </section>

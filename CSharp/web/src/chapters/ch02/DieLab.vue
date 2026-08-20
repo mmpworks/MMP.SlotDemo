@@ -110,14 +110,11 @@ const lemire = computed(() => {
   <section class="lab">
     <h3>Lab 3 — Roll a fair die from raw bits</h3>
     <p class="lab__lede">
-      Before sampling anything, watch the whole mechanism at once. A tiny source —
-      every raw value from 0 to {{ space - 1 }} — is turned into {{ faces }} die faces by one
-      multiply: the high part of <code>raw × {{ faces }}</code> is the face, the low part is
-      how deep into that face's slice the value landed. {{ space }} values cannot split into
-      {{ faces }} equal slices when {{ space }} mod {{ faces }} = {{ threshold }}, so
-      {{ threshold }} slices hold one extra value. The fix: reject any row whose low part is
-      below {{ threshold }} — the shallowest seats of the fat slices — and redraw. The
-      rejected set is fixed before any randomness exists, and it cannot see outcomes.
+      Start with the small table below. It contains every raw value from 0 through
+      {{ space - 1 }}, so you can count the results by hand. The high part of
+      <code>raw × {{ faces }}</code> chooses the die face. The low part shows where the raw
+      value landed inside that face's share. When the shares are uneven, rows with a low
+      part below {{ threshold }} are rejected and drawn again.
     </p>
 
     <div class="controls">
@@ -173,19 +170,17 @@ const lemire = computed(() => {
     </div>
 
     <p class="note">
-      The low column climbs by {{ faces }} each row and wraps at every face boundary. A wrap
-      landing below {{ threshold }} marks a fat slice's extra value — those rows are the
-      whole rejected set. The engine's <code>SpinRng.NextInt</code> does exactly this with
-      2⁶⁴ raw values: for a 26-stop reel the threshold is 16, so the reject zone is 16
-      positions out of 2⁶⁴ — about one redraw per 10¹⁸ draws.
+      The low column climbs by {{ faces }} and wraps at each face boundary. A wrapped value
+      below {{ threshold }} is rejected. <code>SpinRng.NextInt</code> uses the same test with
+      2⁶⁴ raw values. For Orca Dive's 26-stop first reel, only 16 values out of 2⁶⁴ fall in
+      the reject zone: about one redraw per 10¹⁸ draws.
     </p>
 
-    <h4>The real thing: one 64-bit draw</h4>
+    <h4>One production-sized 64-bit draw</h4>
     <p class="lab__lede">
-      Now the production sizes, with exact arithmetic. Type any 64-bit number (or take a
-      random one), pick a stop count, and watch the same multiply at full width: the
-      128-bit product's high 64 bits are the stop, its low 64 bits face the threshold
-      2⁶⁴ mod {{ bound64 }}.
+      Type a 64-bit number or use the Random button. The high half of the 128-bit product
+      selects the stop. The low half is compared with <code>2⁶⁴ mod {{ bound64 }}</code>
+      to decide whether this draw must be repeated.
     </p>
 
     <div class="controls">
@@ -237,11 +232,10 @@ const lemire = computed(() => {
     </div>
 
     <p class="note">
-      Hunting for a rejection? With 26 stops only the raw values whose low half lands below
-      16 redraw — 16 patterns out of 18,446,744,073,709,551,616. Clicking Random until one
-      appears would take, on average, longer than the age of the universe. That is the
-      whole trade: exact fairness, at a cost you cannot measure. The sampling lab below
-      shrinks the draw space so the same arithmetic becomes visible again.
+      With 26 stops, a rejection occurs for only 16 patterns out of
+      18,446,744,073,709,551,616. The Random button is therefore unlikely to find one. The
+      smaller table above uses the same arithmetic at a size where the rejected rows remain
+      visible.
     </p>
   </section>
 </template>

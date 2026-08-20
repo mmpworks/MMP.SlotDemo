@@ -9,7 +9,7 @@ defineProps<{ title: string; blurb: string }>()
 
 const subject = ref('game:orca-dive.json')
 const presetName = ref('Video5x64')
-const targetBp = ref(7500)
+const targetBp = ref(5960)
 const solve = ref<SolveView | null>(null)
 
 const freeSpinsBp = ref(1300)
@@ -78,7 +78,7 @@ async function runBand(): Promise<void> {
     </header>
 
     <section class="chapter-brief">
-      <h3>What the episode builds</h3>
+      <h3>How a paytable becomes RTP</h3>
       <p>
         This episode calculates a game's return before random spins begin. For each
         paytable row, multiply the payout by the chance of that result. Add those row
@@ -99,10 +99,9 @@ async function runBand(): Promise<void> {
     <section class="lab">
       <h3>Lab 1: Solve a paytable</h3>
       <p class="lab__lede">
-        Choose a target line RTP. The lab calculates each paytable row's probability and
-        RTP contribution, adds the rows, and finds one scale factor for every payout. For
-        Orca Dive, the published line RTP is 59.60%. Its separate 26.51% bonus raises the
-        complete game to 86.11%.
+        Orca Dive is selected first. The lab multiplies each paytable award by its chance,
+        then adds those contributions. The published line game returns 59.60%. Penguin
+        Bonus contributes another 26.51%, bringing the complete game to 86.11%.
       </p>
 
       <div class="controls">
@@ -182,10 +181,9 @@ async function runBand(): Promise<void> {
     <section class="lab">
       <h3>Lab 2: Calculate a confidence band</h3>
       <p class="lab__lede">
-        RTP tells you the long-run average. It does not tell you how bumpy the trip will be.
-        Sigma is the standard deviation of one spin's return: a larger sigma means payouts
-        are spread farther from the average. The engine calculates it from the reel strips
-        and paytable, including paylines that share visible positions.
+        RTP is the long-run average. Sigma describes the size of the usual one-spin swings:
+        a larger sigma means results spread farther from that average. The engine calculates
+        both from the reel strips and paytable, including paylines that share positions.
       </p>
       <p class="lab-note">
         Picture two games with 50% RTP. One always pays 0.5 wager. The other pays zero nine
@@ -253,9 +251,9 @@ async function runBand(): Promise<void> {
     <section class="lab">
       <h3>Lab 3: Price Orca Dive's published paytable</h3>
       <p class="lab__lede">
-        Orca Dive already has approved payouts, so this lab does not change them. It counts
-        every stop combination, multiplies each row's payout by its probability, and sorts
-        the rows by RTP contribution.
+        This lab leaves Orca Dive's published awards unchanged. It counts every stop
+        combination, calculates how much each paytable row adds to RTP, and sorts the rows
+        from largest contribution to smallest.
       </p>
 
       <div class="controls">

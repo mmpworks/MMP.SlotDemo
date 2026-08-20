@@ -195,15 +195,11 @@ const industry = computed(() => {
 
     <section class="chapter-brief">
       <p>
-        Everything the series built lands here. Article 4 priced this game's RTP before a
-        single spin ran; article 8 counted every possible outcome to check that price without
-        randomness at all. This page is the third leg: real spins, real randomness, watched
-        live. Each point on the chart is the measured RTP after some number of spins, and the
-        shaded funnel is the range probability theory allows around the analytic prediction.
-        As spins climb, the funnel narrows by √N, so the same measured RTP counts as
-        stronger evidence later in a run than it did early. A line that settles inside a
-        narrowing band and stays there is what agreement between two independent methods
-        looks like on a chart.
+        Orca Dive is selected for the final run. Article 4 calculated its RTP from the game
+        data, and article 8 checked that value by counting every stop combination. This page
+        supplies the independent simulation. Each chart point is the measured RTP after N
+        spins. The shaded 99% confidence band narrows with the square root of N, forming the
+        funnel around the calculated RTP.
       </p>
     </section>
 
@@ -285,11 +281,9 @@ const industry = computed(() => {
       </div>
 
       <p class="lab-note">
-        The first runs after the server starts read slow. The engine compiles its spin loop
-        on first use and re-optimizes it once it has been used enough, so throughput climbs
-        over the first few runs and then settles. Results do not change with it: the same
-        seed returns the same spins, the same measured RTP and the same verdict every time.
-        Only the clock is warming up.
+        Early runs after a server restart may be slower while .NET compiles and tunes the
+        spin loop. Throughput changes during that warmup; the selected seed still produces
+        the same spins, measured RTP, and final comparison.
       </p>
       <p v-if="isGameSubject && !repriceGame" class="lab-note">
         A shipped game brings its own paytable, and by default the run uses it as published.
@@ -297,13 +291,11 @@ const industry = computed(() => {
         into the band around it.
       </p>
       <p v-if="isGameSubject && repriceGame" class="lab-note">
-        Line RTP is the sum of probability times pay, so one scalar re-prices the whole
-        paytable. The strips are untouched, which means the game still hits just as often
-        and only the amounts change. The feature keeps its own prize table, so its share of
-        the return is a floor the total cannot go under. Each re-priced pay rounds to a
-        whole hundredth of the wager, so the Analytic RTP below lands near the request
-        rather than exactly on it, and it is that enumerated figure the run is measured
-        against.
+        Line RTP is the sum of probability times pay, so one scale factor changes every
+        line award. The strips stay fixed, leaving hit frequency unchanged. Penguin Bonus
+        keeps its separate prize table and RTP contribution. Because each changed line award
+        rounds to one hundredth of a wager, the enumerated RTP may differ slightly from the
+        requested target. The simulation is compared with that enumerated value.
       </p>
       <p v-if="outsideLimits === 'ceiling'" class="lab__error">
         Aggregate {{ aggregateBp }} bp is over the solver's {{ limits?.maxAggregateBasisPoints }} bp

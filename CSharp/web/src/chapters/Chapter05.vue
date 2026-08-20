@@ -44,7 +44,7 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
     </header>
 
     <section class="chapter-brief">
-      <h3>Start with a smaller problem</h3>
+      <h3>Count a small game by hand first</h3>
       <p>
         This chapter uses more math than the earlier reel lessons because one window may pay
         several lines and start a bonus. The formulas are standard probability tools. Each
@@ -171,7 +171,7 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
     </section>
 
     <section class="lab">
-      <h3>Lab 1 — Build one weighted outcome</h3>
+      <h3>Lab 1 — Build one weighted result</h3>
       <p class="lab__lede">
         Choose one symbol from each reel. The number beside it says how many stops show that
         symbol. Multiply the three counts to find how many physical outcomes your choice represents.
@@ -206,7 +206,7 @@ const totalWeight = computed(() => allRows.value.reduce((sum, row) => sum + row.
     </section>
 
     <section class="lab">
-      <h3>Lab 2 — Prove that no outcomes disappeared</h3>
+      <h3>Lab 2 — Account for all 24 physical outcomes</h3>
       <p class="lab__lede">
         There are eight distinct symbol combinations. Their weights should add back to the
         original 24 physical stop combinations.

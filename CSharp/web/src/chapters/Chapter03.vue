@@ -128,7 +128,7 @@ function payFor(category: SourceView['paytable'][number], count: number): string
     </header>
 
     <section class="chapter-brief">
-      <h3>What the episode builds</h3>
+      <h3>From reel strips to a visible window</h3>
       <p>
         Each reel has its own ordered strip. One random stop fills that reel's visible
         column with neighboring symbols from the strip. A five-reel, 3-position game draws
@@ -150,10 +150,10 @@ function payFor(category: SourceView['paytable'][number], count: number): string
     <section class="lab">
       <h3>Lab 1: The window over the strip</h3>
       <p class="lab__lede">
-        Pick a game or preset and draw a window. The three positions in one column are
-        neighbors on one reel strip. The next column comes from another strip and another
-        stop number. Reusing the seed and spin index reproduces the same window. On Orca
-        Dive, ★ marks Wild Orca and ◆ marks the Penguin scatter.
+        Orca Dive is selected first. Draw a window and read it by columns: the three visible
+        positions in one column are neighbors on the same reel strip. The next column uses
+        another strip and another random stop. Reusing the seed and spin index rebuilds the
+        same window. ★ marks Wild Orca; ◆ marks Penguin.
       </p>
 
       <div class="controls">
@@ -276,10 +276,10 @@ function payFor(category: SourceView['paytable'][number], count: number): string
     <section class="lab">
       <h3>Lab 2: Counting what the strip produces</h3>
       <p class="lab__lede">
-        Count how often a symbol lands in the center position and compare the result with
-        its exact strip ratio. Orca Dive has two Wild Orcas among 26 stops on reel 1, but
-        one among 29 stops on reel 2. Penguin is absent from reels 2 and 4, so its expected
-        count on those reels is zero.
+        Count how often a symbol lands in the center position, then compare the observed
+        percentage with the strip count. Orca Dive has two Wild Orcas among 26 stops on
+        reel 1 and one among 29 stops on reel 2. Penguin does not appear on reels 2 or 4,
+        so both expected percentages are zero.
       </p>
 
       <div class="controls">

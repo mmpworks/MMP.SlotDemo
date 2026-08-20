@@ -7,7 +7,7 @@ import ComprehensionCheck from '../components/ComprehensionCheck.vue'
 defineProps<{ title: string; blurb: string }>()
 
 const sources = ref<SourceView[]>([])
-const sourceId = ref('Video5x64')
+const sourceId = ref('game:orca-dive.json')
 const seed = ref(20260812)
 const spins = ref(2_000_000)
 const result = ref<OptimizationBenchmarkView | null>(null)
@@ -61,7 +61,7 @@ onMounted(async () => {
     </header>
 
     <section class="chapter-brief">
-      <h3>Correct first, fast second</h3>
+      <h3>Keep the proven version beside the faster one</h3>
       <p>
         The first eight episodes build and verify the machine before changing its hot
         loops. This follow-up keeps the original <code>DrawWindow</code> algorithm beside
@@ -76,7 +76,7 @@ onMounted(async () => {
     </section>
 
     <section class="chapter-brief">
-      <h3>See the work that moved</h3>
+      <h3>Move wraparound work out of every spin</h3>
       <p>
         The first version asks for wraparound on every visible cell. The optimized version
         appends a few wrapped symbols when the game loads, then reads straight ahead during
@@ -108,9 +108,10 @@ window[windowOffset + row] = drawStrip[stop + row];</code></pre>
     <section class="lab">
       <h3>Lab 1 — Race two versions of DrawWindow</h3>
       <p class="lab__lede">
-        Five trials alternate which version runs first. The chart uses each version's
-        median, reducing the effect of JIT warmup and temporary CPU scheduling changes.
-        Run the server in Release mode when comparing absolute rates.
+        Orca Dive is selected first. Each implementation draws the same windows five times,
+        and the trial order alternates so neither version always runs second. The chart uses
+        the middle rate after sorting the five samples. Use a Release build when comparing
+        the rates themselves.
       </p>
 
       <div class="controls">
@@ -207,8 +208,8 @@ if (state &lt; 0)
       <p>
         Unrolling separate three-, four-, and five-position methods was slower. Flattening
         all reels into one array did not beat the jagged layout reliably. Forced inlining
-        also lost. Those versions stayed out of production because whole-run measurements,
-        rather than intuition, decide the result.
+        also lost. Their measured rates were lower, so those versions were removed from the
+        production path.
       </p>
     </section>
 
