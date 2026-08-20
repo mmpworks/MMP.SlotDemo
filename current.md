@@ -1,6 +1,12 @@
 # Current State
 _as of 2026-08-19_
 
+## Release: v1.0.0 (2026-08-19)
+
+Tagged on `main`, which was fast-forwarded from `codex/optimization-lab`. The optimization
+branch is merged; main is the released code. Verified before tagging by cloning from origin
+into a fresh directory and building everything from scratch, including the Docker image.
+
 ## 2026-08-19 session
 
 - **TEACH ME section added.** The nine articles are now readable on the site, in their own
