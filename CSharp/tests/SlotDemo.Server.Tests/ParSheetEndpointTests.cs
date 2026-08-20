@@ -68,9 +68,14 @@ public sealed class ParSheetEndpointTests : IClassFixture<WebApplicationFactory<
     /// A multi-payline game has no single "jackpot rule" to report, and it still belongs in
     /// the summary. Dropping it would keep the endpoint green while quietly losing a shipped
     /// game from the page, which is the failure the crash was masking.
+    ///
+    /// The empty columns report null rather than 0. This assertion asked for 0 until the
+    /// 2026-08-19 math review pointed out that a 0 in a "plays per jackpot" column reads as
+    /// a measurement of an impossibly common event rather than an absent one. playsPerBonus
+    /// already used null for the same reason, so the row is now internally consistent.
     /// </summary>
     [Fact]
-    public async Task Summary_keeps_a_multi_payline_game_and_zeroes_its_jackpot_columns()
+    public async Task Summary_keeps_a_multi_payline_game_and_reports_no_jackpot_columns()
     {
         using var client = _factory.CreateClient();
         var rows = await client.GetFromJsonAsync<JsonElement>("/api/par/summary", Json);
@@ -80,8 +85,15 @@ public sealed class ParSheetEndpointTests : IClassFixture<WebApplicationFactory<
 
         Assert.Equal(2, tide.GetProperty("lines").GetInt32());
         Assert.True(tide.GetProperty("paybackPercent").GetDouble() > 0);
-        Assert.Equal(0, tide.GetProperty("jackpotCredits").GetDouble());
-        Assert.Equal(0, tide.GetProperty("playsPerJackpot").GetDouble());
+        Assert.Equal(JsonValueKind.Null, tide.GetProperty("jackpotCredits").ValueKind);
+        Assert.Equal(JsonValueKind.Null, tide.GetProperty("playsPerJackpot").ValueKind);
+
+        // A single-payline game still reports both, so the null is about this game's shape
+        // rather than the columns having been dropped from the payload.
+        var orca = rows.EnumerateArray()
+            .Single(row => row.GetProperty("file").GetString() == SinglePaylineGame);
+        Assert.Equal(JsonValueKind.Number, orca.GetProperty("jackpotCredits").ValueKind);
+        Assert.Equal(JsonValueKind.Number, orca.GetProperty("playsPerJackpot").ValueKind);
     }
 
     // ---- the class: every consumer of CombinationCounts --------------------------------

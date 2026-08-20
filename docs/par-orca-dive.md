@@ -46,7 +46,7 @@ visible-window approximation covered under "Strip orderings" below.
 
 ## Pay table
 
-Per unit line bet, single line, left-aligned. Grouped by symbol family
+Per unit TOTAL bet, single line, left-aligned. Grouped by symbol family
 (our own arrangement — the source lists all ten categories as one flat table
 in paytable order; we group them by kind and use ascending run length):
 
@@ -135,7 +135,7 @@ run length):
 **Grand total: 95,004 + 395,254 + 30,160 + 995,876 = 1,516,294**
 
 Hit frequency: 1,516,294 / 14,781,416 = **10.258%** (~1 in 9.7 spins).
-Line-pay expected return: **59.601%** of a one-unit line wager.
+Line-pay expected return: **59.601%** of a one-unit total wager.
 
 ## Penguin scatter → pick bonus
 
@@ -235,7 +235,14 @@ reproduces all three mixed counts directly:
 
 Wilds play no part in any of these.
 
-### 3. Ties go to the longer run
+#> **Pay basis.** Every pay in this engine is a multiple of the TOTAL spin bet, not of one
+> line's share of it. Orca Dive has a single payline, so the two readings coincide here and
+> the numbers below are unaffected. They diverge the moment a game has more than one line:
+> a two-line game declaring a pay of 5 awards five times the whole bet on each line that
+> hits. Real PAR sheets usually quote per-line pays, so a sheet transcribed into this
+> format needs its pays converted first.
+
+## 3. Ties go to the longer run
 
 With rules 1 and 2 in place, 28 of the 32 counts matched immediately and the
 remaining four were a pure relabelling between Red 7 and Mixed 7, totalling

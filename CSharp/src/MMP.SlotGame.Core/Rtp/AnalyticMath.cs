@@ -15,9 +15,13 @@ namespace MMP.SlotGame.Core.Rtp;
 public static class AnalyticMath
 {
     /// <summary>
-    /// Calculates the average base-game payout from the original multiplier table, before
-    /// the solver rounds pays to millicents. The result is a multiple of the total spin wager.
-    /// For example, 0.72 means an average base-game return of 72%.
+    /// Calculates the average base-game payout of the UNSCALED canonical table, as a
+    /// multiple of the total spin wager.
+    ///
+    /// This is not a return percentage and is normally far above 1: the canonical table is
+    /// a shape, not a price. Its whole purpose is to be the denominator the solver divides
+    /// a target by, so scaleFactor = targetRtp / thisValue lands the priced table on the
+    /// target. Read RealizedBaseRtp for what a game actually returns.
     /// </summary>
     public static double BaseEvMultiplier(StripReelSet reels, IReadOnlyList<Payline> lines, Paytable canonical)
     {

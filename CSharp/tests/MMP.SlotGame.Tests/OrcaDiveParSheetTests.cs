@@ -89,7 +89,18 @@ public sealed class OrcaDiveParSheetTests
         Assert.Equal(0.26510, analysis.BonusRtp, 5);
         Assert.Equal(0.86111, analysis.TotalRtp, 5);
         Assert.Equal(0.10258, analysis.HitFrequency, 5);
-        Assert.True(analysis.SigmaPerUnitWagered > 0, "A zero sigma would make every convergence band vacuous.");
+        // Sigma carries the line-to-bonus covariance algebra, and every confidence band,
+        // the volatility index, and the whole convergence verdict are built from it.
+        // "Greater than zero" let a dropped or sign-flipped cross term through: that term
+        // is only -0.1156 of a variance of 37.5687, so losing it moves sigma from 6.1293
+        // to 6.1387, wrong in the third digit and invisible to a loose assertion.
+        //
+        // These values come from an independent re-derivation (2026-08-19): a separate
+        // exhaustive enumeration of all 14,781,416 stop combinations plus an exact
+        // subset-sum treatment of the pick bonus, sharing no code with the engine.
+        Assert.Equal(6.129329334, analysis.SigmaPerUnitWagered, 8);
+        Assert.Equal(5.124748451, analysis.LineSigma, 8);
+        Assert.Equal(3.379536650, analysis.BonusSigma, 8);
     }
 
     /// <summary>

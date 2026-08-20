@@ -7,6 +7,18 @@ namespace MMP.SlotGame.Core.Paylines;
 /// <summary>
 /// Turns a drawn window into base-game money: left-to-right k-of-a-kind per payline,
 /// k ≥ 3. The preset strips carry no wilds, so substitution never enters here.
+///
+/// PAY SEMANTICS, and why they differ from <see cref="Games.WinEvaluator"/>: this path pays
+/// the entry for the run it reached, with no search for a shorter paying prefix. WinEvaluator
+/// does search, because it reads paytables transcribed from real PAR sheets, which may pay at
+/// three of a kind and nothing above it.
+///
+/// The two agree whenever a category's pays are contiguous and non-decreasing in run length,
+/// and this path only ever sees tables that are: they come from
+/// <see cref="Paytable.CanonicalFor"/>, which generates an increasing curve, scaled by
+/// <see cref="Paytables.PaytableSolver"/>, and scaling by a positive factor preserves the
+/// ordering. CanonicalPaytableShapeTests pins that. A hand-written table reaching this path
+/// would break the equivalence, so it must not.
 /// </summary>
 public sealed class LinePayEvaluator(IReadOnlyList<Payline> lines, ScaledPaytable paytable)
 {

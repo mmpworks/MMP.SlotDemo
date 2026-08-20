@@ -25,10 +25,17 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
     public const long DefaultStride = 50_000;
 
     /// <summary>
-    /// Certification-practice acceptance, alongside the statistical band: independent test
-    /// labs expect a game's simulated RTP to agree with its submitted math within half a
-    /// percentage point across at least ten million spins. The band is the stronger check
-    /// (it narrows with N); this one is the fixed yardstick the industry quotes.
+    /// A fixed acceptance yardstick alongside the statistical band: the simulated RTP is
+    /// expected to agree with the submitted math within half a percentage point over at
+    /// least ten million spins. This is a common lab convention rather than a clause
+    /// published in GLI-11; the standard itself is linked from the Library page, and this
+    /// figure is not quoted from it.
+    ///
+    /// Which of the two checks is tighter depends on the game, so neither is "the strong
+    /// one". The band is z*sigma/sqrt(N), so it undercuts 0.5pp at ten million spins only
+    /// while sigma is under about 6.146. Orca Dive sits at 6.129, giving a band of 0.4993
+    /// at the gate: tighter by a fraction of a percent. A swingier game would have the
+    /// wider band of the two at the same N.
     /// </summary>
     public const double IndustryTolerance = 0.005;
 
@@ -94,7 +101,7 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
     }
 
     /// <summary>
-    /// The GLI-style acceptance read on the latest totals. Null while the run is still
+    /// The fixed-yardstick acceptance read on the latest totals. Null while the run is still
     /// below <see cref="IndustryMinimumSpins"/> — an early reading against a fixed
     /// tolerance would be noise presented as a verdict.
     /// </summary>

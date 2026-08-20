@@ -325,7 +325,7 @@ export interface RunDescription {
     observedSeconds: number
     observedSpinsPerSecond: number
   }
-  /** GLI-style acceptance: null until the run has at least `minimumSpins` spins. */
+  /** Fixed-yardstick acceptance: null until the run has at least `minimumSpins` spins. */
   industry: {
     spins: number
     deviation: number

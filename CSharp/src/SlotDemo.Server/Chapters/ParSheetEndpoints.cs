@@ -75,10 +75,16 @@ public static class ParSheetEndpoints
                 // outcome (bonus triggers included), a higher figure. The field name says
                 // which event this one measures.
                 lineHitFrequencyPercent = analysis.HitFrequency * 100,
-                playsPerJackpot = top is { hits: > 0 } ? (double)analysis.StopCombinations / top.hits : 0,
-                jackpotCredits = top?.pay ?? 0,
+                // Null, not zero. A multiline game reports no per-category breakdown by
+                // design, so there is no single jackpot rule to name; a 0 in a "plays per
+                // jackpot" column reads as a measurement of an impossibly common event.
+                // playsPerBonus below already uses null for the same reason.
+                playsPerJackpot = top is { hits: > 0 }
+                    ? (double)analysis.StopCombinations / top.hits
+                    : (double?)null,
+                jackpotCredits = top?.pay,
                 playsPerBonus = analysis.TriggerProbability > 0 ? 1.0 / analysis.TriggerProbability : (double?)null,
-                volatilityIndex90 = 1.6449 * analysis.SigmaPerUnitWagered,
+                volatilityIndex90 = NormalQuantile.TwoSided90 * analysis.SigmaPerUnitWagered,
             });
         }
 
@@ -187,7 +193,7 @@ public static class ParSheetEndpoints
         }
 
         // ---- volatility block: sigma, VI, and the band ladder ----
-        (string Level, double Z)[] zs = [("90%", 1.6449), ("95%", 1.96), ("99%", NormalQuantile.TwoSided99)];
+        (string Level, double Z)[] zs = [("90%", NormalQuantile.TwoSided90), ("95%", NormalQuantile.TwoSided95), ("99%", NormalQuantile.TwoSided99)];
         long[] ladder = [10_000, 100_000, 1_000_000, 10_000_000, 100_000_000];
         var volatility = new
         {
@@ -198,7 +204,7 @@ public static class ParSheetEndpoints
             bands = ladder.Select(n => new
             {
                 spins = n,
-                halfWidth95 = 1.96 * analysis.SigmaPerUnitWagered / Math.Sqrt(n),
+                halfWidth95 = NormalQuantile.TwoSided95 * analysis.SigmaPerUnitWagered / Math.Sqrt(n),
                 halfWidth99 = NormalQuantile.TwoSided99 * analysis.SigmaPerUnitWagered / Math.Sqrt(n),
             }),
         };

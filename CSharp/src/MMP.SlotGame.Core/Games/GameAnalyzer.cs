@@ -96,6 +96,12 @@ public static class GameAnalyzer
             Definition = definition,
             // A physical outcome can contain several pay categories. This summary prices
             // their combined award; the single-line analyzer owns category-level counts.
+            //
+            // The second-moment formula below assumes the feature award is independent of
+            // the line award given a trigger. That holds exactly in this engine, not
+            // approximately: the trigger is a function of the stops, and the pick bonus
+            // draws from a fixed prize pool on the worker's own stream, so no window
+            // property enters the award. A window-coupled feature would break it silently.
             CombinationCounts = new Dictionary<(int CategoryIndex, int Count), long>(),
             StopCombinations = table.CombinationCount,
             HitCombinations = table.WinningCombinationCount,
@@ -264,7 +270,7 @@ public static class GameAnalyzer
                 TriggerCombinations = bonus is null ? 0 : _triggerWeight,
                 LineRtp = meanLine,
                 BonusRtp = bonusRtp,
-                LineSigma = Math.Sqrt(meanLineSquared - meanLine * meanLine),
+                LineSigma = Math.Sqrt(Math.Max(0.0, meanLineSquared - meanLine * meanLine)),
                 BonusSigma = Math.Sqrt(Math.Max(0.0, triggerProbability * bonusMeanSquared - bonusRtp * bonusRtp)),
                 SigmaPerUnitWagered = Math.Sqrt(Math.Max(0.0, meanSquared - mean * mean)),
             };

@@ -59,7 +59,8 @@ _as of 2026-08-19_
   the same change or the mirror diverges. 213+91 C# tests and 51 SPA tests
   green.
 - New industry acceptance check in source: `ConvergenceRecorder.IndustryCheck`
-  (±0.5pp deviation from analytic over ≥10M spins, GLI-style), surfaced in
+  (±0.5pp deviation from analytic over ≥10M spins, a common lab convention rather
+  than a clause quoted from GLI-11), surfaced in
   `Describe()` as `industry`, in the completion log line, and as a second
   verdict banner on `Finale.vue`. Below 10M spins the check reports
   not-qualified rather than a verdict. Three new recorder tests; 91 server +

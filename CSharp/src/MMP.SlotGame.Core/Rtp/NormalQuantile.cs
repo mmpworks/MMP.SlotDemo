@@ -18,4 +18,12 @@ public static class NormalQuantile
     /// Multiplier for a two-sided 99.9% confidence band used by the long convergence tests.
     /// </summary>
     public const double TwoSided999 = 3.290527;
+
+    /// <summary>
+    /// Multiplier for a two-sided 90% band, the level the volatility index is quoted at.
+    /// </summary>
+    public const double TwoSided90 = 1.6448536269514722;
+
+    /// <summary>Multiplier for a two-sided 95% band.</summary>
+    public const double TwoSided95 = 1.9599639845400545;
 }
