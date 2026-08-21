@@ -38,12 +38,13 @@ public sealed class RunCoordinatorFlowTests : IDisposable
         try { Directory.Delete(_dir, recursive: true); } catch { /* file-lock stragglers */ }
     }
 
-    private static PreparedRun Prepared(SimulationExecutor execute, string runId = "flow-test-run") =>
+    private static PreparedRun Prepared(
+        SimulationExecutor execute, string runId = "flow-test-run", long targetSpins = 30) =>
         new(
             new RunConfiguration(
                 GameName: "FakeGame", IsShippedGame: true, Reels: 5, Rows: 3,
                 StopCounts: "10/10/10/10/10", Paylines: 1,
-                TargetRtp: 0.95, Workers: 10, TargetSpins: 30,
+                TargetRtp: 0.95, Workers: 10, TargetSpins: targetSpins,
                 PublishedRtp: 0.95, PayScaleFactor: 1.0, Seed: 42),
             new AnalyticReference(0.75, [("FreeSpins", 0.20)], 0.95, Sigma: 10.0),
             execute,
@@ -111,6 +112,41 @@ public sealed class RunCoordinatorFlowTests : IDisposable
             types.Add(JsonDocument.Parse(json).RootElement.GetProperty("type").GetString()!);
         Assert.Contains("started", types);
         Assert.Contains("completed", types);
+    }
+
+    [Fact]
+    public async Task Billion_spin_run_raises_stride_to_keep_the_point_budget()
+    {
+        // 1B spins at the SPA's fixed 50,000 stride would make 20,000 chart points and
+        // 20,000 unthrottled SSE point events; the browser rebuilds the whole SVG per
+        // point, so the tab freezes for minutes. The coordinator must raise the stride
+        // so the curve never exceeds ConvergenceRecorder.MaxCurvePoints.
+        var (status, body) = _coordinator.Start(
+            Prepared(EmittingExecutor(new RunSnapshot(1_000_000_000, 1_000, 900, 1)),
+                     targetSpins: 1_000_000_000),
+            stride: 50_000);
+
+        Assert.Equal(201, status);
+        var stride = JsonDocument.Parse(JsonSerializer.Serialize(body)).RootElement
+            .GetProperty("stride").GetInt64();
+        Assert.Equal(5_000_000, stride);   // 1B / 200-point budget
+        Assert.Equal("completed", await WaitForStatusAsync("completed"));
+    }
+
+    [Fact]
+    public async Task Requested_stride_wins_when_it_already_fits_the_budget()
+    {
+        // 10M spins at 50,000 stride is the designed 200-point envelope: unchanged.
+        var (status, body) = _coordinator.Start(
+            Prepared(EmittingExecutor(new RunSnapshot(10_000_000, 1_000, 900, 1)),
+                     targetSpins: 10_000_000),
+            stride: 50_000);
+
+        Assert.Equal(201, status);
+        var stride = JsonDocument.Parse(JsonSerializer.Serialize(body)).RootElement
+            .GetProperty("stride").GetInt64();
+        Assert.Equal(50_000, stride);
+        Assert.Equal("completed", await WaitForStatusAsync("completed"));
     }
 
     [Fact]
