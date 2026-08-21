@@ -63,7 +63,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
             var recorder = new ConvergenceRecorder(
                 prepared.Reference.TotalRtp,
                 prepared.Reference.Sigma,
-                stride > 0 ? stride : ConvergenceRecorder.DefaultStride);
+                EffectiveStride(stride, prepared.Configuration.TargetSpins));
 
             var cancellation = new CancellationTokenSource();
             var active = new ActiveRun(
@@ -175,6 +175,19 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
             }));
 
         PublishRunEvent(outcome.Status, GetCurrentStatus());
+    }
+
+    /// <summary>
+    /// The stride the recorder actually uses. The requested stride (or the default) is
+    /// raised until the run fits <see cref="ConvergenceRecorder.MaxCurvePoints"/>, because
+    /// point volume is what the browser pays for: each point is an SSE event and a full
+    /// chart redraw. The status snapshot reports this effective stride, so the page
+    /// always displays the value in force.
+    /// </summary>
+    internal static long EffectiveStride(long requested, long targetSpins)
+    {
+        var stride = requested > 0 ? requested : ConvergenceRecorder.DefaultStride;
+        return Math.Max(stride, targetSpins / ConvergenceRecorder.MaxCurvePoints);
     }
 
     private static Channel<TelemetrySample> CreateTelemetryChannel() =>

@@ -79,6 +79,33 @@ const busy = ref(false)
 
 let source: EventSource | null = null
 
+// Point events can arrive hundreds of times per second, and every curve assignment
+// rebuilds the whole SVG. Buffering points and flushing once per animation frame caps
+// the redraw rate at the display's, whatever the event rate. A hidden tab pauses
+// requestAnimationFrame, so the buffer grows until the tab is foregrounded; that stays
+// harmless only because the server caps a run at ConvergenceRecorder.MaxCurvePoints —
+// this buffer is unbounded on its own.
+let pendingPoints: CurvePoint[] = []
+let pointFlushHandle = 0
+
+function queuePoint(point: CurvePoint): void {
+  pendingPoints.push(point)
+  if (pointFlushHandle !== 0) return
+  pointFlushHandle = window.requestAnimationFrame(() => {
+    pointFlushHandle = 0
+    if (pendingPoints.length === 0) return
+    curve.value = [...curve.value, ...pendingPoints]
+    pendingPoints = []
+  })
+}
+
+/// Replaces the curve wholesale (adopt, new run); pending points would belong to the
+/// discarded curve, so they go too.
+function resetCurve(points: CurvePoint[]): void {
+  pendingPoints = []
+  curve.value = points
+}
+
 onMounted(() => {
   void pollReadiness()
 })
@@ -99,7 +126,10 @@ onMounted(async () => {
   subscribe()
 })
 
-onUnmounted(() => source?.close())
+onUnmounted(() => {
+  source?.close()
+  if (pointFlushHandle !== 0) window.cancelAnimationFrame(pointFlushHandle)
+})
 
 function subscribe(): void {
   source = new EventSource('/api/run/stream')
@@ -108,7 +138,7 @@ function subscribe(): void {
     if (event.type === 'started') adopt(event.data as RunDescription)
     else if (event.type === 'point') {
       const payload = event.data as { runId: string; point: CurvePoint }
-      curve.value = [...curve.value, payload.point]
+      queuePoint(payload.point)
       // A fast run can finish between progress ticks; points keep the readout live.
       liveSpins.value = payload.point.spins
       liveRtp.value = payload.point.measuredRtp
@@ -133,7 +163,10 @@ function subscribe(): void {
 
 function adopt(description: RunDescription): void {
   run.value = description
-  curve.value = description.curve
+  // The server may raise the requested stride to keep the curve inside its point
+  // budget; reflecting the effective value keeps the input and the prose in agreement.
+  stride.value = description.stride
+  resetCurve(description.curve)
   liveSpins.value = description.latest.spins
   liveRtp.value = description.latest.measuredRtp
   liveHitFrequency.value = description.latest.hitFrequency
@@ -144,7 +177,7 @@ async function start(): Promise<void> {
   busy.value = true
   error.value = ''
   try {
-    curve.value = []
+    resetCurve([])
     await postJson('/api/run', {
       presetName: isGameSubject.value ? '' : subject.value,
       baseRtpBasisPoints: baseBp.value,

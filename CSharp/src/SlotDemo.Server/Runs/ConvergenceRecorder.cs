@@ -16,6 +16,14 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
     public const long DefaultStride = 50_000;
 
     /// <summary>
+    /// Upper bound on curve points per run. Every point is one unthrottled SSE event and
+    /// one full chart redraw in the browser, and the status snapshot embeds the whole
+    /// curve, so the budget is what keeps a billion-spin run from freezing the page.
+    /// The coordinator raises the stride until the run fits this budget.
+    /// </summary>
+    public const long MaxCurvePoints = 200;
+
+    /// <summary>
     /// Fixed comparison limit used after 10M spins. This ±0.5 percentage-point rule is a
     /// lab convention, not a requirement quoted from GLI-11. The confidence band remains
     /// a separate, sigma-based calculation.
@@ -27,7 +35,9 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
 
     private readonly Lock _gate = new();
     private readonly List<ConvergencePoint> _curve = [];
-    private long _nextBoundary = stride;
+    // Mirrors the Stride normalisation below: a non-positive ctor value must not park
+    // the first boundary at or below zero for a directly constructed recorder.
+    private long _nextBoundary = stride > 0 ? stride : DefaultStride;
     private RunSnapshot _latest;
 
     public long Stride { get; } = stride > 0 ? stride : DefaultStride;
