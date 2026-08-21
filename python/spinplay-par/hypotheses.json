@@ -1,0 +1,164 @@
+[
+  {
+    "name": "ways L2R | 3+ scatters  [wrap-true union]",
+    "value": 0.40162,
+    "diff": -0.0139,
+    "family": "round 1: path schemes"
+  },
+  {
+    "name": "ways, run needs a real symbol",
+    "value": 0.40162,
+    "diff": -0.0139,
+    "family": "round 1: path schemes"
+  },
+  {
+    "name": "ways | 2+ scatters count as a hit",
+    "value": 0.45252,
+    "diff": 0.037,
+    "family": "round 1: path schemes"
+  },
+  {
+    "name": "ways | wilds also count as scatters",
+    "value": 0.44577,
+    "diff": 0.03025,
+    "family": "round 1: path schemes"
+  },
+  {
+    "name": "ways, wilds do NOT substitute",
+    "value": 0.21131,
+    "diff": -0.20421,
+    "family": "round 1: path schemes"
+  },
+  {
+    "name": "ways, scatter extends runs like a wild",
+    "value": 0.5426,
+    "diff": 0.12708,
+    "family": "round 1: path schemes"
+  },
+  {
+    "name": "runs may start on any reel",
+    "value": 0.74384,
+    "diff": 0.32832,
+    "family": "round 1: path schemes"
+  },
+  {
+    "name": "runs pay both directions (left and right)",
+    "value": 0.66836,
+    "diff": 0.25284,
+    "family": "round 1: path schemes"
+  },
+  {
+    "name": "ways on the FEATURE reels",
+    "value": 0.45538,
+    "diff": 0.03986,
+    "family": "round 1: path schemes"
+  },
+  {
+    "name": "ways, FLAT walk (wrap windows dropped)",
+    "value": 0.4105,
+    "diff": -0.00502,
+    "family": "round 2: walk/window"
+  },
+  {
+    "name": "ways, PAD1 walk (first symbol appended)",
+    "value": 0.40469,
+    "diff": -0.01083,
+    "family": "round 2: walk/window"
+  },
+  {
+    "name": "ways, CLAMP walk (end symbols doubled)",
+    "value": 0.40321,
+    "diff": -0.01231,
+    "family": "round 2: walk/window"
+  },
+  {
+    "name": "ways, 4-row window",
+    "value": 0.684,
+    "diff": 0.26848,
+    "family": "round 2: walk/window"
+  },
+  {
+    "name": "ways runs only, no scatter rule (wrap)",
+    "value": 0.39554,
+    "diff": -0.01998,
+    "family": "round 2: walk/window"
+  },
+  {
+    "name": "ways runs only, no scatter rule (flat)",
+    "value": 0.40501,
+    "diff": -0.01051,
+    "family": "round 2: walk/window"
+  },
+  {
+    "name": "ways FLAT | 2 scatters + a wild visible",
+    "value": 0.42905,
+    "diff": 0.01353,
+    "family": "round 2: walk/window"
+  },
+  {
+    "name": "ways wrap | 2 scatters + a wild visible",
+    "value": 0.42206,
+    "diff": 0.00654,
+    "family": "round 2: walk/window"
+  },
+  {
+    "name": "ways FLAT on the FEATURE reels",
+    "value": 0.46515,
+    "diff": 0.04963,
+    "family": "round 2: walk/window"
+  },
+  {
+    "name": "3+ scatters alone (feature trigger, wrap)",
+    "value": 0.00756,
+    "diff": -0.40796,
+    "family": "round 2: walk/window"
+  },
+  {
+    "name": "single line, base reels (wrap)",
+    "value": 0.03161,
+    "diff": -0.38391,
+    "family": "line family"
+  },
+  {
+    "name": "single line, base reels (flat)",
+    "value": 0.03235,
+    "diff": -0.38317,
+    "family": "line family"
+  },
+  {
+    "name": "single line, FEATURE reels (wrap)",
+    "value": 0.03804,
+    "diff": -0.37748,
+    "family": "line family"
+  },
+  {
+    "name": "single line, FEATURE reels (flat)",
+    "value": 0.03927,
+    "diff": -0.37625,
+    "family": "line family"
+  },
+  {
+    "name": "E[distinct symbol runs] tally (wrap)",
+    "value": 0.55181,
+    "diff": 0.13629,
+    "family": "round 2: tally"
+  },
+  {
+    "name": "hits folded over ALL spins (wrap)",
+    "value": 0.40577,
+    "diff": -0.00975,
+    "family": "round 2: fold-in"
+  },
+  {
+    "name": "hits folded over ALL spins (FLAT)",
+    "value": 0.41472,
+    "diff": -0.0008,
+    "family": "round 2: fold-in"
+  },
+  {
+    "name": "hits in free spins per BASE spin (wrap)",
+    "value": 0.43973,
+    "diff": 0.02421,
+    "family": "round 2: fold-in"
+  }
+]

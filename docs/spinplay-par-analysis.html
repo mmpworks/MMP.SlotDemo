@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dolphin Splash PAR Analysis</title>
+<style>
+  :root {
+    --ink: #1c2733; --paper: #fbfaf7; --card: #ffffff; --line: #dcd7cc;
+    --accent: #1d5c8f; --good: #1e7d46; --warn: #a3551b; --bad: #a02c2c;
+    --muted: #6b7482;
+  }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 17px/1.6 Georgia, 'Times New Roman', serif;
+  }
+  main { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+  h1 { font-size: 1.9rem; margin: 0 0 .3rem; }
+  h2 { font-size: 1.35rem; margin: 2.4rem 0 .6rem; color: var(--accent); }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 .4rem; }
+  .sub { color: var(--muted); margin: 0 0 1.8rem; }
+  p { margin: .7rem 0; }
+  table {
+    border-collapse: collapse; width: 100%; margin: 1rem 0;
+    background: var(--card); font-size: .92rem;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+  th, td { border: 1px solid var(--line); padding: .38rem .6rem; text-align: left; }
+  th { background: #f0ede6; font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .match { color: var(--good); font-weight: 600; }
+  .open  { color: var(--bad);  font-weight: 600; }
+  .near  { background: #eef6ee; }
+  .fam   { color: var(--muted); font-size: .85rem; }
+  code, .mono { font-family: Consolas, 'Cascadia Code', monospace; font-size: .9em; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1rem 1.2rem; margin: 1.2rem 0;
+  }
+  .refs { font-size: .9rem; }
+  .refs dt { font-weight: 600; margin-top: .6rem; }
+  .refs dd { margin: .1rem 0 0 1.2rem; }
+  .verdict { border-left: 4px solid var(--accent); }
+  figure { margin: 1.2rem 0; }
+  figcaption { font-size: .85rem; color: var(--muted); margin-top: .3rem; }
+  .drum { font-family: Consolas, monospace; font-size: .85rem; white-space: pre;
+          background: #f4f2ec; border: 1px solid var(--line); border-radius: 6px;
+          padding: .8rem 1rem; overflow-x: auto; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Dolphin Splash PAR Analysis</h1>
+<p class="sub">An analytic model of the SpinPlay "Service Test Math.xls" workbook,
+what it reproduces, and the full hunt for the one number that resists:
+Hit Chance 0.41552. Source scripts: <code>python/spinplay-par/</code>.
+Workbook copy: <code>assets/spinplay-par-source/</code>.</p>
+
+<h2>1. What the model is</h2>
+<p>The analyzer reads the workbook and rebuilds the game math from first
+principles. It enumerates every stop combination on the real reel strips.
+It uses zero random spins, so its numbers carry zero sampling error. A
+simulation only converges to these values as the spin count grows
+[Hannum&nbsp;p.5, law of large numbers]. The counting model is Muir's
+"hits over cycle": the cycle is the product of the strip lengths, an
+event's probability is its hits divided by the cycle, and RTP is the sum
+of prize &times; hits over cycle &times; bet [Muir&nbsp;ch2]. The same sum
+is Hannum's wager expected value per unit bet [Hannum&nbsp;p.3].</p>
+
+<h2>2. The reels are drums, and there are two sets of them</h2>
+<p>Two facts about the strips matter to every number below.</p>
+<p><strong>Each reel is a drum.</strong> A strip of N symbols has N stop
+positions. The 3-row window at stop <code>i</code> is
+<code>strip[i]</code>, <code>strip[(i+1) % N]</code>,
+<code>strip[(i+2) % N]</code>. The last two windows wrap past the end of
+the list back to the top. A walker that stops at the end of the list sees
+only N&minus;2 windows and shifts every probability. The analyzer wraps;
+section 5 shows what happens when a walker does the opposite.</p>
+<div class="drum">stop i:      [ s[i], s[i+1], s[i+2] ]      middle of the strip
+stop N-2:    [ s[N-2], s[N-1], s[0] ]       wraps once
+stop N-1:    [ s[N-1], s[0],  s[1] ]       wraps twice</div>
+<p><strong>The workbook ships two strip sets.</strong> The base game and
+the free-spins game spin different drums. The analyzer reads both
+(columns A&ndash;E and G&ndash;K of the Reel Strips sheet) and uses the
+feature set for every feature figure: the retrigger rate, the single
+feature spin RTP, and the feature RTP all come from the feature cycle.</p>
+<table>
+<tr><th>Reel</th><th class="num">Base strip length</th><th class="num">Feature strip length</th><th>Contents</th></tr>
+<tr><td>1</td><td class="num">42</td><td class="num">42</td><td>identical</td></tr>
+<tr><td>2</td><td class="num">36</td><td class="num">40</td><td>different</td></tr>
+<tr><td>3</td><td class="num">39</td><td class="num">39</td><td>same length, different symbols</td></tr>
+<tr><td>4</td><td class="num">38</td><td class="num">38</td><td>identical</td></tr>
+<tr><td>5</td><td class="num">29</td><td class="num">29</td><td>identical</td></tr>
+<tr><th>Cycle</th><th class="num">64,982,736</th><th class="num">72,203,040</th><th>products match the sheet's Total Cycles rows</th></tr>
+</table>
+
+<h2>3. What the analyzer reproduces</h2>
+<p>Seven of the eight Game Summary figures reproduce to all five published
+decimals. One rule had to be inferred to get there: the sheet's Paytable
+lists the wild's own row as zero, but the RTP only reproduces when a
+pure-wild run pays as the best symbol it can stand for. That is the
+"wild pays highest" rule, applied through Muir's prioritisation
+discipline: under "highest win pays", one line pays one best rule
+[Muir&nbsp;ch2].</p>
+<table>
+<tr><th>Figure</th><th class="num">Computed</th><th class="num">Sheet</th><th>Verdict</th></tr>
+<tr><td>Base game RTP</td><td class="num">0.62524</td><td class="num">0.62524</td><td class="match">MATCH</td></tr>
+<tr><td>Feature RTP</td><td class="num">0.33514</td><td class="num">0.33514</td><td class="match">MATCH</td></tr>
+<tr><td>Total RTP</td><td class="num">0.96038</td><td class="num">0.96038</td><td class="match">MATCH</td></tr>
+<tr><td>Single feature spin RTP</td><td class="num">4.00511</td><td class="num">4.00511</td><td class="match">MATCH</td></tr>
+<tr><td>Feature trigger chance</td><td class="num">0.00756</td><td class="num">0.00756</td><td class="match">MATCH</td></tr>
+<tr><td>Base games to feature</td><td class="num">132.24</td><td class="num">132.24</td><td class="match">MATCH</td></tr>
+<tr><td>Hit chance, single-line model</td><td class="num">0.03161</td><td class="num">0.41552</td><td class="open">OPEN</td></tr>
+<tr><td>Hit chance, ways model</td><td class="num">0.40162</td><td class="num">0.41552</td><td class="open">OPEN</td></tr>
+</table>
+<p>The scatter table reproduces as integer counts over the base
+cycle. Scatter probability rides on the whole 3-row window, so scatter
+hits scale with window area [Muir&nbsp;ch2].</p>
+<table>
+<tr><th>Scatters</th><th class="num">Hits (of 64,982,736)</th><th class="num">Average free spins</th></tr>
+<tr><td>3</td><td class="num">466,938</td><td class="num">10.7917</td></tr>
+<tr><td>4</td><td class="num">23,976</td><td class="num">16.1875</td></tr>
+<tr><td>5</td><td class="num">486</td><td class="num">21.5834</td></tr>
+<tr><th>Total</th><th class="num">491,400</th><th></th></tr>
+</table>
+<p>The average free spins column uses Muir's geometric series for free
+games with retriggers: expected spins = awarded spins &divide;
+(1 &minus; spins added per free spin), with the retrigger rate taken from
+the feature strips [Muir&nbsp;ch2].</p>
+
+<h2>4. The one open number</h2>
+<p>The Game Summary sheet says Hit Chance is <strong>0.41552</strong>,
+described as "The chance of getting any wins". Three observations frame
+the hunt.</p>
+<div class="card">
+<p><strong>Hit Rate is the same fact.</strong> The sheet's Hit Rate cell
+is 2.407, and 1 &divide; 0.41552 = 2.4066. The two cells are one number
+in two costumes. The workbook offers no second clue.</p>
+<p><strong>The sheet contradicts itself.</strong> The Lines cell says 1,
+and the Programming Notes say the math is "based on single line only".
+A single line on these strips hits once in 31.6 spins (0.03161). A hit
+rate of one in 2.4 belongs to a ways-style game. Both claims cannot
+describe the same game.</p>
+<p><strong>Every other cell derives from the strips.</strong> Cycles,
+scatter hits, trigger chance, and the RTP set all reproduce by
+enumeration. Hit Chance is the only Game Summary value with no visible
+derivation.</p>
+</div>
+
+<h3>The union bound</h3>
+<p>One bound removes a whole family of guesses. Every payline is a path
+that picks one row per reel. The union of ALL left-to-right path
+evaluations over every possible line therefore equals the ways union:
+a symbol counts on a reel when it sits anywhere in that reel's window
+[Muir&nbsp;ch3 models ways games this way]. On these strips that union is
+<strong>0.40162</strong>. The sheet's 0.41552 sits above it. So no
+left-to-right line scheme, with any number of lines, can produce the
+sheet's value. Whatever produced 0.41552 counts something else.</p>
+
+<h2>5. Every attempted path, with numbers</h2>
+<p>Twenty-seven counting rules, all enumerated over the real strips, all
+compared against 0.41552. Sorted by distance from the target. The two
+green rows are the closest constructions found.</p>
+<table>
+<tr><th>Candidate counting rule</th><th>Family</th><th class="num">Value</th><th class="num">Diff vs 0.41552</th></tr>
+<tr class="near"><td>Hits folded over ALL spins, flat walk</td><td class="fam">fold-in</td><td class="num">0.41472</td><td class="num">&minus;0.00080</td></tr>
+<tr class="near"><td>Ways, FLAT walk (wrap windows dropped)</td><td class="fam">walk/window</td><td class="num">0.41050</td><td class="num">&minus;0.00502</td></tr>
+<tr><td>Ways wrap, 2 scatters + a wild visible</td><td class="fam">walk/window</td><td class="num">0.42206</td><td class="num">+0.00654</td></tr>
+<tr><td>Hits folded over ALL spins, wrap</td><td class="fam">fold-in</td><td class="num">0.40577</td><td class="num">&minus;0.00975</td></tr>
+<tr><td>Ways runs only, no scatter rule, flat</td><td class="fam">walk/window</td><td class="num">0.40501</td><td class="num">&minus;0.01051</td></tr>
+<tr><td>Ways, PAD1 walk (first symbol appended)</td><td class="fam">walk/window</td><td class="num">0.40469</td><td class="num">&minus;0.01083</td></tr>
+<tr><td>Ways, CLAMP walk (end symbols doubled)</td><td class="fam">walk/window</td><td class="num">0.40321</td><td class="num">&minus;0.01231</td></tr>
+<tr><td>Ways FLAT, 2 scatters + a wild visible</td><td class="fam">walk/window</td><td class="num">0.42905</td><td class="num">+0.01353</td></tr>
+<tr><td>Ways left-to-right, 3+ scatters (wrap-true union)</td><td class="fam">path schemes</td><td class="num">0.40162</td><td class="num">&minus;0.01390</td></tr>
+<tr><td>Ways, run must contain a real symbol</td><td class="fam">path schemes</td><td class="num">0.40162</td><td class="num">&minus;0.01390</td></tr>
+<tr><td>Ways runs only, no scatter rule, wrap</td><td class="fam">walk/window</td><td class="num">0.39554</td><td class="num">&minus;0.01998</td></tr>
+<tr><td>Hits in free spins per BASE spin (tally)</td><td class="fam">fold-in</td><td class="num">0.43973</td><td class="num">+0.02421</td></tr>
+<tr><td>Ways, wilds also count as scatters</td><td class="fam">path schemes</td><td class="num">0.44577</td><td class="num">+0.03025</td></tr>
+<tr><td>Ways, 2+ scatters count as a hit</td><td class="fam">path schemes</td><td class="num">0.45252</td><td class="num">+0.03700</td></tr>
+<tr><td>Ways on the FEATURE reels, wrap</td><td class="fam">path schemes</td><td class="num">0.45538</td><td class="num">+0.03986</td></tr>
+<tr><td>Ways on the FEATURE reels, flat</td><td class="fam">walk/window</td><td class="num">0.46515</td><td class="num">+0.04963</td></tr>
+<tr><td>Ways, scatter extends runs like a wild</td><td class="fam">path schemes</td><td class="num">0.54260</td><td class="num">+0.12708</td></tr>
+<tr><td>E[distinct symbol runs] tally</td><td class="fam">tally</td><td class="num">0.55181</td><td class="num">+0.13629</td></tr>
+<tr><td>Ways, wilds do NOT substitute</td><td class="fam">path schemes</td><td class="num">0.21131</td><td class="num">&minus;0.20421</td></tr>
+<tr><td>Runs pay both directions</td><td class="fam">path schemes</td><td class="num">0.66836</td><td class="num">+0.25284</td></tr>
+<tr><td>Ways, 4-row window</td><td class="fam">walk/window</td><td class="num">0.68400</td><td class="num">+0.26848</td></tr>
+<tr><td>Runs may start on any reel</td><td class="fam">path schemes</td><td class="num">0.74384</td><td class="num">+0.32832</td></tr>
+<tr><td>Single line, FEATURE reels, flat</td><td class="fam">line family</td><td class="num">0.03927</td><td class="num">&minus;0.37625</td></tr>
+<tr><td>Single line, FEATURE reels, wrap</td><td class="fam">line family</td><td class="num">0.03804</td><td class="num">&minus;0.37748</td></tr>
+<tr><td>Single line, base reels, flat</td><td class="fam">line family</td><td class="num">0.03235</td><td class="num">&minus;0.38317</td></tr>
+<tr><td>Single line, base reels, wrap</td><td class="fam">line family</td><td class="num">0.03161</td><td class="num">&minus;0.38391</td></tr>
+<tr><td>3+ scatters alone (feature trigger)</td><td class="fam">reference</td><td class="num">0.00756</td><td class="num">&minus;0.40796</td></tr>
+</table>
+<p>The families, briefly. <strong>Path schemes</strong> are rule variants
+inside left-to-right evaluation; the union bound caps them all at
+0.40162. <strong>Walk/window</strong> rules break the drum on purpose:
+they walk the strips the way a buggy tool would, so the denominator and
+every window count shift. <strong>Tallies</strong> count wins instead of
+winning spins, so coinciding wins push them over the union.
+<strong>Fold-ins</strong> put free-spin hits into the count: the expected
+free spins per base spin (0.0837) come from the trigger weights and the
+retrigger series. <strong>Line family</strong> is the sheet's own
+Lines=1 claim, tried four ways.</p>
+
+<h2>6. Where that leaves the 0.41552 cell</h2>
+<div class="card verdict">
+<p>No constructed rule lands on the cent. The two closest are the flat
+walk (0.41050) and the flat walk folded over all spins (0.41472). Both
+contain the same ingredient: a walker that treats the strip as a flat
+list and drops the wrap windows. That is the drum mistake, made by the
+sheet's tool rather than ours.</p>
+<p>Simulation noise covers the rest of the gap. At 100,000 simulated
+spins, a probability near 0.4155 has a standard deviation of about
+0.0016 [Hannum&nbsp;p.6, volatility guidelines]. The flat fold-in sits
+half a standard deviation from the sheet's cell; the flat walk sits
+about three. A sheet author who measured hit frequency from a modest
+simulation run, on a tool that walks strips flat, would very plausibly
+print 0.41552.</p>
+<p>The working conclusion: the cell was measured or inherited, and it
+cannot be derived from these strips by any left-to-right rule. The
+question is with the sheet's author. Until the answer arrives, the RTP
+figures stand verified and the Hit Chance cell stays flagged as
+unreproducible.</p>
+</div>
+
+<h2>7. How to re-run everything</h2>
+<p>Both scripts live in <code>python/spinplay-par/</code> and read the
+workbook copy in <code>assets/spinplay-par-source/</code>. They need
+Python 3 and <code>xlrd</code>.</p>
+<table>
+<tr><th>Command</th><th>Output</th></tr>
+<tr><td class="mono">python spinplay_analyzer.py</td><td>the PAR verification table (section 3)</td></tr>
+<tr><td class="mono">python hit_chance_hypotheses.py</td><td>the 27-candidate table (section 5)</td></tr>
+<tr><td class="mono">python hit_chance_hypotheses.py --json out.json</td><td>same, plus machine-readable results</td></tr>
+</table>
+
+<h2>References</h2>
+<dl class="refs">
+<dt>[Muir] Robert Muir, <em>Elements of Slot Design</em>, 3rd edition (ch3 by Mark Sinosich).</dt>
+<dd>Cited by chapter. The house library carries a chapter digest of this
+book. Page numbers for it would be unverifiable from that digest, so this
+document cites chapters only. Used here: ch2 (hits over cycle, scatter
+window area, prioritisation, free-games series), ch3 (ways games as
+scattered 1-line games), ch7 (theory and simulation as complements).</dd>
+<dt>[Hannum] Robert C. Hannum, <em>A Guide to Casino Mathematics</em>, UNLV Gaming Studies Research Center, 12 pages.</dt>
+<dd>Page numbers cite the PDF held at
+<code>MMP.Library/books/other/casino-mathematics-hannum/raw/casino_math.pdf</code>.
+Used here: p.3 (formal expected-value calculation), p.5 (law of large
+numbers, actual win converges to theoretical), p.6 (volatility guidelines,
+standard deviation and confidence limits).</dd>
+</dl>
+
+</main>
+</body>
+</html>
