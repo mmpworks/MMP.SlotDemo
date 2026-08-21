@@ -8,28 +8,20 @@ using MMP.SlotGame.Core.Simulation;
 namespace SlotDemo.Server.Runs;
 
 /// <summary>
-/// Spins a throwaway workload at startup until the engine reaches its settled speed, so the
-/// first run a visitor watches is a real measurement rather than a compilation.
+/// Runs the spin loop at startup so .NET can compile and optimize the hot methods before a
+/// visitor measures them. <see cref="Snapshot"/> reports progress to the readiness endpoint,
+/// which holds the run button during warm-up.
 ///
-/// .NET compiles a method on first use and re-optimizes it once it has been called enough
-/// times. The spin loop is the hottest code here, so the first runs after the server starts
-/// report a fraction of the engine's real throughput: on developer hardware a first run
-/// read 12.4M spins/s and the fourth 143.2M, with identical spins, identical measured RTP
-/// and an identical verdict. The math was never in doubt; only the clock was.
-///
-/// This series teaches what the numbers mean, so a visitor reading a warm-up clock as
-/// engine speed is a teaching failure. Warming here moves that cost before anyone is
-/// watching, and <see cref="Snapshot"/> lets the page hold its run button until the engine
-/// is worth timing.
+/// On the developer machine used to set the threshold, throughput rose from 12.4M spins/s
+/// on the first pass to 143.2M on the fourth. The spins and RTP were unchanged; only the
+/// timing changed.
 /// </summary>
 public sealed class EngineWarmupService : BackgroundService
 {
     private static readonly LogCategory Category = new("Warmup");
 
     /// <summary>
-    /// The rate at which the engine is treated as settled. Taken from the observed gap on
-    /// developer hardware, where warm runs land well above 100M and cold ones an order of
-    /// magnitude lower, so one threshold separates them without tuning.
+    /// Throughput at which the developer machine is considered warm.
     /// </summary>
     public const double SettledSpinsPerSecond = 100_000_000;
 
@@ -37,17 +29,15 @@ public sealed class EngineWarmupService : BackgroundService
     private const long SpinsPerPass = 2_000_000;
 
     /// <summary>
-    /// A ceiling on passes. Slower hardware may never reach the threshold, and a page whose
-    /// button never enables would be worse than one that reports an honest slower speed, so
-    /// warm-up always finishes.
+    /// Maximum passes before the page is released on hardware that does not reach the
+    /// developer-machine threshold.
     /// </summary>
     private const int MaxPasses = 12;
 
     private readonly StructuredLogger _log;
 
-    // A record struct cannot be volatile, and the background writer and the endpoint reader
-    // are different threads, so the state is published through a reference the runtime can
-    // swap atomically.
+    // The background service writes while the readiness endpoint reads. Box gives the
+    // record struct a reference that volatile can publish atomically.
     private volatile Box _state = new(new WarmupState(false, 0, 0, false));
 
     public EngineWarmupService(StructuredLogger log) => _log = log;
@@ -96,8 +86,8 @@ public sealed class EngineWarmupService : BackgroundService
 
         if (stoppingToken.IsCancellationRequested) return;
 
-        // Ran out of passes. Report ready anyway with settled=false: the page should open
-        // rather than wait forever, and the number it shows is the truth about this machine.
+        // Release the page after the pass limit even when this machine stays below the
+        // developer threshold. Settled remains false so the response preserves that fact.
         _state = new Box(new WarmupState(true, best, MaxPasses, false));
         _log.Warning(Category,
             "Engine warm-up finished without reaching {Target} spins/s; best {Best} over {Passes} passes",
@@ -108,9 +98,8 @@ public sealed class EngineWarmupService : BackgroundService
 }
 
 /// <summary>
-/// <paramref name="Ready"/> means the page may start a run. <paramref name="Settled"/> says
-/// whether the engine actually reached its target speed, which is a different question: a
-/// slow machine finishes warm-up ready but unsettled.
+/// Readiness state reported to the SPA. <paramref name="Ready"/> releases the run button;
+/// <paramref name="Settled"/> records whether the measured rate reached the threshold.
 /// </summary>
 public readonly record struct WarmupState(
     bool Ready,
