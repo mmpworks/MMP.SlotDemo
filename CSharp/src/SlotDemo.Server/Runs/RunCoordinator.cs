@@ -51,8 +51,17 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
             ? _preparer.PreparePreset(request)
             : _preparer.PrepareGame(request);
         if (result.Error is { } error) return error;
-        var prepared = result.Prepared!;
+        return Start(result.Prepared!, request.Stride);
+    }
 
+    /// <summary>
+    /// The lifecycle half of <see cref="Start(RunRequest)"/>: install the run, spawn its
+    /// task, announce it. Internal so tests can drive the whole flow with a hand-built
+    /// <see cref="PreparedRun"/> and a fake <see cref="SubjectRunner"/> — no engine, no
+    /// game files — which keeps the orchestration testable independently of Core.
+    /// </summary>
+    internal (int Status, object Body) Start(PreparedRun prepared, long stride)
+    {
         lock (_gate)
         {
             if (_current is { Completion.IsCompleted: false })
@@ -61,7 +70,7 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
             var recorder = new ConvergenceRecorder(
                 prepared.Analytic.TotalRtp,
                 prepared.Analytic.Sigma,
-                request.Stride > 0 ? request.Stride : ConvergenceRecorder.DefaultStride);
+                stride > 0 ? stride : ConvergenceRecorder.DefaultStride);
 
             var cancellation = new CancellationTokenSource();
             var active = new ActiveRun(prepared.RunId, prepared.Facts, prepared.Analytic, recorder, cancellation);
