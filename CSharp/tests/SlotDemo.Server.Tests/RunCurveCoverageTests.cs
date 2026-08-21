@@ -30,7 +30,10 @@ public sealed class RunCurveCoverageTests : IClassFixture<WebApplicationFactory<
     // buffers the whole run and the defect cannot show itself.
     private const long Spins = 20_000_000;
     private const long Stride = 50_000;
-    private const long ExpectedPoints = Spins / Stride;   // 400
+    // Bounds derive from the EFFECTIVE stride in the run's status snapshot, not this
+    // requested value: the coordinator raises the stride to keep the curve inside
+    // ConvergenceRecorder.MaxCurvePoints, and deriving from the request silently
+    // spends the deliberate slack these assertions rely on.
 
     private readonly WebApplicationFactory<Program> _factory;
 
@@ -56,12 +59,12 @@ public sealed class RunCurveCoverageTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task The_curve_starts_near_the_beginning_of_the_run()
     {
-        var curve = await RunAndReadCurveAsync(seed: 4242);
+        var (stride, curve) = await RunAndReadCurveAsync(seed: 4242);
 
         var firstSpins = curve[0].GetProperty("spins").GetInt64();
 
         Assert.True(
-            firstSpins <= Stride * 10,
+            firstSpins <= stride * 10,
             $"first curve point sits at {firstSpins:N0} spins; the run is only {Spins:N0} long, "
             + "so the chart would open most of the way through the story.");
     }
@@ -73,11 +76,13 @@ public sealed class RunCurveCoverageTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task The_curve_carries_roughly_one_point_per_stride()
     {
-        var curve = await RunAndReadCurveAsync(seed: 4243);
+        var (stride, curve) = await RunAndReadCurveAsync(seed: 4243);
 
+        var expectedPoints = Spins / stride;
         Assert.True(
-            curve.Count >= ExpectedPoints / 2,
-            $"{curve.Count} curve points for {ExpectedPoints} strides; sampling is not following the stride.");
+            curve.Count >= expectedPoints / 2,
+            $"{curve.Count} curve points for {expectedPoints} strides of {stride:N0} spins; "
+            + "sampling is not following the stride.");
     }
 
     /// <summary>
@@ -87,7 +92,7 @@ public sealed class RunCurveCoverageTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task No_gap_between_curve_points_swallows_a_region_of_the_run()
     {
-        var curve = await RunAndReadCurveAsync(seed: 4244);
+        var (stride, curve) = await RunAndReadCurveAsync(seed: 4244);
 
         long widest = 0;
         for (var i = 1; i < curve.Count; i++)
@@ -97,7 +102,7 @@ public sealed class RunCurveCoverageTests : IClassFixture<WebApplicationFactory<
         }
 
         Assert.True(
-            widest <= Stride * 20,
+            widest <= stride * 20,
             $"widest gap is {widest:N0} spins across a {Spins:N0} spin run.");
     }
 
@@ -108,7 +113,7 @@ public sealed class RunCurveCoverageTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task The_curve_rises_and_ends_on_the_target()
     {
-        var curve = await RunAndReadCurveAsync(seed: 4245);
+        var (_, curve) = await RunAndReadCurveAsync(seed: 4245);
 
         for (var i = 1; i < curve.Count; i++)
         {
@@ -127,7 +132,7 @@ public sealed class RunCurveCoverageTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task The_band_narrows_as_the_run_grows()
     {
-        var curve = await RunAndReadCurveAsync(seed: 4246);
+        var (_, curve) = await RunAndReadCurveAsync(seed: 4246);
 
         var first = curve[0].GetProperty("bandHalfWidth").GetDouble();
         var last = curve[^1].GetProperty("bandHalfWidth").GetDouble();
@@ -179,14 +184,15 @@ public sealed class RunCurveCoverageTests : IClassFixture<WebApplicationFactory<
             "engine rate must be at least the observed rate.");
     }
 
-    private async Task<List<JsonElement>> RunAndReadCurveAsync(ulong seed)
+    private async Task<(long Stride, List<JsonElement> Curve)> RunAndReadCurveAsync(ulong seed)
     {
         using var client = _factory.CreateClient();
         var final = await RunToCompletionAsync(client, seed);
+        var stride = final.GetProperty("stride").GetInt64();
         var curve = final.GetProperty("curve").EnumerateArray().ToList();
 
         Assert.NotEmpty(curve);
-        return curve;
+        return (stride, curve);
     }
 
     private async Task<JsonElement> RunToCompletionAsync(HttpClient client, ulong seed)

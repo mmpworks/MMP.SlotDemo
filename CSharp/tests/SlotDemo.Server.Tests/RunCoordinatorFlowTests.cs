@@ -150,6 +150,27 @@ public sealed class RunCoordinatorFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task Curve_length_never_exceeds_the_point_budget()
+    {
+        // The property the stride arithmetic exists to guarantee: however many snapshots
+        // arrive, the recorded curve stays inside the budget (+1 for the terminal point).
+        var samples = Enumerable.Range(1, 1_000)
+            .Select(i => new RunSnapshot(i, i * 100, i * 90, i))
+            .ToArray();
+
+        _coordinator.Start(
+            Prepared(EmittingExecutor(samples), targetSpins: 1_000), stride: 1);
+        Assert.Equal("completed", await WaitForStatusAsync("completed"));
+
+        var final = JsonDocument.Parse(
+            JsonSerializer.Serialize(_coordinator.GetCurrentStatus())).RootElement;
+        var points = final.GetProperty("curve").GetArrayLength();
+        Assert.True(
+            points <= ConvergenceRecorder.MaxCurvePoints + 1,
+            $"{points} curve points exceed the {ConvergenceRecorder.MaxCurvePoints}-point budget.");
+    }
+
+    [Fact]
     public async Task Second_start_is_refused_while_a_run_is_active()
     {
         var release = new TaskCompletionSource();

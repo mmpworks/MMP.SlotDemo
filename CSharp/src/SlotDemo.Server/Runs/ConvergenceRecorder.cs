@@ -35,7 +35,9 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
 
     private readonly Lock _gate = new();
     private readonly List<ConvergencePoint> _curve = [];
-    private long _nextBoundary = stride;
+    // Mirrors the Stride normalisation below: a non-positive ctor value must not park
+    // the first boundary at or below zero for a directly constructed recorder.
+    private long _nextBoundary = stride > 0 ? stride : DefaultStride;
     private RunSnapshot _latest;
 
     public long Stride { get; } = stride > 0 ? stride : DefaultStride;

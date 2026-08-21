@@ -81,7 +81,10 @@ let source: EventSource | null = null
 
 // Point events can arrive hundreds of times per second, and every curve assignment
 // rebuilds the whole SVG. Buffering points and flushing once per animation frame caps
-// the redraw rate at the display's, whatever the event rate.
+// the redraw rate at the display's, whatever the event rate. A hidden tab pauses
+// requestAnimationFrame, so the buffer grows until the tab is foregrounded; that stays
+// harmless only because the server caps a run at ConvergenceRecorder.MaxCurvePoints —
+// this buffer is unbounded on its own.
 let pendingPoints: CurvePoint[] = []
 let pointFlushHandle = 0
 
@@ -160,6 +163,9 @@ function subscribe(): void {
 
 function adopt(description: RunDescription): void {
   run.value = description
+  // The server may raise the requested stride to keep the curve inside its point
+  // budget; reflecting the effective value keeps the input and the prose in agreement.
+  stride.value = description.stride
   resetCurve(description.curve)
   liveSpins.value = description.latest.spins
   liveRtp.value = description.latest.measuredRtp
