@@ -1,18 +1,20 @@
-# Simulation Flow, Node by Node
+# How a Simulation Run Moves Through the System
 
-This document walks one simulation run through every node of
-`docs/system-design-simplified.svg`. For each node: what work happens there,
-and the classes that do it, with paths relative to the repository root.
+The [system diagram](system-design-simplified.svg) shows the components involved
+in a simulation run. This guide follows the same path and points to the code at
+each handoff. All paths are relative to the repository root.
 
-The flow below follows a **loaded game** run (a `games/*.json` file named in
-the request). The preset/solver path shares nodes 1-3 and 9-11; its
-difference is noted in node 4.
+The main path below loads a game named in the request from `CSharp/games/*.json`.
+A preset run starts through the same HTTP and coordination code, then uses the
+solver path described under Run Coordinator. Both paths join again at
+`GameRunner` and `SimulationEngine`.
 
 ---
 
 ## 1. Client (Vue SPA)
 
-Sends the run request, then draws what comes back.
+The SPA builds the request, starts the run, and updates the charts from streamed
+samples.
 
 | Work | Where |
 |---|---|
@@ -21,13 +23,15 @@ Sends the run request, then draws what comes back.
 | Warmup gate: holds the run button until the engine reports ready | `CSharp/web/src/run/warmup.ts` |
 | Log streaming composable (same SSE pattern as the run stream) | `CSharp/web/src/composables/useLogStream.ts` |
 
-Functions performed: build a `RunRequest` JSON (preset or game file, seed,
-workers, target spins, stride), `POST /api/run`, open `EventSource` on
-`/api/run/stream`, update charts per sample, offer cancel.
+`RunRequest` carries the game or preset, seed, worker count, target spin count,
+and sample stride. The client posts it to `/api/run`, opens an `EventSource` on
+`/api/run/stream`, and keeps that connection open until the run finishes or the
+user cancels it.
 
-## 2. Run Endpoints
+## 2. HTTP Endpoints
 
-The HTTP door. Thin: validates nothing itself beyond routing.
+The endpoints translate HTTP requests into coordinator and stream operations.
+Request validation belongs to `RunCoordinator`.
 
 | Work | Where |
 |---|---|
@@ -36,120 +40,110 @@ The HTTP door. Thin: validates nothing itself beyond routing.
 
 ## 3. Run Coordinator
 
-One run at a time. Validates the request, prepares the subject, owns the
-run's lifecycle, and publishes every event.
+`RunCoordinator` allows one active run. It validates the request, prepares the
+game, starts the background task, and publishes run events.
 
 | Work | Where |
 |---|---|
-| `Start(RunRequest)` — rejects a second concurrent run, branches to `PrepareGame` (game file set) or `PreparePreset` (solver path), spawns the run task | `CSharp/src/SlotDemo.Server/Runs/RunCoordinator.cs` |
-| `PrepareGame` — load + validate the JSON, run `GameAnalyzer.Analyze`, optionally `Reprice` (scale line pays to a target RTP), warm the outcome tables, build the `RunPlan` and `GameRunner` | same file |
-| `PreparePreset` — solver path: `PaytableSolver` prices a stock `ReelPreset` to the requested RTP split (base + scheduled free-spins/pick-bonus terms) | same file, with `CSharp/src/MMP.SlotGame.Core/Paytables/PaytableSolver.cs` and `CSharp/src/MMP.SlotGame.Core/Features/FeatureSchedule.cs` |
-| `Cancel()`, `Describe()` — stop the active run; report the current one to a late-joining page | same file |
-| `ConvergenceRecorder` — per-stride check of measured RTP against the analytic band | `CSharp/src/SlotDemo.Server/Runs/ConvergenceRecorder.cs` |
+| `Start(RunRequest)` rejects a second concurrent run, chooses `PrepareGame` or `PreparePreset`, and starts the run task | `CSharp/src/SlotDemo.Server/Runs/RunCoordinator.cs` |
+| `PrepareGame` loads and validates the JSON, runs `GameAnalyzer.Analyze`, optionally scales line pays to a target RTP with `Reprice`, warms the outcome tables, and creates the `RunPlan` and `GameRunner` | same file |
+| `PreparePreset` asks `PaytableSolver` to price a stock `ReelPreset` for the requested base and feature RTP contributions | same file, with `CSharp/src/MMP.SlotGame.Core/Paytables/PaytableSolver.cs` and `CSharp/src/MMP.SlotGame.Core/Features/FeatureSchedule.cs` |
+| `Cancel()` stops the active run; `Describe()` supplies its current state to a page that joins late | same file |
+| `ConvergenceRecorder` compares measured RTP with the analytic band at each sample stride | `CSharp/src/SlotDemo.Server/Runs/ConvergenceRecorder.cs` |
 
-## 4. Game Definition Loader
+## 4. Loading a Game Definition
 
-Turns a JSON document into a validated game, or a complete error list.
+For a loaded-game request, the loader deserializes the JSON and returns either a
+`GameDefinition` or the full set of validation errors.
 
 | Work | Where |
 |---|---|
-| `LoadFile` / `Load` / `TryLoad` — deserialize, hand to the builder, warm the outcome tables on success | `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinitionLoader.cs` |
-| `GameDefinitionBuilder.TryBuild` — phase-ordered validation: symbols, substitutions, groups, reels, declared stop/symbol counts, outcome-table geometry, paylines, paytable (pay-unit compilation), features | `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinitionBuilder.cs` |
-| `GameDocument` and friends — the nullable deserialization DTOs | `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDocument.cs` |
+| `LoadFile`, `Load`, and `TryLoad` deserialize the document, pass it to the builder, and warm the outcome tables after a successful build | `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinitionLoader.cs` |
+| `GameDefinitionBuilder.TryBuild` validates in dependency order: symbols, substitutions, groups, reels, declared counts, outcome-table geometry, paylines, paytable, then features | `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinitionBuilder.cs` |
+| `GameDocument` and its related types hold the nullable data produced by deserialization | `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDocument.cs` |
 | The validated result: symbols, `StripReelSet`, paylines, compiled `PayCategory` list, optional `ScatterPickBonus` | `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinition.cs`, `CSharp/src/MMP.SlotGame.Core/Reels/StripReelSet.cs` |
 
-## 5. PAR Data (config)
+## 5. PAR Data
 
-Pure data. No code runs here.
+The game files contain the strips, paylines, pays, and feature configuration
+consumed by the loader.
 
 | Work | Where |
 |---|---|
 | Shipped game definitions: strips, paylines, paytable, feature block, declared counts the loader verifies | `CSharp/games/orca-dive.json`, `CSharp/games/classic-three-reel.json`, `CSharp/games/two-line-tide.json` |
 
-## 6. Game Analyzer (enumerated RTP, no RNG)
+## 6. Calculating the Analytic Result
 
-Computes the truth the simulation must converge to.
+Before sampling begins, `GameAnalyzer` calculates the reference RTP, hit
+frequency, and sigma from the game definition. This path enumerates outcomes; it
+does not draw random stops.
 
 | Work | Where |
 |---|---|
-| `Analyze(definition)` — dispatch: single payline uses weighted symbol enumeration (`Enumeration.Descend` walks per-reel symbol classes with stop-count weights; `Accumulate` tallies pay, pay-squared, and trigger weight; `Summarize` produces RTP, hit frequency, sigma). Multi-payline games price from the compiled physical outcomes instead (`AnalyzePhysicalOutcomes`) | `CSharp/src/MMP.SlotGame.Core/Games/GameAnalyzer.cs` |
+| `Analyze(definition)` uses weighted symbol enumeration for a single payline. `Enumeration.Descend` walks the symbol classes and stop-count weights, `Accumulate` tallies pay and trigger weight, and `Summarize` produces RTP, hit frequency, and sigma. Multi-payline games use `AnalyzePhysicalOutcomes` instead | `CSharp/src/MMP.SlotGame.Core/Games/GameAnalyzer.cs` |
 | The result object: `LineRtp`, `BonusRtp`, `TotalRtp`, `HitFrequency`, `SigmaPerUnitWagered`, per-category combination counts | `CSharp/src/MMP.SlotGame.Core/Games/GameAnalysis.cs` |
 | Pick-bonus mean and second moment in closed form (no enumeration needed) | `CSharp/src/MMP.SlotGame.Core/Games/Definition/PickBonus.cs` (`Mean`, `MeanSquared`) |
 
-## 7. Win Evaluator
+## 7. Evaluating Wins
 
-The one place that knows what a win is. Both the analyzer and the
-table builder call it; nothing else re-implements the rules.
+`WinEvaluator` owns the rules for line wins and scatter triggers. The analyzer
+uses it while calculating the reference result, and the outcome-table builder
+uses it when compiling the spin-time lookup.
 
 | Work | Where |
 |---|---|
-| `Evaluate(cells)` — best win on one payline: left-aligned runs, wild continues/requires split, best-paying prefix, tie to the longer run | `CSharp/src/MMP.SlotGame.Core/Games/WinEvaluator.cs` |
-| `EvaluateWindow` / `EvaluateWindowIds` — sum over paylines; `IsTriggered` — scatter-anywhere feature check | same file |
+| `Evaluate(cells)` finds the best win on one payline, including left-aligned runs, the wild continues/requires split, best-paying prefixes, and longer-run tie breaking | `CSharp/src/MMP.SlotGame.Core/Games/WinEvaluator.cs` |
+| `EvaluateWindow` and `EvaluateWindowIds` sum the paylines; `IsTriggered` checks for a scatter-anywhere feature | same file |
 | The compiled per-category lookups it reads (`Continues`, `IsRequired`, `PayFor`) | `CSharp/src/MMP.SlotGame.Core/Games/Definition/GameDefinition.cs` (`PayCategory`) |
 
-## 8. Outcome Tables (precomputed)
+## 8. Precomputing Outcome Tables
 
-The full cycle, evaluated once, so the hot loop is a dictionary probe.
-
-| Work | Where |
-|---|---|
-| `WinningOutcomeTable.Build` — enumerate every stop combination, evaluate all paylines and the feature trigger, store only winners keyed by packed stop bytes (`PackKey`); `TryGetValue` at spin time | `CSharp/src/MMP.SlotGame.Core/Games/WinningOutcomeTable.cs` |
-| `ProgressiveOutcomeTable.Build` — the same outcomes rearranged as reel-by-reel narrowing tables; `TryGetValue(stops)` is the spin-path lookup | `CSharp/src/MMP.SlotGame.Core/Games/ProgressiveOutcomeTable.cs` |
-
-## 9. GameRunner (per-spin play)
-
-Adapts a loaded game to the shared engine: one delegate per worker.
+The builder evaluates the full reel cycle before the run. During a spin, the
+engine can look up the packed stops instead of evaluating paylines again.
 
 | Work | Where |
 |---|---|
-| `RunAsync` — force tables warm, build the `SimulationEngine` with per-worker RNG streams and the play factory, sum per-worker tallies afterward, pair the totals with the analytic reference | `CSharp/src/MMP.SlotGame.Core/Games/GameRunner.cs` |
-| `CreatePlay` — the per-spin delegate: `DrawStops`, probe `ProgressiveOutcomes` for the line pay, play `PickBonus.Play` inline on a trigger, tally line/bonus millicents, return a `SpinOutcome` | same file |
+| `WinningOutcomeTable.Build` enumerates every stop combination, evaluates the paylines and feature trigger, and stores winning results under packed stop keys. `TryGetValue` reads those results | `CSharp/src/MMP.SlotGame.Core/Games/WinningOutcomeTable.cs` |
+| `ProgressiveOutcomeTable.Build` rearranges the results into reel-by-reel narrowing tables. The spin path calls `TryGetValue(stops)` | `CSharp/src/MMP.SlotGame.Core/Games/ProgressiveOutcomeTable.cs` |
+
+## 9. Adapting the Game to the Spin Loop
+
+`GameRunner` connects a loaded game to the general-purpose simulation loop. It
+creates one play delegate for each worker and combines the worker totals when
+the run ends.
+
+| Work | Where |
+|---|---|
+| `RunAsync` warms the tables, builds a `SimulationEngine` with the play factory and per-worker RNG streams, combines the worker tallies, and pairs the totals with the analytic result | `CSharp/src/MMP.SlotGame.Core/Games/GameRunner.cs` |
+| `CreatePlay` returns the per-spin delegate. It calls `DrawStops`, looks up the line pay in `ProgressiveOutcomes`, runs `PickBonus.Play` when triggered, tallies line and bonus millicents, and returns a `SpinOutcome` | same file |
 | The wager and money math | `CSharp/src/MMP.SlotGame.Core/Money/Millicents.cs` (`ScaledMultiply`), `CSharp/src/MMP.SlotGame.Core/Simulation/SimulationConfig.cs` (`Wager`) |
 
-## 10. Simulation Engine
+## 10. Running the Workers
 
-The shared spin loop. Knows nothing about slots; it schedules workers,
-streams counters, and keeps determinism.
+`SimulationEngine` schedules the workers and collects their counters. Slot rules
+stay inside the delegates supplied by `GameRunner`, so the engine works only
+with quotas, RNG streams, `SpinOutcome` values, and telemetry.
 
 | Work | Where |
 |---|---|
-| `RunAsync(telemetry, observer, ct)` — fixed worker quotas, per-worker `SpinPlay` delegates, batched counters, telemetry samples per stride, cancellation | `CSharp/src/MMP.SlotGame.Core/Simulation/SimulationEngine.cs` |
-| `SpinRng.ForWorker(masterSeed, workerId)` — xoshiro256** seeded via SplitMix64; `NextInt` with Lemire rejection | `CSharp/src/MMP.SlotGame.Core/Simulation/SpinRng.cs` |
+| `RunAsync(telemetry, observer, ct)` assigns fixed worker quotas, invokes the `SpinPlay` delegates, batches counters, emits samples at the requested stride, and observes cancellation | `CSharp/src/MMP.SlotGame.Core/Simulation/SimulationEngine.cs` |
+| `SpinRng.ForWorker(masterSeed, workerId)` creates a `xoshiro256**` stream seeded through SplitMix64; `NextInt` uses Lemire rejection | `CSharp/src/MMP.SlotGame.Core/Simulation/SpinRng.cs` |
 | Run counters and the immutable `RunSnapshot` handed back | `CSharp/src/MMP.SlotGame.Core/Simulation/RunTotals.cs` |
 | Reel draws on the hot path (`DrawStops`, `DrawWindowIds`, precomputed Lemire thresholds per reel) | `CSharp/src/MMP.SlotGame.Core/Reels/StripReelSet.cs` |
 
-## 11. Run Stream (SSE)
+## 11. Streaming Progress to the Browser
 
-Fan-out of run events to every open browser tab.
+`RunStreamService` sends each event to every subscribed browser tab. A slow
+subscriber loses its oldest queued event instead of delaying the run.
 
 | Work | Where |
 |---|---|
-| `Publish(jsonEvent)` — push to every subscriber, dropping the oldest queued event for a slow client; `Subscribe`/`Unsubscribe` per SSE connection | `CSharp/src/SlotDemo.Server/Runs/RunStreamService.cs` |
+| `Publish(jsonEvent)` writes to every subscriber and drops the oldest queued event for a slow client. Each SSE connection calls `Subscribe` and `Unsubscribe` | `CSharp/src/SlotDemo.Server/Runs/RunStreamService.cs` |
 | Event producers: the coordinator publishes run-started (with the analytic RTP band), per-stride telemetry, convergence notes, and run-completed | `CSharp/src/SlotDemo.Server/Runs/RunCoordinator.cs` (`Publish`) |
-
----
-
-## The sequence in one list
-
-1. Client POSTs `RunRequest` to `/api/run` (node 1 → 2).
-2. `RunCoordinator.Start` validates and branches (node 3).
-3. `GameDefinitionLoader` reads the game JSON and the builder validates it
-   (nodes 4, 5).
-4. `GameAnalyzer.Analyze` enumerates the RTP and sigma with no sampling error; the
-   coordinator publishes the analytic band (nodes 6, 7, 11).
-5. Outcome tables are (re)built warm so workers never pay construction
-   time (nodes 7, 8).
-6. `GameRunner.RunAsync` hands per-worker play delegates to
-   `SimulationEngine.RunAsync` (nodes 9, 10).
-7. Workers draw stops, probe the tables, play features inline, and batch
-   counters; every stride a telemetry sample flows to the stream (nodes
-   10 → 11).
-8. The client's `EventSource` redraws the charts per sample until the run
-   completes or is cancelled (node 1).
 
 ## Free spins in this repository
 
-Free spins appear only on the solver/preset path, modeled analytically as a
-scheduled RTP term (`CSharp/src/MMP.SlotGame.Core/Features/FeatureSchedule.cs`).
-Loaded games play every spin through the precomputed tables plus the inline
-pick bonus; there is no per-spin free-game session here.
+The solver/preset path represents free spins as a scheduled RTP term in
+`CSharp/src/MMP.SlotGame.Core/Features/FeatureSchedule.cs`. Loaded games use the
+precomputed outcome tables and play the pick bonus inline. They do not start a
+separate free-game session during a spin.

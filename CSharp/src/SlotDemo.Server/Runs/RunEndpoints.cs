@@ -4,15 +4,15 @@ using MMP.SlotGame.Core.Simulation;
 namespace SlotDemo.Server.Runs;
 
 /// <summary>
-/// HTTP endpoints for reading run options, starting a run, streaming its progress, and
-/// stopping it. The coordinator is the only component that changes run state.
+/// Maps the HTTP API used by the finale page. Requests that change run state are delegated
+/// to <see cref="RunCoordinator"/>.
 /// </summary>
 public static class RunEndpoints
 {
     public static void MapRuns(this WebApplication app)
     {
-        // What the SPA is allowed to ask for. The cap and the defaults live on the server,
-        // so the client previews the rule rather than owning a second copy of it.
+        // Return server-owned limits and defaults so the form displays the same rules that
+        // RunCoordinator validates.
         app.MapGet("/api/run/limits", () => Results.Ok(new
         {
             maxAggregateBasisPoints = SimulationConfig.MaxAggregateBasisPoints,
@@ -37,10 +37,8 @@ public static class RunEndpoints
             }),
         }));
 
-        // Whether the engine has been warmed enough to be worth timing. The page holds its
-        // run button until this reports ready, so a visitor's first run is a real
-        // measurement rather than a compilation. The threshold lives here, with the rest of
-        // the run limits, so the page reads it instead of keeping a second copy.
+        // The SPA keeps the run button disabled until warm-up either reaches the threshold
+        // or exhausts its pass limit.
         app.MapGet("/api/run/readiness", (EngineWarmupService warmup) =>
         {
             var state = warmup.Snapshot;
@@ -69,7 +67,8 @@ public static class RunEndpoints
         app.MapPost("/api/run/cancel", (RunCoordinator runs) =>
             runs.Cancel() ? Results.Accepted() : Results.Conflict(new { title = "No run is active" }));
 
-        // Stream run events with SSE. Each slow client drops its oldest queued events.
+        // Subscribe creates this browser's queue. Each payload becomes one SSE message;
+        // the blank line terminates the frame and FlushAsync sends it without buffering.
         app.MapGet("/api/run/stream", async (HttpContext context, RunStreamService stream) =>
         {
             context.Response.Headers.ContentType = "text/event-stream";
