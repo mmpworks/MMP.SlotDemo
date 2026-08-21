@@ -4,19 +4,19 @@ using MMP.SlotGame.Core.Simulation;
 
 namespace SlotDemo.Server.Runs;
 
-/// <summary>The one log category every run component writes under.</summary>
+/// <summary>Shared log category for simulation-run components.</summary>
 internal static class RunLogging
 {
     internal static readonly LogCategory Category = new("SimulationRun");
 }
 
-/// <summary>What the page shows about the subject, independent of which kind it is.</summary>
-internal sealed record RunFacts(
-    string Subject,
-    bool IsGame,
+/// <summary>Game identity and immutable settings for an accepted run.</summary>
+internal sealed record RunConfiguration(
+    string GameName,
+    bool IsShippedGame,
     int Reels,
     int Rows,
-    string StopsByReel,
+    string StopCounts,
     int Paylines,
     double TargetRtp,
     int Workers,
@@ -25,31 +25,34 @@ internal sealed record RunFacts(
     double PayScaleFactor,
     ulong Seed);
 
-/// <summary>The analytic reference the live chart converges toward.</summary>
-internal sealed record AnalyticView(
+/// <summary>Calculated RTP and volatility values used to evaluate simulation results.</summary>
+internal sealed record AnalyticReference(
     double BaseRtp,
-    IReadOnlyList<(string Name, double Rtp)> Features,
+    IReadOnlyList<(string Name, double Rtp)> FeatureContributions,
     double TotalRtp,
     double Sigma);
 
-/// <summary>Runs the subject's spins; both kinds return the quiesced final snapshot.</summary>
-internal delegate Task<(RunSnapshot Totals, EngineTimings Timings)> SubjectRunner(
+/// <summary>
+/// Executes a prepared game, publishes cumulative telemetry, and returns final totals and timings.
+/// </summary>
+internal delegate Task<(RunSnapshot Totals, EngineTimings Timings)> SimulationExecutor(
     ChannelWriter<TelemetrySample> telemetry, CancellationToken ct);
 
-/// <summary>Everything a validated request produced: what to run and how to describe it.</summary>
+/// <summary>Everything the coordinator needs to execute and report an accepted run.</summary>
 internal sealed record PreparedRun(
-    RunFacts Facts,
-    AnalyticView Analytic,
-    SubjectRunner Runner,
+    RunConfiguration Configuration,
+    AnalyticReference Reference,
+    SimulationExecutor Execute,
     string RunId);
 
 /// <summary>
-/// The outcome of a preparation path: a subject ready to run, or the HTTP status and body
-/// explaining why not. Exactly one side is set.
+/// Returns either a prepared subject or the HTTP error used to reject the request.
 /// </summary>
-internal sealed record PrepareResult(PreparedRun? Prepared, (int Status, object Body)? Error)
+internal sealed record RunPreparationResult(PreparedRun? Prepared, (int Status, object Body)? Error)
 {
-    public static PrepareResult Ok(PreparedRun prepared) => new(prepared, null);
+    public static RunPreparationResult Success(PreparedRun prepared) => new(prepared, null);
 
-    public static PrepareResult Fail(int status, object body) => new(null, (status, body));
+    public static RunPreparationResult Failure(int status, object body) => new(null, (status, body));
+
+    public static RunPreparationResult Failure((int Status, object Body) error) => new(null, error);
 }

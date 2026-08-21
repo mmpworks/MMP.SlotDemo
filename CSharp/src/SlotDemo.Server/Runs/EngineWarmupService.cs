@@ -8,19 +8,15 @@ using MMP.SlotGame.Core.Simulation;
 namespace SlotDemo.Server.Runs;
 
 /// <summary>
-/// Spins a throwaway workload at startup until the engine reaches its settled speed, so the
-/// first run a visitor watches is a real measurement rather than a compilation.
+/// Runs a throwaway simulation at startup until tiered compilation no longer dominates
+/// measured throughput.
 ///
-/// .NET compiles a method on first use and re-optimizes it once it has been called enough
-/// times. The spin loop is the hottest code here, so the first runs after the server starts
-/// report a fraction of the engine's real throughput: on developer hardware a first run
-/// read 12.4M spins/s and the fourth 143.2M, with identical spins, identical measured RTP
-/// and an identical verdict. The math was never in doubt; only the clock was.
+/// .NET compiles a method on first use and re-optimizes hot methods later. On developer
+/// hardware, the same run measured 12.4M spins/s on its first pass and 143.2M on its fourth
+/// while producing the same RTP and verdict.
 ///
-/// This series teaches what the numbers mean, so a visitor reading a warm-up clock as
-/// engine speed is a teaching failure. Warming here moves that cost before anyone is
-/// watching, and <see cref="Snapshot"/> lets the page hold its run button until the engine
-/// is worth timing.
+/// <see cref="CurrentState"/> keeps the run button disabled until the engine reaches the
+/// throughput threshold or exhausts the configured warm-up passes.
 /// </summary>
 public sealed class EngineWarmupService : BackgroundService
 {
@@ -37,9 +33,8 @@ public sealed class EngineWarmupService : BackgroundService
     private const long SpinsPerPass = 2_000_000;
 
     /// <summary>
-    /// A ceiling on passes. Slower hardware may never reach the threshold, and a page whose
-    /// button never enables would be worse than one that reports an honest slower speed, so
-    /// warm-up always finishes.
+    /// Maximum warm-up passes. Reaching this limit enables the page with
+    /// <c>Settled == false</c> so slower hardware does not wait indefinitely.
     /// </summary>
     private const int MaxPasses = 12;
 
@@ -48,14 +43,14 @@ public sealed class EngineWarmupService : BackgroundService
     // A record struct cannot be volatile, and the background writer and the endpoint reader
     // are different threads, so the state is published through a reference the runtime can
     // swap atomically.
-    private volatile Box _state = new(new WarmupState(false, 0, 0, false));
+    private volatile WarmupStateReference _state = new(new WarmupState(false, 0, 0, false));
 
     public EngineWarmupService(StructuredLogger log) => _log = log;
 
-    private sealed record Box(WarmupState Value);
+    private sealed record WarmupStateReference(WarmupState Value);
 
-    /// <summary>What the readiness endpoint reports. Safe to read from any thread.</summary>
-    public WarmupState Snapshot => _state.Value;
+    /// <summary>Latest warm-up result, published atomically for the readiness endpoint.</summary>
+    public WarmupState CurrentState => _state.Value;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -82,11 +77,11 @@ public sealed class EngineWarmupService : BackgroundService
 
             var rate = engine.Timings.SpinsPerSecond(totals.Spins);
             if (rate > best) best = rate;
-            _state = new Box(new WarmupState(false, best, pass, false));
+            PublishState(ready: false, best, pass, settled: false);
 
             if (rate >= SettledSpinsPerSecond)
             {
-                _state = new Box(new WarmupState(true, best, pass, true));
+                PublishState(ready: true, best, pass, settled: true);
                 _log.Information(Category, "Engine warm after {Passes} passes at {Rate} spins/s",
                     new LogProperty("Passes", pass),
                     new LogProperty("Rate", rate));
@@ -96,15 +91,16 @@ public sealed class EngineWarmupService : BackgroundService
 
         if (stoppingToken.IsCancellationRequested) return;
 
-        // Ran out of passes. Report ready anyway with settled=false: the page should open
-        // rather than wait forever, and the number it shows is the truth about this machine.
-        _state = new Box(new WarmupState(true, best, MaxPasses, false));
+        PublishState(ready: true, best, MaxPasses, settled: false);
         _log.Warning(Category,
             "Engine warm-up finished without reaching {Target} spins/s; best {Best} over {Passes} passes",
             new LogProperty("Target", SettledSpinsPerSecond),
             new LogProperty("Best", best),
             new LogProperty("Passes", MaxPasses));
     }
+
+    private void PublishState(bool ready, double bestRate, int passes, bool settled) =>
+        _state = new WarmupStateReference(new WarmupState(ready, bestRate, passes, settled));
 }
 
 /// <summary>

@@ -1,10 +1,9 @@
 namespace SlotDemo.Server.Runs;
 
 /// <summary>
-/// What the SPA sends to start a run. Untrusted; every field is validated downstream.
-/// A non-empty <c>GameFile</c> runs a shipped game document through
-/// GameRunner instead of a solved preset; the RTP fields are ignored then, because a
-/// published paytable already decided them.
+/// Request body for <c>POST /api/run</c>. <see cref="RunPreparer"/> validates every field.
+/// When <c>GameFile</c> is set, the request selects a shipped game instead of a preset;
+/// the preset RTP fields do not apply.
 /// </summary>
 public sealed record RunRequest(
     string PresetName,
@@ -17,9 +16,7 @@ public sealed record RunRequest(
     long Stride,
     string GameFile = "",
     /// <summary>
-    /// Optional target TOTAL RTP for a shipped game, in basis points. 0 keeps the game's
-    /// published paytable, which is the default and what the article describes. Anything
-    /// else re-prices the line paytable to hit this total, the way a cabinet's approved
-    /// payback versions are produced from one recipe.
+    /// Optional total-RTP target for a shipped game, in basis points. Zero keeps the
+    /// published paytable. A nonzero value rescales line pays; feature pays stay fixed.
     /// </summary>
     int TargetTotalRtpBasisPoints = 0);

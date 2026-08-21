@@ -4,20 +4,11 @@ using MMP.SlotGame.Core.Simulation;
 namespace SlotDemo.Server.Runs;
 
 /// <summary>
-/// Turns a flood of run snapshots into a curve a browser can hold.
+/// Selects convergence-chart points from cumulative telemetry snapshots.
 ///
-/// A ten-million-spin run produces roughly 2,400 batch snapshots per worker. Sending
-/// them all would spend the network on points that land on top of each other, and the
-/// SPA would hold an array it never draws. So the recorder consolidates: it keeps the
-/// newest snapshot for the live readout, and appends one curve point each time the run
-/// crosses a stride boundary — 50,000 spins by default, which puts 200 points on a 10M
-/// run and none of them redundant.
-///
-/// Every point carries its own confidence half-width, because the band narrows as the
-/// square root of N. Computing it server-side leaves the SPA one statistic to draw.
-///
-/// The full curve is kept in memory (a 10M run costs about 200 records), so a browser that
-/// connects late still receives every point from the start of the run.
+/// The recorder keeps the latest totals and adds one point when a snapshot crosses the
+/// next spin-count stride. At the default 50,000-spin stride, a 10M-spin run produces
+/// about 200 points. Each point includes its confidence half-width.
 /// </summary>
 public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitWagered, long stride)
 {
@@ -25,25 +16,17 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
     public const long DefaultStride = 50_000;
 
     /// <summary>
-    /// A fixed acceptance yardstick alongside the statistical band: the simulated RTP is
-    /// expected to agree with the submitted math within half a percentage point over at
-    /// least ten million spins. This is a common lab convention rather than a clause
-    /// published in GLI-11; the standard itself is linked from the Library page, and this
-    /// figure is not quoted from it.
-    ///
-    /// Which of the two checks is tighter depends on the game, so neither is "the strong
-    /// one". The band is z*sigma/sqrt(N), so it undercuts 0.5pp at ten million spins only
-    /// while sigma is under about 6.146. Orca Dive sits at 6.129, giving a band of 0.4993
-    /// at the gate: tighter by a fraction of a percent. A swingier game would have the
-    /// wider band of the two at the same N.
+    /// Fixed comparison limit used after 10M spins. This ±0.5 percentage-point rule is a
+    /// lab convention, not a requirement quoted from GLI-11. The confidence band remains
+    /// a separate, sigma-based calculation.
     /// </summary>
-    public const double IndustryTolerance = 0.005;
+    public const double FixedTolerance = 0.005;
 
-    /// <summary>Minimum spins before the industry check applies.</summary>
-    public const long IndustryMinimumSpins = 10_000_000;
+    /// <summary>Minimum sample size for the fixed-tolerance check.</summary>
+    public const long MinimumSpinsForFixedTolerance = 10_000_000;
 
     private readonly Lock _gate = new();
-    private readonly List<CurvePoint> _curve = [];
+    private readonly List<ConvergencePoint> _curve = [];
     private long _nextBoundary = stride;
     private RunSnapshot _latest;
 
@@ -54,16 +37,16 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
         get { lock (_gate) return _latest; }
     }
 
-    public IReadOnlyList<CurvePoint> Curve
+    public IReadOnlyList<ConvergencePoint> Curve
     {
         get { lock (_gate) return _curve.ToArray(); }
     }
 
     /// <summary>
-    /// Records a snapshot. Returns the curve point when this snapshot crossed a stride
-    /// boundary, and null otherwise — callers push the returned point and skip the rest.
+    /// Records the newest cumulative snapshot. Returns a point when the spin count crosses
+    /// the next stride boundary; otherwise returns null.
     /// </summary>
-    public CurvePoint? Observe(RunSnapshot snapshot)
+    public ConvergencePoint? RecordSnapshot(RunSnapshot snapshot)
     {
         lock (_gate)
         {
@@ -85,10 +68,10 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
     }
 
     /// <summary>
-    /// The end of the run always earns a point, whether or not it landed on a boundary,
-    /// because the page reads its final verdict off the last point.
+    /// Records and returns the terminal point, including runs that end between stride
+    /// boundaries.
     /// </summary>
-    public CurvePoint Complete(RunSnapshot finalSnapshot)
+    public ConvergencePoint RecordFinalSnapshot(RunSnapshot finalSnapshot)
     {
         lock (_gate)
         {
@@ -101,29 +84,26 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
     }
 
     /// <summary>
-    /// The fixed-yardstick acceptance read on the latest totals. Null while the run is still
-    /// below <see cref="IndustryMinimumSpins"/> — an early reading against a fixed
-    /// tolerance would be noise presented as a verdict.
+    /// Applies the fixed RTP tolerance after <see cref="MinimumSpinsForFixedTolerance"/>. Returns
+    /// null below that sample size.
     /// </summary>
-    public IndustryVerdict? IndustryCheck()
+    public FixedToleranceResult? CheckFixedTolerance()
     {
         RunSnapshot latest;
         lock (_gate) latest = _latest;
-        if (latest.Spins < IndustryMinimumSpins) return null;
+        if (latest.Spins < MinimumSpinsForFixedTolerance) return null;
         var deviation = Math.Abs(latest.MeasuredRtp - analyticRtp);
-        return new IndustryVerdict(latest.Spins, deviation, deviation <= IndustryTolerance);
+        return new FixedToleranceResult(latest.Spins, deviation, deviation <= FixedTolerance);
     }
 
-    private CurvePoint Measure(RunSnapshot snapshot)
+    private ConvergencePoint Measure(RunSnapshot snapshot)
     {
-        // Band = z * sigma / sqrt(N), the same standard confidence-band formula used in
-        // the lesson. Sigma measures one-spin swinginess. Averaging more independent spins
-        // reduces that noise by sqrt(N), so 100 times as many spins narrows the band by 10.
+        // The band narrows with sqrt(N): 100 times as many spins makes it 10 times narrower.
         var halfWidth = snapshot.Spins > 0
             ? NormalQuantile.TwoSided99 * sigmaPerUnitWagered / Math.Sqrt(snapshot.Spins)
             : 0;
 
-        return new CurvePoint(
+        return new ConvergencePoint(
             snapshot.Spins,
             snapshot.MeasuredRtp,
             snapshot.HitFrequency,
@@ -136,7 +116,7 @@ public sealed class ConvergenceRecorder(double analyticRtp, double sigmaPerUnitW
 /// One consolidated point on the convergence chart: where the measured RTP sat after
 /// this many spins, and how wide the band was at that N.
 /// </summary>
-public readonly record struct CurvePoint(
+public readonly record struct ConvergencePoint(
     long Spins,
     double MeasuredRtp,
     double HitFrequency,
@@ -144,8 +124,8 @@ public readonly record struct CurvePoint(
     bool WithinBand);
 
 /// <summary>
-/// The certification-practice check: how far the measured RTP sits from the analytic
-/// RTP after at least <see cref="ConvergenceRecorder.IndustryMinimumSpins"/> spins, and
-/// whether that deviation fits inside <see cref="ConvergenceRecorder.IndustryTolerance"/>.
+/// The fixed-tolerance check: how far measured RTP sits from analytic RTP after at least
+/// <see cref="ConvergenceRecorder.MinimumSpinsForFixedTolerance"/> spins, and whether that
+/// deviation fits inside <see cref="ConvergenceRecorder.FixedTolerance"/>.
 /// </summary>
-public readonly record struct IndustryVerdict(long Spins, double Deviation, bool Passed);
+public readonly record struct FixedToleranceResult(long Spins, double Deviation, bool Passed);

@@ -11,8 +11,7 @@ public static class RunEndpoints
 {
     public static void MapRuns(this WebApplication app)
     {
-        // What the SPA is allowed to ask for. The cap and the defaults live on the server,
-        // so the client previews the rule rather than owning a second copy of it.
+        // Return server-owned limits and defaults so the SPA does not duplicate them.
         app.MapGet("/api/run/limits", () => Results.Ok(new
         {
             maxAggregateBasisPoints = SimulationConfig.MaxAggregateBasisPoints,
@@ -37,13 +36,10 @@ public static class RunEndpoints
             }),
         }));
 
-        // Whether the engine has been warmed enough to be worth timing. The page holds its
-        // run button until this reports ready, so a visitor's first run is a real
-        // measurement rather than a compilation. The threshold lives here, with the rest of
-        // the run limits, so the page reads it instead of keeping a second copy.
+        // The SPA keeps Start disabled until warm-up reaches its threshold or pass limit.
         app.MapGet("/api/run/readiness", (EngineWarmupService warmup) =>
         {
-            var state = warmup.Snapshot;
+            var state = warmup.CurrentState;
             return Results.Ok(new
             {
                 ready = state.Ready,
@@ -62,32 +58,40 @@ public static class RunEndpoints
 
         app.MapGet("/api/run/current", (RunCoordinator runs) =>
         {
-            var described = runs.Describe();
-            return described is null ? Results.NoContent() : Results.Ok(described);
+            var status = runs.GetCurrentStatus();
+            return status is null ? Results.NoContent() : Results.Ok(status);
         });
 
         app.MapPost("/api/run/cancel", (RunCoordinator runs) =>
             runs.Cancel() ? Results.Accepted() : Results.Conflict(new { title = "No run is active" }));
 
-        // Stream run events with SSE. Each slow client drops its oldest queued events.
-        app.MapGet("/api/run/stream", async (HttpContext context, RunStreamService stream) =>
+        app.MapGet("/api/run/stream", StreamRunEventsAsync);
+    }
+
+    /// <summary>Sends run events until the browser disconnects.</summary>
+    private static async Task StreamRunEventsAsync(
+        HttpContext context,
+        RunStreamService stream)
+    {
+        context.Response.Headers.ContentType = "text/event-stream";
+        context.Response.Headers.CacheControl = "no-cache";
+        var (subscriptionId, events) = stream.SubscribeToRunEvents();
+        try
         {
-            context.Response.Headers.ContentType = "text/event-stream";
-            context.Response.Headers.CacheControl = "no-cache";
-            var (id, reader) = stream.Subscribe();
-            try
+            await foreach (var serializedEvent in events.ReadAllAsync(context.RequestAborted))
             {
-                await foreach (var payload in reader.ReadAllAsync(context.RequestAborted))
-                {
-                    await context.Response.WriteAsync($"data: {payload}\n\n", context.RequestAborted);
-                    await context.Response.Body.FlushAsync(context.RequestAborted);
-                }
+                await context.Response.WriteAsync(
+                    $"data: {serializedEvent}\n\n", context.RequestAborted);
+                await context.Response.Body.FlushAsync(context.RequestAborted);
             }
-            catch (OperationCanceledException) { /* client disconnected */ }
-            finally
-            {
-                stream.Unsubscribe(id);
-            }
-        });
+        }
+        catch (OperationCanceledException)
+        {
+            // Request cancellation is the normal end of an SSE subscription.
+        }
+        finally
+        {
+            stream.UnsubscribeFromRunEvents(subscriptionId);
+        }
     }
 }
