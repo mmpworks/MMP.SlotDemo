@@ -101,11 +101,11 @@ internal sealed class RunPreparer(StructuredLogger log)
 
         if (request.TargetTotalRtpBasisPoints != 0)
         {
-            var (repriced, repricedAnalysis, factor, error) = Reprice(game, analysis, request);
-            if (error is not null) return new PrepareResult(null, error);
-            game = repriced!;
-            analysis = repricedAnalysis!;
-            scaleFactor = factor;
+            var reprice = Reprice(game, analysis, request);
+            if (reprice.Error is { } error) return new PrepareResult(null, error);
+            game = reprice.Game!;
+            analysis = reprice.Analysis!;
+            scaleFactor = reprice.Factor;
         }
 
         // Build the game's outcome tables now, while preparing, rather than letting the
@@ -155,44 +155,59 @@ internal sealed class RunPreparer(StructuredLogger log)
     /// rather than a guarantee. The returned analysis is a fresh enumeration of the
     /// re-priced game, which is what the band and the verdict are then measured against.
     /// </summary>
-    private static (GameDefinition? Game, GameAnalysis? Analysis, double Factor, (int, object)? Error)
-        Reprice(GameDefinition game, GameAnalysis analysis, RunRequest request)
+    private static RepriceResult Reprice(GameDefinition game, GameAnalysis analysis, RunRequest request)
     {
         var bp = request.TargetTotalRtpBasisPoints;
         if (bp < SimulationConfig.MinAggregateBasisPoints || bp > SimulationConfig.MaxAggregateBasisPoints)
-            return (null, null, 1.0, (400, new
+            return RepriceResult.Fail(400, new
             {
                 title = $"Target total RTP must be {SimulationConfig.MinAggregateBasisPoints}"
                     + $"-{SimulationConfig.MaxAggregateBasisPoints} basis points",
                 status = 400,
-            }));
+            });
 
         var targetTotal = bp / 10_000.0;
         var featureRtp = analysis.TotalRtp - analysis.LineRtp;
         var targetLine = targetTotal - featureRtp;
 
         if (analysis.LineRtp <= 0)
-            return (null, null, 1.0, (400, new
+            return RepriceResult.Fail(400, new
             {
                 title = "This game pays nothing on the line, so its paytable cannot be re-priced",
                 status = 400,
-            }));
+            });
 
         if (targetLine <= 0)
-            return (null, null, 1.0, (400, new
+            return RepriceResult.Fail(400, new
             {
                 title = $"This game's feature alone returns {featureRtp * 100:0.####}%, "
                     + $"so a total of {targetTotal * 100:0.##}% cannot be reached by re-pricing lines",
                 status = 400,
-            }));
+            });
 
         var factor = targetLine / analysis.LineRtp;
         var repriced = game.WithScaledPays(factor);
 
         GameAnalysis repricedAnalysis;
         try { repricedAnalysis = GameAnalyzer.Analyze(repriced); }
-        catch (NotSupportedException ex) { return (null, null, 1.0, (400, new { title = ex.Message, status = 400 })); }
+        catch (NotSupportedException ex) { return RepriceResult.Fail(400, new { title = ex.Message, status = 400 }); }
 
-        return (repriced, repricedAnalysis, factor, null);
+        return RepriceResult.Ok(repriced, repricedAnalysis, factor);
+    }
+
+    /// <summary>
+    /// A re-priced game with its fresh analysis, or the error refusing the target.
+    /// Exactly one side is set; <see cref="Factor"/> is 1.0 on the error side.
+    /// </summary>
+    private sealed record RepriceResult(
+        GameDefinition? Game,
+        GameAnalysis? Analysis,
+        double Factor,
+        (int Status, object Body)? Error)
+    {
+        public static RepriceResult Ok(GameDefinition game, GameAnalysis analysis, double factor) =>
+            new(game, analysis, factor, null);
+
+        public static RepriceResult Fail(int status, object body) => new(null, null, 1.0, (status, body));
     }
 }
