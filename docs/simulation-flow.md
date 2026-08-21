@@ -147,12 +147,9 @@ Fan-out of run events to every open browser tab.
 8. The client's `EventSource` redraws the charts per sample until the run
    completes or is cancelled (node 1).
 
-## One diagram edge that is aspirational here
+## Free spins in this repository
 
-The chart's "(free spin games) → Win Evaluator" edge describes a
-direct-evaluation spin path for games whose free-spin sessions play a second
-reel set the tables cannot cover. That path exists in a downstream
-experiment, and this repository's `GameRunner` plays every loaded game
-through the precomputed tables plus the inline pick bonus. The solver/preset
-path models free spins analytically instead, as a scheduled RTP term
-(`CSharp/src/MMP.SlotGame.Core/Features/FeatureSchedule.cs`).
+Free spins appear only on the solver/preset path, modeled analytically as a
+scheduled RTP term (`CSharp/src/MMP.SlotGame.Core/Features/FeatureSchedule.cs`).
+Loaded games play every spin through the precomputed tables plus the inline
+pick bonus; there is no per-spin free-game session here.
