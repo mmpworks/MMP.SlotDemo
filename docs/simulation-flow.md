@@ -1,7 +1,7 @@
 # Simulation Flow, Node by Node
 
 This document walks one simulation run through every node of
-`docs/system-design-simplified.png`. For each node: what work happens there,
+`docs/system-design-simplified.svg`. For each node: what work happens there,
 and the classes that do it, with paths relative to the repository root.
 
 The flow below follows a **loaded game** run (a `games/*.json` file named in
