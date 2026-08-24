@@ -46,7 +46,13 @@ public sealed record RunPlan(string RunId, ulong MasterSeed, int WorkerCount, lo
 /// </summary>
 public sealed class SimulationEngine
 {
-    private const int BatchSize = 4096;
+    /// <summary>
+    /// Spins per batch. Each worker publishes one telemetry sample per completed batch,
+    /// so a run produces roughly <c>TargetSpins / BatchSize</c> samples in total. Public
+    /// because a consumer that buffers those samples has to size the buffer from this
+    /// number rather than guess at it.
+    /// </summary>
+    public const int BatchSize = 4096;
 
     private readonly RunPlan _plan;
     private readonly SpinRngFactory _streamFactory;

@@ -1,0 +1,148 @@
+name: CI
+
+# Build and test everything this repository ships, on every push to main and
+# every pull request. Four jobs, because the repo is four things:
+#
+#   dotnet  - the simulation engine and the REST server
+#   web     - the Vue 3 / TypeScript SPA (type-check, build, unit tests)
+#   verify  - the independent Python re-derivation of the slot math
+#   docker  - proves the whole thing still builds from a clean clone
+#
+# `verify` is the one worth explaining. The C# engine already checks itself by
+# enumerating every outcome and comparing that against a simulation, but both
+# halves of that check are the same codebase, so a shared wrong assumption
+# would agree with itself. python/verification/ re-derives the same numbers
+# from the game JSON sharing no code with the engine. Running it here is what
+# makes it a check rather than a claim.
+#
+# Every `uses:` is pinned to a commit SHA with the version in a trailing
+# comment. A tag like `@v5` is a movable pointer the action's owner can
+# repoint at any time; a SHA is one reviewed snapshot. To update: read the
+# release notes, resolve the new SHA with
+#   gh api repos/<owner>/<repo>/git/ref/tags/<tag> --jq .object.sha
+# then change the SHA and the comment together.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dotnet:
+    name: Build + test (.NET 10)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore CSharp/MMP.SlotDemo.slnx
+
+      - name: Build (Release)
+        run: dotnet build CSharp/MMP.SlotDemo.slnx --configuration Release --no-restore
+
+      - name: Test (Release)
+        run: dotnet test CSharp/MMP.SlotDemo.slnx --configuration Release --no-build --verbosity normal
+
+  web:
+    name: SPA type-check, build + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: CSharp/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: CSharp/web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # `npm run build` is `vue-tsc -b && vite build`, so this type-checks too.
+      - name: Type-check + build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm run test
+
+  verify:
+    name: Independent math verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+
+      - name: Install numpy
+        run: pip install --disable-pip-version-check numpy
+
+      # The scripts PRINT their results; they carry no assertions of their own,
+      # so running them alone would go green even if the math drifted. The step
+      # below pins the printed figures against the table published in
+      # python/verification/README.md, which is what makes this a check rather
+      # than a claim. Change a published figure and this fails until the README
+      # and the engine agree again.
+      - name: Re-derive the Orca Dive math and pin the published figures
+        working-directory: python/verification
+        run: |
+          set -euo pipefail
+          python orca_check.py | tee out.txt
+          fail=0
+          expect() {
+            if grep -qF -- "$1" out.txt; then
+              echo "  ok   $2"
+            else
+              echo "::error::published figure drifted - expected $2 ($1)"
+              fail=1
+            fi
+          }
+          echo "Pinning against python/verification/README.md:"
+          expect "total winning combos 1516294"            "winning combinations 1,516,294"
+          expect "lineRtp 0.596011"                        "line RTP 0.5960105581"
+          expect "bonusRtp 0.265102"                       "bonus RTP 0.2651017621"
+          expect "total 0.861112"                          "total RTP 0.8611123203"
+          expect "sigma 6.129329334"                       "sigma per unit wagered 6.129329334"
+          expect "lineSigma 5.124748451"                   "line sigma 5.124748451"
+          expect "bonusSigma 3.379536650"                  "bonus sigma 3.379536650"
+          exit $fail
+
+      - name: Coverage and skew scripts run clean
+        working-directory: python/verification
+        run: |
+          python coverage.py
+          python skew.py
+
+  docker:
+    name: Container build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      # Build context is the repo root by design; this fails if the repo ever
+      # stops being self-contained.
+      - name: Build the image
+        run: docker build -f docker/Dockerfile -t mmp-slotdemo:ci .
