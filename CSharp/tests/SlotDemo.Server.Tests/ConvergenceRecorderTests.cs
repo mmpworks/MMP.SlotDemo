@@ -21,7 +21,7 @@ public sealed class ConvergenceRecorderTests
     public void A_snapshot_below_the_first_boundary_records_no_point()
     {
         var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
-        Assert.Null(recorder.Observe(At(49_999)));
+        Assert.Null(recorder.RecordSnapshot(At(49_999)));
         Assert.Empty(recorder.Curve);
     }
 
@@ -29,7 +29,7 @@ public sealed class ConvergenceRecorderTests
     public void Crossing_a_boundary_records_one_point()
     {
         var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
-        var point = recorder.Observe(At(50_000));
+        var point = recorder.RecordSnapshot(At(50_000));
         Assert.NotNull(point);
         Assert.Equal(50_000, point!.Value.Spins);
         Assert.Single(recorder.Curve);
@@ -41,9 +41,9 @@ public sealed class ConvergenceRecorderTests
         // Workers can advance a million spins between two drains. The curve keeps one
         // point for the burst instead of backfilling boundaries nothing observed.
         var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
-        Assert.NotNull(recorder.Observe(At(1_000_000)));
-        Assert.Null(recorder.Observe(At(1_040_000)));    // inside the next stride
-        Assert.NotNull(recorder.Observe(At(1_050_000))); // crosses it
+        Assert.NotNull(recorder.RecordSnapshot(At(1_000_000)));
+        Assert.Null(recorder.RecordSnapshot(At(1_040_000)));    // inside the next stride
+        Assert.NotNull(recorder.RecordSnapshot(At(1_050_000))); // crosses it
         Assert.Equal(2, recorder.Curve.Count);
     }
 
@@ -51,8 +51,8 @@ public sealed class ConvergenceRecorderTests
     public void Snapshots_arriving_out_of_order_cannot_walk_the_curve_backwards()
     {
         var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
-        recorder.Observe(At(100_000));
-        Assert.Null(recorder.Observe(At(60_000)));   // stale straddling read
+        recorder.RecordSnapshot(At(100_000));
+        Assert.Null(recorder.RecordSnapshot(At(60_000)));   // stale straddling read
         Assert.Equal(100_000, recorder.Latest.Spins);
     }
 
@@ -60,9 +60,9 @@ public sealed class ConvergenceRecorderTests
     public void The_band_narrows_as_the_square_root_of_spins()
     {
         var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 10_000);
-        var early = recorder.Observe(At(10_000))!.Value;
+        var early = recorder.RecordSnapshot(At(10_000))!.Value;
         RunSnapshot later = At(1_000_000);
-        recorder.Observe(later);
+        recorder.RecordSnapshot(later);
         var late = recorder.Curve[^1];
 
         // 100x the spins, 10x narrower — the funnel shape as arithmetic.
@@ -73,8 +73,8 @@ public sealed class ConvergenceRecorderTests
     public void Complete_always_lands_a_final_point_even_off_boundary()
     {
         var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
-        recorder.Observe(At(50_000));
-        var final = recorder.Complete(At(73_412));
+        recorder.RecordSnapshot(At(50_000));
+        var final = recorder.RecordFinalSnapshot(At(73_412));
         Assert.Equal(73_412, final.Spins);
         Assert.Equal(73_412, recorder.Curve[^1].Spins);
     }
@@ -83,8 +83,8 @@ public sealed class ConvergenceRecorderTests
     public void Complete_on_a_boundary_point_does_not_duplicate_it()
     {
         var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
-        recorder.Observe(At(100_000));
-        recorder.Complete(At(100_000));
+        recorder.RecordSnapshot(At(100_000));
+        recorder.RecordFinalSnapshot(At(100_000));
         Assert.Single(recorder.Curve);
     }
 
@@ -95,13 +95,13 @@ public sealed class ConvergenceRecorderTests
 
         // 0.978 measured against 0.98 analytic: inside at small N (wide band), outside
         // at huge N (narrow band). Same measurement, different certainty.
-        var early = recorder.Observe(At(1_000))!.Value;
+        var early = recorder.RecordSnapshot(At(1_000))!.Value;
         Assert.True(early.WithinBand);
 
         var recorder2 = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 1_000);
         var wagered = 40_000_000_000L * 100_000;
         var far = new RunSnapshot(40_000_000_000, wagered, (long)(wagered * 0.978), 1);
-        var latePoint = recorder2.Complete(far);
+        var latePoint = recorder2.RecordFinalSnapshot(far);
         Assert.False(latePoint.WithinBand);
     }
 
@@ -112,7 +112,7 @@ public sealed class ConvergenceRecorderTests
         Parallel.For(0, 8, worker =>
         {
             for (var i = 1; i <= 200; i++)
-                recorder.Observe(At(i * 5_000 + worker));
+                recorder.RecordSnapshot(At(i * 5_000 + worker));
         });
 
         // Strictly increasing spins is the invariant a chart needs; the exact count
@@ -132,16 +132,16 @@ public sealed class ConvergenceRecorderTests
     public void Industry_check_is_null_below_ten_million_spins()
     {
         var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
-        recorder.Observe(AtRtp(9_999_999, 0.978));
-        Assert.Null(recorder.IndustryCheck());
+        recorder.RecordSnapshot(AtRtp(9_999_999, 0.978));
+        Assert.Null(recorder.CheckFixedTolerance());
     }
 
     [Fact]
     public void Industry_check_passes_inside_half_a_percentage_point()
     {
         var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
-        recorder.Observe(AtRtp(10_000_000, 0.978));   // deviation 0.002
-        var check = recorder.IndustryCheck();
+        recorder.RecordSnapshot(AtRtp(10_000_000, 0.978));   // deviation 0.002
+        var check = recorder.CheckFixedTolerance();
         Assert.NotNull(check);
         Assert.True(check!.Value.Passed);
         Assert.Equal(0.002, check.Value.Deviation, precision: 6);
@@ -151,8 +151,8 @@ public sealed class ConvergenceRecorderTests
     public void Industry_check_fails_outside_half_a_percentage_point()
     {
         var recorder = new ConvergenceRecorder(AnalyticRtp, Sigma, stride: 50_000);
-        recorder.Observe(AtRtp(10_000_000, 0.970));   // deviation 0.010
-        var check = recorder.IndustryCheck();
+        recorder.RecordSnapshot(AtRtp(10_000_000, 0.970));   // deviation 0.010
+        var check = recorder.CheckFixedTolerance();
         Assert.NotNull(check);
         Assert.False(check!.Value.Passed);
     }

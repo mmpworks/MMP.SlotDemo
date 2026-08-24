@@ -1,5 +1,22 @@
 # Current State
-_as of 2026-08-19_
+_as of 2026-08-21_
+
+## 2026-08-21 run-orchestration refactor
+
+- The internal `SlotDemo.Server/Runs` vocabulary now names simulation concepts directly:
+  `RunConfiguration`, `AnalyticReference`, `SimulationExecutor`,
+  `RunPreparationResult`, `ConvergencePoint`, and `FixedToleranceResult`.
+- `RunCoordinator` separates simulation execution, telemetry pumping, and completion.
+  `ActiveRun` separates the status response into configuration, analytic, totals,
+  throughput, and fixed-tolerance snapshots. HTTP routes, request fields, SSE event names,
+  and JSON response fields remain unchanged.
+- Telemetry terms are pinned in `docs/run-orchestration.md`: a worker batch is at most
+  4,096 spins; each batch updates shared `RunTotals` and may publish one cumulative
+  `TelemetrySample`; the recorder selects chart points by stride; the browser readout is
+  throttled separately.
+- `docs/run-orchestration.excalidraw` is the canonical editable orchestration diagram.
+  It uses the same domain-specific names and capacity limits as the source and narrative;
+  the previously rendered PNG is intentionally not retained.
 
 ## Release: v1.0.0 (2026-08-19)
 

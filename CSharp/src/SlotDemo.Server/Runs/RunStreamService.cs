@@ -4,40 +4,39 @@ using System.Threading.Channels;
 namespace SlotDemo.Server.Runs;
 
 /// <summary>
-/// SSE fan-out for run events, separate from the log stream so a page can watch the run
-/// without parsing log lines for numbers it needs as data.
+/// Publishes serialized run events to every subscribed SSE client. Run telemetry has a
+/// separate stream from application logs because the payloads and retention rules differ.
 ///
-/// Each subscriber receives a bounded, drop-oldest channel, as in the log relay. A slow
-/// browser may miss intermediate chart points, but it cannot slow the workers or change
-/// the run's final totals.
+/// Each subscriber has a bounded, drop-oldest channel. A slow browser may miss
+/// intermediate chart points, but publishing never waits for that browser.
 /// </summary>
 public sealed class RunStreamService
 {
-    private const int PerClientBuffer = 256;
+    private const int EventsPerSubscriber = 256;
 
-    private readonly ConcurrentDictionary<Guid, Channel<string>> _subscribers = new();
+    private readonly ConcurrentDictionary<Guid, Channel<string>> _subscriberChannels = new();
 
-    public void Publish(string jsonEvent)
+    public void PublishRunEvent(string serializedEvent)
     {
-        foreach (var channel in _subscribers.Values)
-            channel.Writer.TryWrite(jsonEvent);
+        foreach (var channel in _subscriberChannels.Values)
+            channel.Writer.TryWrite(serializedEvent);
     }
 
-    public (Guid Id, ChannelReader<string> Reader) Subscribe()
+    public (Guid Id, ChannelReader<string> Reader) SubscribeToRunEvents()
     {
         var id = Guid.NewGuid();
-        var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(PerClientBuffer)
+        var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(EventsPerSubscriber)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
             SingleReader = true,
         });
-        _subscribers[id] = channel;
+        _subscriberChannels[id] = channel;
         return (id, channel.Reader);
     }
 
-    public void Unsubscribe(Guid id)
+    public void UnsubscribeFromRunEvents(Guid id)
     {
-        if (_subscribers.TryRemove(id, out var channel))
+        if (_subscriberChannels.TryRemove(id, out var channel))
             channel.Writer.TryComplete();
     }
 }
