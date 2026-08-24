@@ -37,10 +37,19 @@ public sealed class HeraldIntegrationTests : IClassFixture<WebApplicationFactory
     /// a background drain some time after the request returns, and a log file left behind
     /// by an earlier run is non-empty from the first read. Waiting on the condition itself
     /// keeps the test honest about what it is checking.
+    ///
+    /// The deadline is a timeout, not the contract. What this asserts is that the line
+    /// reaches the log file; how long that is allowed to take is a property of the machine.
+    /// Ten seconds was enough on a developer box and not on a shared CI runner: this
+    /// assembly also runs 20M-spin simulations, xUnit runs collections in parallel, and on
+    /// two cores the async drain loses the CPU race long enough to miss a ten-second
+    /// window. It went red on main on 2026-08-24 having passed on the pull request minutes
+    /// earlier, which is the signature of a deadline rather than a defect. Sixty seconds
+    /// costs nothing on a passing run, because the loop returns the moment the line lands.
     /// </summary>
     private static async Task AssertLoggedAsync(string wanted)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(10);
+        var deadline = DateTime.UtcNow.AddSeconds(60);
         var text = "";
         while (DateTime.UtcNow < deadline)
         {
