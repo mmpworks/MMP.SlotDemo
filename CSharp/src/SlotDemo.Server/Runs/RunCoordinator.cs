@@ -444,7 +444,27 @@ public sealed class RunCoordinator(RunStreamService stream, StructuredLogger log
     private async Task ExecuteAsync(SubjectRunner runner, ActiveRun run, CancellationToken ct)
     {
         // Bounded and drop-oldest: the workers publish into this and never look back.
-        var channel = Channel.CreateBounded<TelemetrySample>(new BoundedChannelOptions(1024)
+        //
+        // Capacity follows the run instead of a fixed number. Every worker publishes one
+        // sample per completed batch, so a run produces about TargetSpins / BatchSize
+        // samples. A fixed 1,024 was roughly five times too small for a 20M-spin run.
+        // On a machine where the pump gets enough CPU it drains fast enough to hide that,
+        // which is why it passed here for weeks. Under contention it does not: CI put
+        // 8 workers on a 2-core runner, the pump starved, the buffer filled, and
+        // drop-oldest discarded a contiguous 8,331,264-spin block. That is 42% of the run
+        // missing from the convergence curve, which is the one thing that chart exists to
+        // show. Found by RunCurveCoverageTests on the first CI run, 2026-08-24.
+        //
+        // TryWrite stays non-blocking, so the engine's own throughput figure is untouched,
+        // and drop-oldest stays as the safety valve. It simply stops firing in practice.
+        // The clamp bounds memory: 65,536 samples covers a 268M-spin run, and a run past
+        // that can gap again — deliberately, rather than by accident at 20M.
+        const int MaxTelemetryBuffer = 65_536;
+        var expectedSamples =
+            run.Facts.TargetSpins / SimulationEngine.BatchSize + run.Facts.Workers + 64;
+        var capacity = (int)Math.Clamp(expectedSamples, 1_024, MaxTelemetryBuffer);
+
+        var channel = Channel.CreateBounded<TelemetrySample>(new BoundedChannelOptions(capacity)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
             SingleReader = true,
